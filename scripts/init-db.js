@@ -1,0 +1,29 @@
+const { DatabaseSync } = require("node:sqlite");
+const { existsSync, mkdirSync, unlinkSync } = require("node:fs");
+const { join } = require("node:path");
+
+const prismaDir = join(process.cwd(), "prisma");
+const dbPath = join(prismaDir, "dev.db");
+
+if (!existsSync(prismaDir)) mkdirSync(prismaDir, { recursive: true });
+if (existsSync(dbPath)) unlinkSync(dbPath);
+
+const db = new DatabaseSync(dbPath);
+db.exec(`
+PRAGMA foreign_keys=ON;
+CREATE TABLE "User" ("id" TEXT NOT NULL PRIMARY KEY,"email" TEXT NOT NULL UNIQUE,"passwordHash" TEXT NOT NULL,"name" TEXT NOT NULL,"handle" TEXT NOT NULL UNIQUE,"avatar" TEXT,"role" TEXT NOT NULL DEFAULT 'WORKER',"balanceCents" INTEGER NOT NULL DEFAULT 0,"holdBalanceCents" INTEGER NOT NULL DEFAULT 0,"rank" TEXT NOT NULL DEFAULT 'BRONZE',"trustScore" INTEGER NOT NULL DEFAULT 100,"streakDays" INTEGER NOT NULL DEFAULT 0,"lifetimeViews" INTEGER NOT NULL DEFAULT 0,"referredBy" TEXT,"referralCode" TEXT NOT NULL UNIQUE,"kycStatus" TEXT NOT NULL DEFAULT 'NONE',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "SocialAccount" ("id" TEXT NOT NULL PRIMARY KEY,"userId" TEXT NOT NULL,"platform" TEXT NOT NULL,"externalId" TEXT NOT NULL,"handle" TEXT NOT NULL,"accessToken" TEXT,"refreshToken" TEXT,"verifiedAt" DATETIME,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE UNIQUE INDEX "SocialAccount_platform_externalId_key" ON "SocialAccount"("platform", "externalId");
+CREATE TABLE "Campaign" ("id" TEXT NOT NULL PRIMARY KEY,"ownerId" TEXT NOT NULL,"title" TEXT NOT NULL,"description" TEXT NOT NULL,"sourceUrl" TEXT NOT NULL,"sourcePlatform" TEXT NOT NULL,"allowedPlatformsJson" TEXT NOT NULL,"rulesJson" TEXT NOT NULL,"cpmRateCents" INTEGER NOT NULL,"viewThreshold" INTEGER NOT NULL,"totalBudgetCents" INTEGER NOT NULL,"remainingBudgetCents" INTEGER NOT NULL,"status" TEXT NOT NULL DEFAULT 'ACTIVE',"visibility" TEXT NOT NULL DEFAULT 'PUBLIC',"trackingPrefix" TEXT NOT NULL UNIQUE,"deadline" DATETIME NOT NULL,"language" TEXT NOT NULL DEFAULT 'ru',"niche" TEXT,"metricsJson" TEXT NOT NULL DEFAULT '{}',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE TABLE "Submission" ("id" TEXT NOT NULL PRIMARY KEY,"campaignId" TEXT NOT NULL,"workerId" TEXT NOT NULL,"postUrl" TEXT NOT NULL,"platform" TEXT NOT NULL,"platformPostId" TEXT NOT NULL,"trackingCode" TEXT NOT NULL UNIQUE,"currentViews" INTEGER NOT NULL DEFAULT 0,"currentLikes" INTEGER NOT NULL DEFAULT 0,"currentComments" INTEGER NOT NULL DEFAULT 0,"peakViews" INTEGER NOT NULL DEFAULT 0,"status" TEXT NOT NULL DEFAULT 'POSTED',"fraudScore" INTEGER NOT NULL DEFAULT 0,"viewVelocityJson" TEXT NOT NULL DEFAULT '[]',"lastSyncedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"verifiedAt" DATETIME,"paidAt" DATETIME,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE,FOREIGN KEY ("workerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE TABLE "Transaction" ("id" TEXT NOT NULL PRIMARY KEY,"userId" TEXT NOT NULL,"submissionId" TEXT,"amountCents" INTEGER NOT NULL,"feeCents" INTEGER NOT NULL DEFAULT 0,"netCents" INTEGER NOT NULL,"type" TEXT NOT NULL,"status" TEXT NOT NULL DEFAULT 'COMPLETED',"provider" TEXT,"providerData" TEXT NOT NULL DEFAULT '{}',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,FOREIGN KEY ("submissionId") REFERENCES "Submission"("id") ON DELETE SET NULL ON UPDATE CASCADE);
+CREATE TABLE "Notification" ("id" TEXT NOT NULL PRIMARY KEY,"userId" TEXT NOT NULL,"title" TEXT NOT NULL,"body" TEXT NOT NULL,"channel" TEXT NOT NULL,"priority" TEXT NOT NULL,"readAt" DATETIME,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE TABLE "Achievement" ("id" TEXT NOT NULL PRIMARY KEY,"code" TEXT NOT NULL UNIQUE,"title" TEXT NOT NULL,"description" TEXT NOT NULL,"icon" TEXT NOT NULL);
+CREATE TABLE "UserAchievement" ("id" TEXT NOT NULL PRIMARY KEY,"userId" TEXT NOT NULL,"achievementId" TEXT NOT NULL,"unlockedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,FOREIGN KEY ("achievementId") REFERENCES "Achievement"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE UNIQUE INDEX "UserAchievement_userId_achievementId_key" ON "UserAchievement"("userId", "achievementId");
+CREATE TABLE "LeaderboardSnapshot" ("id" TEXT NOT NULL PRIMARY KEY,"season" TEXT NOT NULL,"type" TEXT NOT NULL,"handle" TEXT NOT NULL,"rank" INTEGER NOT NULL,"views" INTEGER NOT NULL,"payoutCents" INTEGER NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "DisputeCase" ("id" TEXT NOT NULL PRIMARY KEY,"userId" TEXT NOT NULL,"submissionId" TEXT NOT NULL,"reason" TEXT NOT NULL,"status" TEXT NOT NULL DEFAULT 'OPEN',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"resolvedAt" DATETIME,FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,FOREIGN KEY ("submissionId") REFERENCES "Submission"("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE TABLE "AuditLog" ("id" TEXT NOT NULL PRIMARY KEY,"userId" TEXT,"action" TEXT NOT NULL,"entity" TEXT NOT NULL,"entityId" TEXT NOT NULL,"metadata" TEXT NOT NULL DEFAULT '{}',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE);
+`);
+db.close();
+console.log(`Created ${dbPath}`);
