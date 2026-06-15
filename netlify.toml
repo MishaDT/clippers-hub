@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npx prisma db push && node prisma/seed-if-empty.js && npm run build"
   publish = ".next"
 
 [[plugins]]

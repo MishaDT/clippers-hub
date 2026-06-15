@@ -11,3 +11,6 @@ tsconfig.tsbuildinfo
 test-results
 playwright-report
 localtunnel*.log
+
+# Local Netlify folder
+.netlify
