@@ -49,8 +49,8 @@ export function BottomNav() {
           aria-label={label}
           title={label}
         >
-          <Icon size={primary ? 28 : 24} strokeWidth={2.2} />
-          <span className={clsx(primary ? "sr-only" : "nav-label")}>{label}</span>
+          <Icon size={23} strokeWidth={2} />
+          <span className="nav-label">{label}</span>
         </Link>
       ))}
     </nav>
