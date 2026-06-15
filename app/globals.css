@@ -2380,3 +2380,80 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
   }
   *::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .28); background-clip: padding-box; }
 }
+
+/* ============================================================
+   PASS 2 — bigger/clearer bottom nav, landing aurora,
+   upload-page mobile, feed-card overlap fixes
+   ============================================================ */
+
+/* Bottom nav — larger centered icons + clearer active tab */
+.bottom-nav a { min-height: 58px; gap: 3px; }
+.bottom-nav a.active svg { transform: translateY(-2px) scale(1.16); }
+.bottom-nav a.active .nav-label { font-weight: 800; }
+.bottom-nav-indicator {
+  box-shadow: 0 10px 26px rgba(244, 63, 143, .55), inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+.content { padding-bottom: calc(128px + var(--safe-b)); }
+@media (max-width: 760px) {
+  .content { padding-bottom: calc(134px + var(--safe-b)); }
+  .bottom-nav a, .bottom-nav a.primary { min-height: 56px; }
+  .sticky-cta { bottom: calc(var(--safe-b) + 104px); }
+}
+
+/* Subtle animated aurora behind everything (premium, non-distracting) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 38% at 18% 22%, rgba(139, 92, 246, .20), transparent 62%),
+    radial-gradient(34% 34% at 84% 14%, rgba(244, 63, 143, .18), transparent 62%),
+    radial-gradient(40% 40% at 72% 84%, rgba(56, 189, 248, .14), transparent 62%);
+  filter: blur(40px);
+  animation: ch-aurora 26s ease-in-out infinite alternate;
+}
+@keyframes ch-aurora {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(2.5%, -2%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 1.5%, 0) scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) { body::before { animation: none; } }
+
+/* Upload page — uncramp on mobile: full-width steps, action panels first */
+@media (max-width: 760px) {
+  .upload-layout { grid-template-columns: 1fr; gap: 16px; }
+  .upload-panels { order: -1; }
+  .upload-steps { position: static; }
+  .upload-step { grid-template-columns: 42px 1fr; gap: 12px; padding-bottom: 22px; }
+  .upload-step::after { left: 20px; top: 44px; bottom: 4px; }
+  .upload-step b { width: 42px; height: 42px; font-size: 15px; }
+  .upload-step strong { font-size: 15px; line-height: 1.25; }
+  .upload-step span { font-size: 12.5px; line-height: 1.45; }
+  .upload-preview { min-height: 224px; }
+  .upload-preview span { max-width: calc(100% - 150px); }
+}
+
+/* Feed big-card — stop the action rail / floats from overlapping + clipping text */
+@media (max-width: 760px) {
+  .order-creator { max-width: calc(100% - 166px); }
+  .order-creator strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .order-creator span { white-space: normal; line-height: 1.2; }
+  .order-float.pay { top: 14px; right: 14px; max-width: 150px; font-size: 18px; padding: 9px 13px; }
+  .order-float.goal { top: 84px; right: 14px; max-width: 150px; padding: 9px 13px; }
+  .order-float.goal span { white-space: normal; }
+  .order-actions { right: 10px; top: 150px; bottom: auto; gap: 8px; z-index: 6; }
+  .order-actions button { width: 48px; min-height: 52px; border-radius: 15px; }
+  .order-actions button svg { width: 21px; height: 21px; }
+  .order-actions small { font-size: 11px; }
+  .big-order-info { left: 16px; right: 16px; bottom: 16px; }
+  .big-order-info h2 { font-size: 23px; max-width: 100%; }
+  .big-order-info p {
+    max-width: 100%;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

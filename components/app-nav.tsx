@@ -49,7 +49,7 @@ export function BottomNav() {
           aria-label={label}
           title={label}
         >
-          <Icon size={23} strokeWidth={2} />
+          <Icon size={primary ? 27 : 25} strokeWidth={2} />
           <span className="nav-label">{label}</span>
         </Link>
       ))}
