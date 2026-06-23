@@ -20,6 +20,8 @@ import { AppShell } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { compactNumber, rub } from "@/lib/money";
 
+export const revalidate = 30;
+
 const categories: Array<[string, string, ComponentType<{ size?: number }>]> = [
   ["all", "Все", Sparkles],
   ["streams", "Стримы", Tv],
@@ -145,7 +147,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   };
 
   return (
-    <AppShell>
+    <AppShell publicOnly>
       <section className="section market-screen">
         <div className="market-head">
           <div>
