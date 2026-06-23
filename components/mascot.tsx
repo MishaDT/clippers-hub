@@ -39,8 +39,10 @@ export function Mascot() {
 
   if (blocked || !visible) return null;
 
+  const pageClass = `mascot-page-${pathname.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "home"}`;
+
   return (
-    <div className="mascot" aria-live="polite">
+    <div className={`mascot ${pageClass}`} aria-live="polite">
       {open ? (
         <div className="mascot-bubble">
           {tips[tip]}

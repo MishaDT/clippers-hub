@@ -229,6 +229,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                   <span><Eye size={15} /> {compactNumber(campaign.viewThreshold)}</span>
                   <span><Clock3 size={15} /> {daysLeft} дн.</span>
                   <span><Users size={15} /> {campaign._count.submissions}</span>
+                  <em>Открыть</em>
                 </div>
               </Link>
             );
