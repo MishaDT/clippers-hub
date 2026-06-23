@@ -2,6 +2,8 @@
 
 Рабочая папка для продовой версии: `C:\Users\Misha\Desktop\klipper-netlify`.
 
+Текущий production URL: `https://clippers-hub.vercel.app`
+
 ## Что уже готово
 
 - Проект привязан к GitHub: `https://github.com/MishaDT/clippers-hub`.
