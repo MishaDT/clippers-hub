@@ -3,6 +3,7 @@ import { Unbounded } from "next/font/google";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
 import "./globals.css";
+import { Mascot } from "@/components/mascot";
 
 const display = Unbounded({
   subsets: ["latin", "cyrillic"],
@@ -45,7 +46,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru" className={display.variable} data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body>
+        {children}
+        <Mascot />
+      </body>
     </html>
   );
 }

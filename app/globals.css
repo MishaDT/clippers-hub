@@ -2883,3 +2883,109 @@ body::before {
 
 /* Feed rail removed → info can use the full width */
 .reel-info { width: calc(100% - 32px); }
+
+/* ============================================================
+   PASS 9 — clean "submit work" page + Рилзи mascot
+   ============================================================ */
+.upload-screen { width: min(620px, 100%); margin-inline: auto; }
+.upload-form-v2 { display: grid; gap: 18px; margin-top: 16px; }
+.uf-field { display: grid; gap: 8px; }
+.uf-label { font-weight: 800; color: var(--soft); font-size: 15px; }
+.uf-field select {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--text);
+  padding: 0 14px;
+  font-weight: 700;
+}
+.uf-input {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .04);
+  transition: border-color .2s var(--ease-out), box-shadow .2s var(--ease-out);
+}
+.uf-input.ok { border-color: rgba(34, 197, 94, .5); }
+.uf-input:focus-within { border-color: rgba(244, 63, 143, .6); box-shadow: 0 0 0 3px rgba(244, 63, 143, .14); }
+.uf-input > svg:first-child { color: var(--muted); }
+.uf-input input { min-width: 0; min-height: 42px; border: 0; outline: none; background: transparent; color: var(--text); }
+.uf-input input::placeholder { color: var(--muted); }
+.uf-hint { color: var(--muted); font-size: 13px; }
+.uf-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(34, 197, 94, .09);
+  color: var(--soft);
+  font-size: 14px;
+  line-height: 1.42;
+}
+.uf-note svg { color: #4ade80; flex: none; margin-top: 1px; }
+.uf-submit { min-height: 56px; border-radius: 16px; font-size: 16px; box-shadow: 0 12px 30px rgba(244, 63, 143, .28); }
+.uf-submit:disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+
+/* Рилзи — peeking mascot */
+.mascot {
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--safe-b) + 92px);
+  z-index: 35;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  pointer-events: none;
+}
+.mascot > * { pointer-events: auto; }
+.mascot-body {
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(0 10px 22px rgba(244, 63, 143, .4));
+  animation: mascot-bob 3.6s ease-in-out infinite;
+}
+.mascot-body:active { transform: scale(.9); }
+@keyframes mascot-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+.mascot-bubble {
+  position: relative;
+  max-width: 230px;
+  padding: 12px 30px 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 4px 16px;
+  background: rgba(20, 20, 26, .92);
+  backdrop-filter: blur(14px);
+  color: var(--soft);
+  font-size: 13px;
+  line-height: 1.42;
+  box-shadow: var(--shadow);
+  animation: mascot-pop .35s var(--ease-spring);
+}
+@keyframes mascot-pop { from { opacity: 0; transform: translateY(8px) scale(.92); } to { opacity: 1; transform: none; } }
+.mascot-close {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+@media (min-width: 1181px) { .mascot { right: 24px; bottom: 24px; } }
+@media (prefers-reduced-motion: reduce) { .mascot-body { animation: none; } }
