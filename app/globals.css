@@ -4228,3 +4228,31 @@ body::before {
 /* PASS 11 — unified profile tweaks */
 .profile-actions { margin: 2px 0; }
 .thumb-sm { width: 44px; height: 44px; border-radius: 12px; flex: none; }
+
+/* ============================================================
+   PASS 12 — clean, airy profile (no gaudy gradients/photos, avatar icons)
+   ============================================================ */
+.profile-screen { display: grid; gap: 16px; }
+.profile-screen .section-list { margin: 0; }
+.profile-screen .profile-metrics { margin: 0; }
+
+/* avatar icons */
+.pf-avatar { width: 72px; height: 72px; border-radius: 50%; background: #15151b; border: 1px solid var(--line-strong); object-fit: cover; }
+.pf-ava { width: 40px; height: 40px; border-radius: 50%; background: #15151b; flex: none; }
+
+/* calm role toggle (no loud gradient) */
+.role-switch { margin: 0; background: rgba(255, 255, 255, .04); border-color: var(--line); }
+.role-switch .active { background: rgba(255, 255, 255, .10); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); color: #fff; }
+
+/* clean order rows: no thumbnail column, subtle progress */
+.progress-row { grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+.progress-row i { background: rgba(196, 181, 253, .8); height: 5px; }
+.progress-row > span { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* airier cards + lists */
+.profile-metrics { gap: 12px; }
+.profile-metrics .card { min-height: 0; padding: 16px; gap: 6px; }
+.profile-metrics strong { font-size: 22px; }
+.stack-list { padding: 8px 16px; }
+.profile-actions { gap: 10px; margin: 0; }
+.campaign-mini, .progress-row, .pay-row { padding: 14px 0; }

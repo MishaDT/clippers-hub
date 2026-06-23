@@ -44,7 +44,7 @@ export default async function ProfilePage() {
       <section className="section profile-screen">
         <div className="profile-main">
           <div className="profile-person">
-            <div className="avatar-ring">{user.name.slice(0, 2).toUpperCase()}</div>
+            <img className="pf-avatar" src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(user.handle)}`} alt="" />
             <div>
               <h2>{user.name}</h2>
               <p className="muted">@{user.handle}</p>
@@ -82,9 +82,8 @@ export default async function ProfilePage() {
             <section className="section-list">
               <div className="section-head compact"><h2>Мои заказы</h2><Link href="/campaigns">Найти ещё</Link></div>
               <Card className="stack-list">
-                {worker.submissions.length ? worker.submissions.map((submission, index) => (
+                {worker.submissions.length ? worker.submissions.map((submission) => (
                   <div className="progress-row" key={submission.id}>
-                    <div className="thumb" style={{ backgroundImage: `url(${index % 2 === 0 ? "/assets/gaming-order.png" : "/assets/podcast-order.png"})` }} />
                     <div>
                       <strong>{submission.campaign.title}</strong>
                       <p>{rub(Math.round((submission.currentViews / 1000) * submission.campaign.cpmRateCents))} · {compactNumber(submission.currentViews)} просмотров</p>
@@ -154,9 +153,9 @@ export default async function ProfilePage() {
               <Card className="stack-list">
                 {client.clips.length ? client.clips.map((clip) => (
                   <div className="pay-row" key={clip.id}>
-                    <div className="thumb thumb-sm" style={{ backgroundImage: "url(/assets/marketplace-thumb.png)" }} />
+                    <img className="pf-ava" src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(clip.handle)}`} alt="" />
                     <div><strong>@{clip.handle}</strong><p>{clip.title}</p></div>
-                    <span>{compactNumber(clip.views)} 👁</span>
+                    <span>{compactNumber(clip.views)}</span>
                   </div>
                 )) : <p className="muted">Клипов по твоим заказам ещё нет.</p>}
               </Card>
