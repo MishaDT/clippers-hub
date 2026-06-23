@@ -3,30 +3,61 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-const tips = [
-  "Привет! Я Рилзи 👋 Залей клип — и получай за просмотры.",
-  "Совет: бери заказы с высоким CPM — за 1000 просмотров платят больше.",
-  "Сделал ролик? Вставь ссылку во вкладке «Выложить».",
-  "Чем раньше выложишь, тем больше просмотров успеешь набрать до дедлайна.",
-  "Оплата — после проверки. Накрутка не пройдёт: антифрод не дремлет 🙂"
+const defaultTips = [
+  "Привет! Я Ридзи. Помогаю быстро понять, где деньги, правила и следующий шаг.",
+  "Смотри на ставку за 1000 просмотров: чем она выше, тем выгоднее заказ.",
+  "Сделал ролик? Выложи его на площадку и отправь ссылку во вкладке «Выложить».",
+  "Перед откликом проверь цель, срок и запреты. Так меньше переделок.",
+  "Оплата приходит после проверки просмотров и базового антифрода."
 ];
+
+function tipsForPath(pathname: string) {
+  if (/^\/campaigns\/[^/]+$/.test(pathname)) {
+    return [
+      "На этой странице главное: выплата, цель по просмотрам и срок. Если все подходит, жми «Откликнуться».",
+      "Перед монтажом открой исходник и проверь правила публикации: площадки, теги и запреты.",
+      "Лучший клип начинается с сильного первого кадра и крупных субтитров.",
+      "Отклик не заставляет сразу сдавать работу. Он просто добавляет заказ в твой рабочий список."
+    ];
+  }
+
+  if (pathname === "/campaigns") {
+    return [
+      "Выбирай заказ по ставке, сроку и сложности. Карточка покажет самое важное.",
+      "Фильтры помогают быстро найти свою нишу: стримы, юмор, игры или бизнес."
+    ];
+  }
+
+  if (pathname === "/upload") {
+    return [
+      "Здесь отправляешь готовую работу: ссылка должна вести на публичный ролик.",
+      "Проверь, что в описании ролика есть нужные теги и tracking-code."
+    ];
+  }
+
+  return defaultTips;
+}
 
 export function Mascot() {
   const pathname = usePathname();
+  const tips = tipsForPath(pathname);
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
   const [tip, setTip] = useState(0);
 
   const blocked = pathname === "/login" || pathname === "/register";
+  const quietPage = /^\/campaigns\/[^/]+$/.test(pathname);
 
   useEffect(() => {
     if (blocked) {
       setVisible(false);
       return;
     }
-    if (typeof window === "undefined") return;
+
     setVisible(true);
-    if (!sessionStorage.getItem("mascot-greeted")) {
+    setTip(0);
+
+    if (!quietPage && !sessionStorage.getItem("mascot-greeted")) {
       sessionStorage.setItem("mascot-greeted", "1");
       const t1 = setTimeout(() => setOpen(true), 1800);
       const t2 = setTimeout(() => setOpen(false), 9000);
@@ -35,7 +66,7 @@ export function Mascot() {
         clearTimeout(t2);
       };
     }
-  }, [blocked, pathname]);
+  }, [blocked, pathname, quietPage]);
 
   if (blocked || !visible) return null;
 
@@ -46,14 +77,7 @@ export function Mascot() {
       {open ? (
         <div className="mascot-bubble">
           {tips[tip]}
-          <button
-            className="mascot-close"
-            type="button"
-            aria-label="Скрыть Рилзи"
-            onClick={() => {
-              setOpen(false);
-            }}
-          >
+          <button className="mascot-close" type="button" aria-label="Скрыть Ридзи" onClick={() => setOpen(false)}>
             ×
           </button>
         </div>
@@ -61,7 +85,7 @@ export function Mascot() {
       <button
         className="mascot-body"
         type="button"
-        aria-label="Подсказка от Рилзи"
+        aria-label="Подсказка от Ридзи"
         onClick={() => {
           setTip((t) => (t + 1) % tips.length);
           setOpen(true);
@@ -74,16 +98,11 @@ export function Mascot() {
               <stop offset="1" stopColor="#8b5cf6" />
             </linearGradient>
           </defs>
-          {/* antenna */}
           <line x1="36" y1="13" x2="36" y2="5" stroke="#f9a8d4" strokeWidth="2.6" strokeLinecap="round" />
           <circle cx="36" cy="4" r="3.2" fill="#f9a8d4" />
-          {/* headphone band */}
           <path d="M13 38 a23 21 0 0 1 46 0" fill="none" stroke="#c4b5fd" strokeWidth="4.5" strokeLinecap="round" />
-          {/* head */}
           <rect x="13" y="15" width="46" height="43" rx="15" fill="url(#mascotGrad)" />
-          {/* screen face */}
           <rect x="19" y="23" width="34" height="27" rx="11" fill="#0b0b10" fillOpacity="0.32" />
-          {/* eyes */}
           <g className="mascot-eyes">
             <circle cx="29" cy="35" r="5.2" fill="#fff" />
             <circle cx="43" cy="35" r="5.2" fill="#fff" />
@@ -92,9 +111,7 @@ export function Mascot() {
             <circle cx="31.4" cy="34.2" r="1" fill="#fff" />
             <circle cx="45.4" cy="34.2" r="1" fill="#fff" />
           </g>
-          {/* smile */}
           <path d="M30 44 q6 4.5 12 0" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-          {/* headphone cups */}
           <rect x="8" y="32" width="9.5" height="16" rx="4.7" fill="#a78bfa" />
           <rect x="54.5" y="32" width="9.5" height="16" rx="4.7" fill="#a78bfa" />
         </svg>

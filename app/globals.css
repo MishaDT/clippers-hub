@@ -3822,3 +3822,318 @@ body::before {
     display: none;
   }
 }
+
+/* PASS 14 — focused campaign detail page */
+.campaign-focus {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding-top: 16px;
+}
+.detail-back {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 999px;
+  color: var(--soft);
+  background: rgba(255,255,255,.035);
+  font-weight: 850;
+}
+.campaign-focus-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+.campaign-main {
+  display: grid;
+  gap: 14px;
+}
+.campaign-media {
+  position: relative;
+  min-height: 340px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 24px;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+.campaign-media span {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 82px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255,255,255,.16);
+  backdrop-filter: blur(10px);
+}
+.campaign-media b {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(0,0,0,.38);
+  font-weight: 850;
+}
+.campaign-title-block {
+  display: grid;
+  gap: 10px;
+}
+.campaign-title-block h1 {
+  max-width: 760px;
+  margin: 0;
+  font-size: clamp(34px, 5.2vw, 66px);
+  line-height: .98;
+  letter-spacing: 0;
+}
+.campaign-title-block p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.5;
+}
+.campaign-pill {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #ddd6fe;
+  background: rgba(139,92,246,.15);
+  border: 1px solid rgba(139,92,246,.36);
+  font-size: 13px;
+  font-weight: 900;
+}
+.campaign-owner,
+.campaign-panel,
+.action-card {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  background: rgba(255,255,255,.035);
+}
+.campaign-owner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+}
+.owner-avatar {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(244,63,143,.72), transparent 35%),
+    linear-gradient(135deg, rgba(34,211,238,.32), rgba(139,92,246,.5));
+  color: #fff;
+  font-weight: 950;
+}
+.campaign-owner b,
+.campaign-owner span {
+  display: block;
+}
+.campaign-owner span {
+  color: var(--muted);
+  margin-top: 3px;
+}
+.campaign-owner a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(139,92,246,.18);
+  border: 1px solid rgba(139,92,246,.34);
+  font-weight: 850;
+}
+.campaign-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+.campaign-panel h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.task-list {
+  display: grid;
+  gap: 9px;
+}
+.task-list div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
+}
+.task-list svg {
+  color: #34d399;
+}
+.rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.rule-grid div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
+}
+.rule-grid b {
+  color: var(--soft);
+}
+.rule-grid span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+.campaign-action {
+  position: sticky;
+  top: 86px;
+}
+.action-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+.action-label {
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #86efac;
+  background: rgba(16,185,129,.1);
+  font-size: 13px;
+  font-weight: 950;
+}
+.action-card > strong {
+  color: #34d399;
+  font-size: 44px;
+  line-height: 1;
+}
+.action-card p,
+.action-card small {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.action-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.action-metrics span {
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+}
+.action-metrics b {
+  color: var(--text);
+  font-size: 16px;
+}
+.action-metrics em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 12px;
+}
+.safe-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(139,92,246,.14);
+}
+.safe-note b,
+.safe-note span {
+  display: block;
+}
+.safe-note span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.join-main {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6 58%, #2563eb);
+  box-shadow: 0 18px 38px rgba(139,92,246,.24);
+  font: inherit;
+  font-weight: 950;
+  cursor: pointer;
+}
+.action-card small {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+@media (max-width: 920px) {
+  .campaign-focus-grid {
+    grid-template-columns: 1fr;
+  }
+  .campaign-action {
+    position: static;
+  }
+}
+@media (max-width: 760px) {
+  .campaign-focus { padding-top: 6px; }
+  .campaign-media {
+    min-height: 220px;
+    border-radius: 18px;
+  }
+  .campaign-media span {
+    width: 68px;
+    height: 68px;
+  }
+  .campaign-title-block h1 {
+    font-size: 36px;
+  }
+  .campaign-title-block p {
+    font-size: 15px;
+  }
+  .campaign-owner {
+    grid-template-columns: auto 1fr;
+  }
+  .campaign-owner a {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .rule-grid,
+  .action-metrics {
+    grid-template-columns: 1fr;
+  }
+  .campaign-panel,
+  .action-card {
+    border-radius: 18px;
+    padding: 14px;
+  }
+  .mascot-page-campaigns-cmqf2kmb4001ysqdoqxb5x524,
+  .mascot[class*="mascot-page-campaigns-"] {
+    bottom: calc(var(--safe-b) + 18px);
+  }
+}
