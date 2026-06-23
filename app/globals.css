@@ -2988,4 +2988,11 @@ body::before {
   cursor: pointer;
 }
 @media (min-width: 1181px) { .mascot { right: 24px; bottom: 24px; } }
-@media (prefers-reduced-motion: reduce) { .mascot-body { animation: none; } }
+
+/* Mascot character polish: peek-in entrance + blinking eyes */
+.mascot { animation: mascot-peek .55s var(--ease-spring) both; }
+@keyframes mascot-peek { from { opacity: 0; transform: translateY(44px) scale(.85); } to { opacity: 1; transform: none; } }
+.mascot-body { width: 62px; height: 62px; }
+.mascot-eyes { transform-box: fill-box; transform-origin: center; animation: mascot-blink 5s ease-in-out infinite; }
+@keyframes mascot-blink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.12); } }
+@media (prefers-reduced-motion: reduce) { .mascot-body, .mascot, .mascot-eyes { animation: none; } }
