@@ -43,11 +43,16 @@ export function BottomNav() {
     setPending(null);
   }, [pathname]);
 
-  const currentHref = pending ?? items.find((item) => isActive(pathname, item.href))?.href ?? items[0].href;
-  const activeIndex = Math.max(0, items.findIndex((item) => item.href === currentHref));
+  // No fallback: pages that aren't a nav destination (e.g. the landing "/") highlight nothing.
+  const currentHref = pending ?? items.find((item) => isActive(pathname, item.href))?.href ?? null;
+  const activeIndex = currentHref ? Math.max(0, items.findIndex((item) => item.href === currentHref)) : 0;
 
   return (
-    <nav className="bottom-nav" aria-label="Основная навигация" style={{ "--active-index": activeIndex } as CSSProperties}>
+    <nav
+      className={clsx("bottom-nav", !currentHref && "no-active")}
+      aria-label="Основная навигация"
+      style={{ "--active-index": activeIndex } as CSSProperties}
+    >
       <span className="bottom-nav-indicator" aria-hidden="true" />
       {items.map(({ href, label, icon: Icon, primary }) => (
         <Link

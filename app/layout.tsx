@@ -11,14 +11,10 @@ const display = Unbounded({
   display: "swap"
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://clippers-hub-mdt.netlify.app");
-
 const description = "Заказчики публикуют задачи, клипперы делают рилсы из стримов, подкастов и видео. Оплата за результат.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://clippers-hub.vercel.app"),
   title: { default: "ReelPay — биржа коротких видео", template: "%s · ReelPay" },
   description,
   applicationName: "ReelPay",
