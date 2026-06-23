@@ -2786,3 +2786,97 @@ body::before {
   .content-immersive { height: calc(100dvh - 64px); }
   .reel-info, .reel-rail { bottom: 40px; }
 }
+
+/* ============================================================
+   PASS 7 — bottom nav redesign (label-on-active) + 1-line tabs
+   ============================================================ */
+.content-immersive .feed-tabs button { white-space: nowrap; }
+
+.bottom-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  grid-template-columns: none;
+  width: min(440px, calc(100vw - 24px));
+  padding: 8px;
+}
+.bottom-nav-indicator { display: none; }
+.bottom-nav a {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 0;
+  min-width: 50px;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 18px;
+  background: transparent;
+  color: rgba(255, 255, 255, .55);
+  transition: color .2s var(--ease-out), background .25s var(--ease-out), flex-grow .32s var(--ease-spring), padding .25s var(--ease-out), transform .15s var(--ease-spring);
+}
+.bottom-nav a .nav-label { font-size: 13px; font-weight: 800; white-space: nowrap; }
+.bottom-nav a:not(.active) .nav-label { display: none; }
+.bottom-nav a.primary:not(.active) { color: #f9a8d4; }
+.bottom-nav a.active {
+  flex: 0 1 auto;
+  color: #fff;
+  padding: 0 18px;
+  background: linear-gradient(135deg, #f43f8f, #8b5cf6);
+  box-shadow: 0 8px 22px rgba(244, 63, 143, .42), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.bottom-nav a.active svg { transform: none; }
+.bottom-nav a:active { transform: scale(.94); }
+
+/* ============================================================
+   PASS 8 — bottom nav: tall full-height active pill, icon centered
+   + "Для тебя" forced on one line
+   ============================================================ */
+.content-immersive .feed-tabs button { white-space: nowrap; flex: 0 0 auto; }
+
+.bottom-nav {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: stretch;
+  gap: 0;
+  width: min(380px, calc(100vw - 20px));
+  padding: 6px;
+}
+.bottom-nav-indicator {
+  display: block;
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px) / 5);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f43f8f, #8b5cf6);
+  box-shadow: 0 8px 22px rgba(244, 63, 143, .45), inset 0 1px 0 rgba(255, 255, 255, .28);
+  transform: translateX(calc(var(--active-index, 0) * 100%));
+  transition: transform .4s var(--ease-spring);
+}
+.bottom-nav a {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 54px;
+  margin: 0;
+  padding: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: rgba(255, 255, 255, .6);
+  transition: color .2s var(--ease-out), transform .15s var(--ease-spring);
+}
+.bottom-nav a .nav-label,
+.bottom-nav a:not(.active) .nav-label { display: block; font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.bottom-nav a.primary:not(.active) { color: #f9a8d4; }
+.bottom-nav a.active { color: #fff; background: transparent; padding: 0; box-shadow: none; }
+.bottom-nav a:active { transform: scale(.92); }
