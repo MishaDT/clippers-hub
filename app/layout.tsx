@@ -10,9 +10,29 @@ const display = Unbounded({
   display: "swap"
 });
 
+const description = "Заказчики публикуют задачи, клипперы делают рилсы из стримов, подкастов и видео. Оплата за результат.";
+
 export const metadata: Metadata = {
-  title: "Clippers Hub",
-  description: "UGC CPV marketplace for creators and clippers"
+  metadataBase: new URL("https://clippers-hub-mdt.netlify.app"),
+  title: { default: "ReelPay — биржа коротких видео", template: "%s · ReelPay" },
+  description,
+  applicationName: "ReelPay",
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    url: "/",
+    siteName: "ReelPay",
+    title: "ReelPay — биржа коротких видео",
+    description,
+    images: [{ url: "/assets/hero-studio.png", width: 1200, height: 630, alt: "ReelPay" }]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ReelPay — биржа коротких видео",
+    description,
+    images: ["/assets/hero-studio.png"]
+  }
 };
 
 export const viewport: Viewport = {
@@ -24,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={display.variable}>
+    <html lang="ru" className={display.variable} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );

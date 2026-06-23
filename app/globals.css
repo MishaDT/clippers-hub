@@ -2580,3 +2580,45 @@ body::before {
   .reel-overlay h2 { font-size: 23px; }
   .reel-actions button { padding: 8px 10px; font-size: 12px; }
 }
+
+/* ============================================================
+   PASS 4 — minimal (Instagram-style) feed card, route skeleton,
+   error screen, shimmer
+   ============================================================ */
+.reel { min-height: 520px; }
+.reel-pay { text-decoration: none; transition: transform .2s var(--ease-spring); }
+.reel-pay:active { transform: scale(.96); }
+.reel-overlay { gap: 12px; }
+.reel-creator-row { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+.reel-creator-row img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #1a1a22; }
+.reel-creator-meta { min-width: 0; }
+.reel-creator-meta strong { display: block; font-size: 14px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reel-creator-meta span { display: block; font-size: 12px; color: rgba(255, 255, 255, .7); }
+.reel-overlay h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.reel-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.reel-actions { display: flex; gap: 8px; margin-left: 0; }
+.reel-actions button { min-height: 42px; padding: 9px 12px; }
+.reel-cta { width: auto; min-height: 44px; padding: 11px 18px; white-space: nowrap; margin-top: 0; }
+@media (max-width: 760px) { .reel { min-height: 500px; } }
+
+/* Route skeleton — instant visual feedback during navigation/cold DB */
+.route-skeleton { width: min(1360px, 100%); margin: 0 auto; padding: 0 18px; }
+.sk-topbar { min-height: 62px; display: flex; align-items: center; padding-top: var(--safe-t); }
+.sk-brand { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--soft); opacity: .65; }
+.sk-body { display: grid; gap: 14px; padding: 14px 0 calc(132px + var(--safe-b)); }
+.sk-line { height: 18px; border-radius: 8px; }
+.sk-line.w60 { width: 60%; }
+.sk-line.w40 { width: 40%; height: 34px; }
+.sk-card { height: 180px; border-radius: 18px; }
+.sk-line, .sk-card {
+  background: linear-gradient(100deg, rgba(255, 255, 255, .04) 30%, rgba(255, 255, 255, .10) 50%, rgba(255, 255, 255, .04) 70%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.3s linear infinite;
+}
+@keyframes sk-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (max-width: 760px) { .route-skeleton { padding: 0 14px; } }
+@media (prefers-reduced-motion: reduce) { .sk-line, .sk-card { animation: none; } }
+
+/* Error boundary */
+.route-error { width: min(560px, 100%); margin: 14vh auto; padding: 0 18px; text-align: center; display: grid; gap: 14px; }
+.route-error .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }

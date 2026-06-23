@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Bookmark, Flame, Heart, Send, Target, TrendingUp, UsersRound } from "lucide-react";
+import { Bookmark, Flame, Heart, Send } from "lucide-react";
 import { toggleCampaignReactionAction } from "@/app/actions";
 import { compactNumber, rub } from "@/lib/money";
 
@@ -34,9 +34,7 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
 
   const visible = useMemo(() => {
     const list = [...campaigns];
-    if (activeTab === "Тренды") {
-      return list.sort((a, b) => b.views - a.views).slice(0, 12);
-    }
+    if (activeTab === "Тренды") return list.sort((a, b) => b.views - a.views).slice(0, 12);
     return list;
   }, [activeTab, campaigns]);
 
@@ -47,11 +45,8 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
       (entries) => {
         for (const entry of entries) {
           const video = entry.target as HTMLVideoElement;
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
-            void video.play().catch(() => undefined);
-          } else {
-            video.pause();
-          }
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.55) void video.play().catch(() => undefined);
+          else video.pause();
         }
       },
       { threshold: [0, 0.55, 1] }
@@ -63,7 +58,6 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
   async function shareCampaign(campaign: FeedCampaign, fallbackCount: number) {
     const url = `${window.location.origin}/campaigns/${campaign.id}`;
     setShared((value) => ({ ...value, [campaign.id]: (value[campaign.id] || fallbackCount) + 1 }));
-
     if (navigator.share) {
       await navigator.share({ title: campaign.title, text: "Посмотри заказ в ReelPay", url }).catch(() => undefined);
       return;
@@ -96,7 +90,6 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
 
       <div className="reel-feed">
         {visible.map((campaign, index) => {
-          const progress = Math.min(100, Math.round((campaign.views / Math.max(campaign.viewThreshold, 1)) * 100));
           const expected = Math.round((campaign.viewThreshold / 1000) * campaign.cpmRateCents * 0.89);
           const days = Math.max(1, Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / 86400000));
           const isLiked = Boolean(liked[campaign.id]);
@@ -118,29 +111,21 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
               />
               <div className="reel-shade" />
 
-              <div className="reel-creator">
-                <img src={campaign.ownerAvatar} alt="" />
-                <div>
-                  <strong>{campaign.ownerName}</strong>
-                  <span>{compactNumber(campaign.views || 128000)} подписчиков</span>
-                </div>
-              </div>
-              <div className="reel-pay">
+              <Link className="reel-pay" href={`/campaigns/${campaign.id}`} aria-label={`Заказ ${campaign.title}`}>
                 до {rub(expected)}
                 <span>за выполнение</span>
-              </div>
+              </Link>
 
               <div className="reel-overlay">
-                <h2>{campaign.title}</h2>
-                <p>{campaign.description}</p>
-                <div className="reel-chips">
-                  <span className="tag">{campaign.niche || "Нарезка"}</span>
-                  <span className="tag soft">{days} дн.</span>
-                  <span className="tag"><Target size={13} /> цель {compactNumber(campaign.viewThreshold)}</span>
+                <div className="reel-creator-row">
+                  <img src={campaign.ownerAvatar} alt="" />
+                  <div className="reel-creator-meta">
+                    <strong>{campaign.ownerName}</strong>
+                    <span>{compactNumber(campaign.views || 128000)} подписчиков · {days} дн.</span>
+                  </div>
                 </div>
+                <h2><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></h2>
                 <div className="reel-foot">
-                  <span className="reel-stat"><UsersRound size={16} /> {campaign.submissions}</span>
-                  <span className="reel-stat"><TrendingUp size={16} /> {progress}%</span>
                   <div className="reel-actions">
                     <button className={isLiked ? "active" : ""} type="button" disabled={isPending} aria-label="Нравится" onClick={() => toggleReaction(campaign.id, "LIKE")}>
                       <Heart size={18} fill={isLiked ? "#f43f8f" : "none"} color={isLiked ? "#f43f8f" : "currentColor"} />
@@ -148,15 +133,13 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
                     </button>
                     <button className={isSaved ? "active" : ""} type="button" disabled={isPending} aria-label="Сохранить" onClick={() => toggleReaction(campaign.id, "SAVE")}>
                       <Bookmark size={18} fill={isSaved ? "currentColor" : "none"} />
-                      {900 + index * 23}
                     </button>
                     <button type="button" aria-label="Поделиться" onClick={() => void shareCampaign(campaign, 240 + index * 7)}>
                       <Send size={18} />
-                      {shared[campaign.id] || 240 + index * 7}
                     </button>
                   </div>
+                  <Link className="btn btn-primary reel-cta" href={`/campaigns/${campaign.id}`}>Смотреть →</Link>
                 </div>
-                <Link className="btn btn-primary" href={`/campaigns/${campaign.id}`}>Смотреть заказ →</Link>
               </div>
             </article>
           );
