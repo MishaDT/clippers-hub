@@ -28,7 +28,7 @@ export default async function FeedPage() {
     prisma.campaign.findMany({
       include: { owner: true, submissions: true },
       orderBy: [{ visibility: "asc" }, { createdAt: "desc" }],
-      take: 24
+      take: 12
     }),
     user ? prisma.likedCampaign.findMany({ where: { userId: user.id }, select: { campaignId: true } }) : [],
     user ? prisma.savedCampaign.findMany({ where: { userId: user.id }, select: { campaignId: true } }) : []
