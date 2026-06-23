@@ -13,7 +13,7 @@ const tips = [
 
 export function Mascot() {
   const pathname = usePathname();
-  const [hidden, setHidden] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
   const [tip, setTip] = useState(0);
 
@@ -21,15 +21,11 @@ export function Mascot() {
 
   useEffect(() => {
     if (blocked) {
-      setHidden(true);
+      setVisible(false);
       return;
     }
     if (typeof window === "undefined") return;
-    if (sessionStorage.getItem("mascot-dismissed")) {
-      setHidden(true);
-      return;
-    }
-    setHidden(false);
+    setVisible(true);
     if (!sessionStorage.getItem("mascot-greeted")) {
       sessionStorage.setItem("mascot-greeted", "1");
       const t1 = setTimeout(() => setOpen(true), 1800);
@@ -41,7 +37,7 @@ export function Mascot() {
     }
   }, [blocked, pathname]);
 
-  if (blocked || hidden) return null;
+  if (blocked || !visible) return null;
 
   return (
     <div className="mascot" aria-live="polite">
@@ -54,8 +50,6 @@ export function Mascot() {
             aria-label="Скрыть Рилзи"
             onClick={() => {
               setOpen(false);
-              setHidden(true);
-              sessionStorage.setItem("mascot-dismissed", "1");
             }}
           >
             ×
