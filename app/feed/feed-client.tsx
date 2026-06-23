@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Bookmark, Flame, Heart, Send } from "lucide-react";
-import { toggleCampaignReactionAction } from "@/app/actions";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Flame } from "lucide-react";
 import { compactNumber, rub } from "@/lib/money";
 
 type FeedCampaign = {
@@ -25,13 +24,9 @@ type FeedCampaign = {
 const tabs = ["Для тебя", "Тренды"] as const;
 type Tab = (typeof tabs)[number];
 
-export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campaigns: FeedCampaign[]; likedIds?: string[]; savedIds?: string[] }) {
+export function FeedClient({ campaigns }: { campaigns: FeedCampaign[] }) {
   const [activeTab, setActiveTab] = useState<Tab>("Для тебя");
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isPending, startTransition] = useTransition();
-  const [liked, setLiked] = useState<Record<string, boolean>>(() => Object.fromEntries(likedIds.map((id) => [id, true])));
-  const [saved, setSaved] = useState<Record<string, boolean>>(() => Object.fromEntries(savedIds.map((id) => [id, true])));
-  const [shared, setShared] = useState<Record<string, number>>({});
   const videoRefs = useRef(new Map<string, HTMLVideoElement>());
   const feedRef = useRef<HTMLDivElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -68,13 +63,11 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
     return () => observer.disconnect();
   }, [visible]);
 
-  // Reset to the first reel when switching tabs.
   useEffect(() => {
     setActiveIndex(0);
     feedRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
 
-  // PC: arrow keys switch tabs.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowRight") switchTab(1);
@@ -98,28 +91,6 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) switchTab(dx < 0 ? 1 : -1);
   }
 
-  async function shareCampaign(campaign: FeedCampaign, fallbackCount: number) {
-    const url = `${window.location.origin}/campaigns/${campaign.id}`;
-    setShared((value) => ({ ...value, [campaign.id]: (value[campaign.id] || fallbackCount) + 1 }));
-    if (navigator.share) {
-      await navigator.share({ title: campaign.title, text: "Посмотри заказ в ReelPay", url }).catch(() => undefined);
-      return;
-    }
-    await navigator.clipboard?.writeText(url).catch(() => undefined);
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(campaign.title)}`, "_blank", "noopener,noreferrer");
-  }
-
-  function toggleReaction(campaignId: string, kind: "LIKE" | "SAVE") {
-    const setter = kind === "LIKE" ? setLiked : setSaved;
-    const current = kind === "LIKE" ? liked[campaignId] : saved[campaignId];
-    setter((value) => ({ ...value, [campaignId]: !current }));
-    startTransition(() => {
-      void toggleCampaignReactionAction(campaignId, kind)
-        .then((state) => setter((value) => ({ ...value, [campaignId]: state })))
-        .catch(() => setter((value) => ({ ...value, [campaignId]: current })));
-    });
-  }
-
   return (
     <>
       <div className="feed-tabs" role="tablist" aria-label="Лента">
@@ -135,8 +106,6 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
         {visible.map((campaign, index) => {
           const expected = Math.round((campaign.viewThreshold / 1000) * campaign.cpmRateCents * 0.89);
           const days = Math.max(1, Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / 86400000));
-          const isLiked = Boolean(liked[campaign.id]);
-          const isSaved = Boolean(saved[campaign.id]);
           const near = Math.abs(index - activeIndex) <= 1; // preload current + neighbours only
 
           return (
@@ -156,21 +125,6 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
                 preload={near ? "auto" : "none"}
               />
               <div className="reel-shade" />
-
-              <div className="reel-rail">
-                <button className={isLiked ? "active" : ""} type="button" disabled={isPending} aria-label="Нравится" onClick={() => toggleReaction(campaign.id, "LIKE")}>
-                  <span className="ico"><Heart size={22} fill={isLiked ? "#f43f8f" : "none"} color={isLiked ? "#f43f8f" : "#fff"} /></span>
-                  <small>{(2.1 + index / 10 + (isLiked ? 0.1 : 0)).toFixed(1)}K</small>
-                </button>
-                <button className={isSaved ? "active" : ""} type="button" disabled={isPending} aria-label="Сохранить" onClick={() => toggleReaction(campaign.id, "SAVE")}>
-                  <span className="ico"><Bookmark size={22} fill={isSaved ? "#fff" : "none"} /></span>
-                  <small>{900 + index * 23}</small>
-                </button>
-                <button type="button" aria-label="Поделиться" onClick={() => void shareCampaign(campaign, 240 + index * 7)}>
-                  <span className="ico"><Send size={22} /></span>
-                  <small>{shared[campaign.id] || 240 + index * 7}</small>
-                </button>
-              </div>
 
               <div className="reel-info">
                 <div className="reel-creator-row">

@@ -1,7 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { AppShell } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
 import { FeedClient } from "./feed-client";
 
 const images = [
@@ -9,9 +8,7 @@ const images = [
   "/assets/podcast-order.png",
   "/assets/marketplace-thumb.png",
   "/assets/hero-studio.png",
-  "https://picsum.photos/seed/reelpay-feed-1/720/1100",
-  "https://picsum.photos/seed/reelpay-feed-2/720/1100",
-  "https://picsum.photos/seed/reelpay-feed-3/720/1100"
+  "/assets/creator-nika.png"
 ];
 const videos = [
   "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
@@ -23,8 +20,7 @@ const videos = [
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4"
 ];
 
-// Cache the heavy campaign query for 30s so most navigations render instantly
-// (no wait on the database). Returns plain JSON-safe objects (no Date methods after).
+// Cache the heavy campaign query for 30s so the feed renders instantly (no DB wait).
 const getFeedCampaigns = unstable_cache(
   async () => {
     const campaigns = await prisma.campaign.findMany({
@@ -48,21 +44,16 @@ const getFeedCampaigns = unstable_cache(
       video: videos[index % videos.length]
     }));
   },
-  ["feed-campaigns-v1"],
+  ["feed-campaigns-v2"],
   { revalidate: 30, tags: ["campaigns"] }
 );
 
 export default async function FeedPage() {
-  const user = await getCurrentUser();
-  const [campaigns, liked, saved] = await Promise.all([
-    getFeedCampaigns(),
-    user ? prisma.likedCampaign.findMany({ where: { userId: user.id }, select: { campaignId: true } }) : [],
-    user ? prisma.savedCampaign.findMany({ where: { userId: user.id }, select: { campaignId: true } }) : []
-  ]);
+  const campaigns = await getFeedCampaigns();
 
   return (
     <AppShell immersive>
-      <FeedClient likedIds={liked.map((item) => item.campaignId)} savedIds={saved.map((item) => item.campaignId)} campaigns={campaigns} />
+      <FeedClient campaigns={campaigns} />
     </AppShell>
   );
 }

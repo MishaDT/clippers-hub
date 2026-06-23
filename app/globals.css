@@ -2880,3 +2880,6 @@ body::before {
 .bottom-nav a.primary:not(.active) { color: #f9a8d4; }
 .bottom-nav a.active { color: #fff; background: transparent; padding: 0; box-shadow: none; }
 .bottom-nav a:active { transform: scale(.92); }
+
+/* Feed rail removed → info can use the full width */
+.reel-info { width: calc(100% - 32px); }
