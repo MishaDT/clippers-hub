@@ -30,5 +30,5 @@ export async function POST(request: Request) {
     }
   });
   await createSession(user.id);
-  return NextResponse.redirect(redirectUrl(user.role === "CLIENT" ? "/client" : "/clipper", request), 303);
+  return NextResponse.redirect(redirectUrl("/feed", request), 303);
 }

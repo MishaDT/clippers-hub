@@ -1,53 +1,13 @@
 "use server";
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { canManageClient, canWork, createSession, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
+import { canManageClient, canWork, destroySession, requireUser } from "@/lib/auth";
 import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { stringify } from "@/lib/json";
 import { syncMockViews } from "@/lib/social-sync";
-
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  name: z.string().min(2),
-  handle: z.string().min(3).regex(/^[a-z0-9_]+$/i),
-  role: z.enum(["CLIENT", "WORKER", "BOTH"])
-});
-
-export async function registerAction(formData: FormData) {
-  const input = registerSchema.parse(Object.fromEntries(formData));
-  const passwordHash = await hashPassword(input.password);
-  const user = await prisma.user.create({
-    data: {
-      email: input.email.toLowerCase(),
-      passwordHash,
-      name: input.name,
-      handle: input.handle.toLowerCase(),
-      role: input.role,
-      referralCode: input.handle.toUpperCase().slice(0, 12)
-    }
-  });
-  await createSession(user.id);
-  redirect(input.role === "CLIENT" ? "/client" : "/clipper");
-}
-
-export async function loginAction(formData: FormData) {
-  const email = String(formData.get("email") || "").toLowerCase();
-  const password = String(formData.get("password") || "");
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    redirect("/login?error=bad_credentials");
-  }
-  await createSession(user.id);
-  redirect(user.role === "CLIENT" ? "/client" : user.role === "ADMIN" ? "/admin" : "/clipper");
-}
 
 export async function logoutAction() {
   await destroySession();
@@ -60,14 +20,12 @@ export async function switchRoleAction(formData: FormData) {
   if (!["CLIENT", "WORKER", "BOTH"].includes(nextRole)) redirect("/profile");
   await prisma.user.update({ where: { id: user.id }, data: { role: nextRole as "CLIENT" | "WORKER" | "BOTH" } });
   revalidatePath("/profile");
-  revalidatePath("/clipper");
-  revalidatePath("/client");
   redirect("/profile");
 }
 
 export async function createCampaignAction(formData: FormData) {
   const user = await requireUser();
-  if (!canManageClient(user.role)) redirect("/client?error=role");
+  if (!canManageClient(user.role)) redirect("/profile?error=role");
 
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
@@ -117,15 +75,20 @@ export async function createCampaignAction(formData: FormData) {
   });
 
   revalidatePath("/campaigns");
-  revalidatePath("/client");
+  revalidatePath("/profile");
   redirect(`/campaigns/${campaign.id}`);
 }
 
 export async function joinCampaignAction(formData: FormData) {
   const user = await requireUser();
-  if (!canWork(user.role)) redirect("/clipper?error=role");
+  if (!canWork(user.role)) redirect("/profile?error=role");
   const campaignId = String(formData.get("campaignId"));
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+
+  // Don't create a second submission for the same campaign.
+  const existing = await prisma.submission.findFirst({ where: { campaignId, workerId: user.id } });
+  if (existing) redirect("/upload");
+
   const trackingCode = `${campaign.trackingPrefix}_${user.handle.toUpperCase().slice(0, 4)}_${Math.floor(Math.random() * 900 + 100)}`;
   await prisma.submission.create({
     data: {
@@ -139,8 +102,9 @@ export async function joinCampaignAction(formData: FormData) {
       fraudScore: 0
     }
   });
-  revalidatePath("/clipper");
-  redirect("/clipper");
+  revalidatePath("/upload");
+  revalidatePath("/profile");
+  redirect("/upload");
 }
 
 export async function submitClipAction(formData: FormData) {
@@ -148,24 +112,13 @@ export async function submitClipAction(formData: FormData) {
   const submissionId = String(formData.get("submissionId"));
   const postUrl = String(formData.get("postUrl") || "");
   const platform = String(formData.get("platform") || "TIKTOK") as "TIKTOK";
-  const videoFile = formData.get("videoFile");
-  let localVideoPath = "";
-
-  if (videoFile instanceof File && videoFile.size > 0) {
-    const extension = videoFile.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase() || "mp4";
-    const fileName = `${randomUUID()}.${extension}`;
-    const uploadDir = join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(join(uploadDir, fileName), Buffer.from(await videoFile.arrayBuffer()));
-    localVideoPath = `/uploads/${fileName}`;
-  }
 
   await prisma.submission.update({
     where: { id: submissionId, workerId: user.id },
     data: {
-      postUrl: postUrl || localVideoPath,
+      postUrl,
       platform,
-      platformPostId: localVideoPath || postUrl.split("/").pop() || `post_${Date.now()}`,
+      platformPostId: postUrl.split("/").pop() || `post_${Date.now()}`,
       status: "POSTED",
       verifiedAt: new Date()
     }
@@ -174,12 +127,11 @@ export async function submitClipAction(formData: FormData) {
     data: {
       userId: user.id,
       title: "Работа отправлена",
-      body: localVideoPath ? "Видео сохранено локально, ссылка отправлена на проверку." : "Ссылка отправлена на проверку и трекинг.",
+      body: "Ссылка отправлена на проверку и трекинг просмотров.",
       channel: "in-app",
       priority: "MED"
     }
   });
-  revalidatePath("/clipper");
   revalidatePath("/upload");
   revalidatePath("/profile");
   redirect("/upload?sent=1");
@@ -200,7 +152,6 @@ export async function toggleCampaignReactionAction(campaignId: string, kind: "LI
     revalidatePath("/profile");
     return true;
   }
-
   const existing = await prisma.savedCampaign.findUnique({ where: { userId_campaignId: { userId: user.id, campaignId } } });
   if (existing) {
     await prisma.savedCampaign.delete({ where: { id: existing.id } });
@@ -217,8 +168,9 @@ export async function toggleCampaignReactionAction(campaignId: string, kind: "LI
 export async function depositAction(formData: FormData) {
   const user = await requireUser();
   const amountCents = parseRubToCents(formData.get("amount"));
+  if (amountCents <= 0) redirect("/wallet?error=amount");
   const provider = String(formData.get("provider") || "yookassa") as "yookassa" | "stripe";
-  const intent = await createPaymentIntent({ amountCents, userId: user.id, provider, description: "Clippers Hub deposit" });
+  const intent = await createPaymentIntent({ amountCents, userId: user.id, provider, description: "ReelPay deposit" });
   await prisma.transaction.create({
     data: {
       userId: user.id,
@@ -235,36 +187,42 @@ export async function depositAction(formData: FormData) {
     await prisma.user.update({ where: { id: user.id }, data: { balanceCents: { increment: amountCents } } });
   }
   revalidatePath("/wallet");
-  redirect(intent.checkoutUrl);
+  revalidatePath("/profile");
+  // Only follow safe relative checkout URLs; external provider URLs are opened explicitly elsewhere.
+  redirect(intent.checkoutUrl && intent.checkoutUrl.startsWith("/") ? intent.checkoutUrl : "/wallet?deposit=ok");
 }
 
 export async function withdrawAction(formData: FormData) {
   const user = await requireUser();
   const amountCents = parseRubToCents(formData.get("amount"));
-  if (amountCents <= 0 || amountCents > user.balanceCents) redirect("/wallet?error=balance");
+  if (amountCents <= 0) redirect("/wallet?error=amount");
+
+  // Atomic: only decrement if the balance is still sufficient (no double-withdraw race).
+  const result = await prisma.user.updateMany({
+    where: { id: user.id, balanceCents: { gte: amountCents } },
+    data: { balanceCents: { decrement: amountCents } }
+  });
+  if (result.count === 0) redirect("/wallet?error=balance");
+
   const fee = 5000 + Math.round(amountCents * 0.01);
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { balanceCents: { decrement: amountCents } } }),
-    prisma.transaction.create({
-      data: {
-        userId: user.id,
-        amountCents,
-        feeCents: fee,
-        netCents: Math.max(0, amountCents - fee),
-        type: "WITHDRAWAL",
-        status: "PENDING",
-        providerData: stringify({ fixedFeeCents: 5000, percentFee: 0.01 })
-      }
-    })
-  ]);
+  await prisma.transaction.create({
+    data: {
+      userId: user.id,
+      amountCents,
+      feeCents: fee,
+      netCents: Math.max(0, amountCents - fee),
+      type: "WITHDRAWAL",
+      status: "PENDING",
+      providerData: stringify({ fixedFeeCents: 5000, percentFee: 0.01 })
+    }
+  });
   revalidatePath("/wallet");
+  revalidatePath("/profile");
 }
 
 export async function syncViewsAction() {
   await requireUser();
   await syncMockViews();
   revalidatePath("/campaigns");
-  revalidatePath("/clipper");
-  revalidatePath("/client");
-  revalidatePath("/admin");
+  revalidatePath("/profile");
 }

@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, Search, TrendingUp, Video, WalletCards } from "lucide-react";
 import { AppShell, Card, RoleChoice, Stat } from "@/components/ui";
+import { getCurrentUser } from "@/lib/auth";
 
-export default function HomePage() {
+export default async function HomePage() {
+  if (await getCurrentUser()) redirect("/feed");
   return (
     <AppShell>
       <section className="section lp-hero">

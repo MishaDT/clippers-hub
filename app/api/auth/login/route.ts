@@ -17,6 +17,5 @@ export async function POST(request: Request) {
     return NextResponse.redirect(redirectUrl("/login?error=bad_credentials", request), 303);
   }
   await createSession(user.id);
-  const target = user.role === "CLIENT" ? "/client" : user.role === "ADMIN" ? "/admin" : "/clipper";
-  return NextResponse.redirect(redirectUrl(target, request), 303);
+  return NextResponse.redirect(redirectUrl("/feed", request), 303);
 }

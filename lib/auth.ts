@@ -3,13 +3,19 @@ import "server-only";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "clippers_session";
 
 function secret() {
-  return process.env.SESSION_SECRET || "dev-secret";
+  const value = process.env.SESSION_SECRET;
+  if (value && value.length >= 16) return value;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET must be set to a 32+ char random string in production");
+  }
+  return "dev-only-insecure-secret-change-me";
 }
 
 function sign(payload: string) {
@@ -44,7 +50,8 @@ export async function destroySession() {
   cookieStore.delete(COOKIE_NAME);
 }
 
-export async function getCurrentUser() {
+// Cached per request: AppShell + page can both read the user without a second DB hit.
+export const getCurrentUser = cache(async () => {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
@@ -54,16 +61,14 @@ export async function getCurrentUser() {
   const payload = parts.slice(0, 3).join(".");
   const signature = parts[3];
   const expected = sign(payload);
-  const ok =
-    signature.length === expected.length &&
-    timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const ok = signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   if (!ok) return null;
 
   const [userId, createdAt] = parts;
   if (Date.now() - Number(createdAt) > 60 * 60 * 24 * 30 * 1000) return null;
 
   return prisma.user.findUnique({ where: { id: userId } });
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();

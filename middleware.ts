@@ -5,11 +5,8 @@ const redirects: Record<string, string> = {
   "/index.html": "/",
   "/orders.html": "/campaigns",
   "/wizard.html": "/campaigns/new",
-  "/client.html": "/client",
-  "/creator.html": "/clipper",
-  "/editor.html": "/ai-studio",
-  "/marketplace.html": "/leaderboard",
-  "/analytics.html": "/analytics"
+  "/client.html": "/profile",
+  "/creator.html": "/profile"
 };
 
 export function middleware(request: NextRequest) {
