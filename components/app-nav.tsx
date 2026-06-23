@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
@@ -36,18 +37,26 @@ export function DesktopNav() {
 
 export function BottomNav() {
   const pathname = usePathname();
-  const activeIndex = Math.max(0, items.findIndex((item) => isActive(pathname, item.href)));
+  // Optimistic highlight: the tapped tab lights up instantly, before navigation finishes.
+  const [pending, setPending] = useState<string | null>(null);
+  useEffect(() => {
+    setPending(null);
+  }, [pathname]);
+
+  const currentHref = pending ?? items.find((item) => isActive(pathname, item.href))?.href ?? items[0].href;
+  const activeIndex = Math.max(0, items.findIndex((item) => item.href === currentHref));
 
   return (
     <nav className="bottom-nav" aria-label="Основная навигация" style={{ "--active-index": activeIndex } as CSSProperties}>
       <span className="bottom-nav-indicator" aria-hidden="true" />
       {items.map(({ href, label, icon: Icon, primary }) => (
         <Link
-          className={clsx(primary && "primary", isActive(pathname, href) && "active")}
+          className={clsx(primary && "primary", currentHref === href && "active")}
           href={href}
           key={href}
           aria-label={label}
           title={label}
+          onClick={() => setPending(href)}
         >
           <Icon size={primary ? 27 : 25} strokeWidth={2} />
           <span className="nav-label">{label}</span>
