@@ -9,14 +9,14 @@
 - ☑ **[high]** `actions.ts withdrawAction` — атомарный `updateMany` с условием `balanceCents >= amount` (нет гонки/двойного вывода).
 - ☑ **[high]** `actions.ts submitClipAction` — ветка записи файла в `public/uploads` удалена.
 - ☑ **[medium]** `actions.ts joinCampaignAction` — добавлена дедупликация откликов (нет повторной заявки на тот же заказ).
-- ⏸ **[high]** Нет rate-limit. Нужен внешний стор (Upstash/Redis) — отдельной задачей.
+- ☑ **[high]** Базовый in-memory rate-limit на `/api/auth/login|register` (`lib/rate-limit.ts`). Best-effort на serverless; для жёстких гарантий — Upstash/Redis.
 - ☑ **[medium]** `depositAction` redirect — теперь только относительные пути (нет open-redirect).
 
 ## 🟠 Продукт / потоки
 - ☑ **[critical]** После входа/регистрации → `/feed` (`api/auth/*`).
 - ☑ **[high]** Залогиненный на `/` → `redirect("/feed")`.
 - ☑ **[medium]** `joinCampaignAction` после отклика → `/upload`.
-- ⏸ **[high]** Упростить форму регистрации (роль/handle позже) — отдельной UX-задачей.
+- ☑ **[high]** Регистрация упрощена: имя + email + пароль; ник и роль (BOTH) генерируются авто, роль меняется в профиле.
 
 ## 🟡 Информационная архитектура
 - ☑ **[high]** Удалены страницы-сироты `/admin /ai-studio /analytics /leaderboard`.
@@ -44,5 +44,5 @@
 
 ## ⚪ a11y / надёжность
 - ⏸ **[medium]** Контраст `--muted`/`rgba(255,255,255,.55)` местами < 4.5:1 — пройтись точечно.
-- ⏸ **[medium]** e2e-тесты ждут `/clipper /client` — обновить.
-- ⏸ **[low]** Нет `not-found.tsx` / route-loading — точечно.
+- ☑ **[medium]** e2e: ссылки на удалённые `/clipper /client` обновлены на `/feed`/`/upload` (полный рерайт под новый UI — позже).
+- ☑ **[low]** Добавлена `not-found.tsx`. Route-loading осознанно нет (чтобы меню не пропадало при переходе).

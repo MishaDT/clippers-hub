@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession, verifyPassword } from "@/lib/auth";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 function redirectUrl(path: string, request: Request) {
   const url = new URL(path, request.url);
@@ -9,6 +10,9 @@ function redirectUrl(path: string, request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!rateLimit(`login:${clientIp(request)}`, 8, 60_000)) {
+    return NextResponse.redirect(redirectUrl("/login?error=too_many", request), 303);
+  }
   const formData = await request.formData();
   const email = String(formData.get("email") || "").toLowerCase();
   const password = String(formData.get("password") || "");

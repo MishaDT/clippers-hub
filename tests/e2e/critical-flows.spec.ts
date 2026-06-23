@@ -66,8 +66,7 @@ test.describe("public experience", () => {
 test.describe("worker flow", () => {
   test("clipper can log in, join a campaign and submit a clip link", async ({ page, isMobile }) => {
     await login(page, "anya@clippers.local");
-    await expect(page).toHaveURL(/\/clipper$/);
-    await expect(page.getByRole("heading", { name: /зарабатывает/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/feed$/);
     if (isMobile) {
       await expect(page.locator(".bottom-nav")).toBeVisible();
     } else {
@@ -78,7 +77,7 @@ test.describe("worker flow", () => {
     await page.goto("/campaigns");
     await page.getByRole("link", { name: /Подробнее/i }).first().click();
     await page.getByRole("button", { name: /Откликнуться/i }).click();
-    await expect(page).toHaveURL(/\/clipper$/);
+    await expect(page).toHaveURL(/\/upload$/);
 
     await page.goto("/upload");
     await expect(page.getByRole("heading", { name: /Выложить работу/i })).toBeVisible();
@@ -92,7 +91,7 @@ test.describe("worker flow", () => {
 test.describe("client flow", () => {
   test("client can create a campaign from the simple order form", async ({ page }) => {
     await login(page, "nikita@clippers.local");
-    await expect(page).toHaveURL(/\/client$/);
+    await expect(page).toHaveURL(/\/feed$/);
 
     await page.goto("/campaigns/new");
     await expect(page.getByRole("heading", { name: /Создать заказ/i })).toBeVisible();
