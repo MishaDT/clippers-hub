@@ -38,18 +38,18 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
     return list;
   }, [activeTab, campaigns]);
 
-  // Performance: only the card in view loads + plays its video; the rest stay paused (poster only).
+  // Only the reel snapped into view loads + plays its video; the rest stay paused.
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           const video = entry.target as HTMLVideoElement;
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.55) void video.play().catch(() => undefined);
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) void video.play().catch(() => undefined);
           else video.pause();
         }
       },
-      { threshold: [0, 0.55, 1] }
+      { threshold: [0, 0.6, 1] }
     );
     videoRefs.current.forEach((video) => observer.observe(video));
     return () => observer.disconnect();
@@ -82,7 +82,7 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
       <div className="feed-tabs" role="tablist" aria-label="Лента">
         {tabs.map((tab) => (
           <button className={activeTab === tab ? "active" : ""} type="button" onClick={() => setActiveTab(tab)} key={tab}>
-            {tab === "Тренды" ? <Flame size={17} /> : null}
+            {tab === "Тренды" ? <Flame size={16} /> : null}
             {tab}
           </button>
         ))}
@@ -116,7 +116,22 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
                 <span>за выполнение</span>
               </Link>
 
-              <div className="reel-overlay">
+              <div className="reel-rail">
+                <button className={isLiked ? "active" : ""} type="button" disabled={isPending} aria-label="Нравится" onClick={() => toggleReaction(campaign.id, "LIKE")}>
+                  <span className="ico"><Heart size={22} fill={isLiked ? "#f43f8f" : "none"} color={isLiked ? "#f43f8f" : "#fff"} /></span>
+                  <small>{(2.1 + index / 10 + (isLiked ? 0.1 : 0)).toFixed(1)}K</small>
+                </button>
+                <button className={isSaved ? "active" : ""} type="button" disabled={isPending} aria-label="Сохранить" onClick={() => toggleReaction(campaign.id, "SAVE")}>
+                  <span className="ico"><Bookmark size={22} fill={isSaved ? "#fff" : "none"} /></span>
+                  <small>{900 + index * 23}</small>
+                </button>
+                <button type="button" aria-label="Поделиться" onClick={() => void shareCampaign(campaign, 240 + index * 7)}>
+                  <span className="ico"><Send size={22} /></span>
+                  <small>{shared[campaign.id] || 240 + index * 7}</small>
+                </button>
+              </div>
+
+              <div className="reel-info">
                 <div className="reel-creator-row">
                   <img src={campaign.ownerAvatar} alt="" />
                   <div className="reel-creator-meta">
@@ -125,21 +140,7 @@ export function FeedClient({ campaigns, likedIds = [], savedIds = [] }: { campai
                   </div>
                 </div>
                 <h2><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></h2>
-                <div className="reel-foot">
-                  <div className="reel-actions">
-                    <button className={isLiked ? "active" : ""} type="button" disabled={isPending} aria-label="Нравится" onClick={() => toggleReaction(campaign.id, "LIKE")}>
-                      <Heart size={18} fill={isLiked ? "#f43f8f" : "none"} color={isLiked ? "#f43f8f" : "currentColor"} />
-                      {(2.1 + index / 10 + (isLiked ? 0.1 : 0)).toFixed(1)}K
-                    </button>
-                    <button className={isSaved ? "active" : ""} type="button" disabled={isPending} aria-label="Сохранить" onClick={() => toggleReaction(campaign.id, "SAVE")}>
-                      <Bookmark size={18} fill={isSaved ? "currentColor" : "none"} />
-                    </button>
-                    <button type="button" aria-label="Поделиться" onClick={() => void shareCampaign(campaign, 240 + index * 7)}>
-                      <Send size={18} />
-                    </button>
-                  </div>
-                  <Link className="btn btn-primary reel-cta" href={`/campaigns/${campaign.id}`}>Смотреть →</Link>
-                </div>
+                <Link className="btn btn-primary reel-cta" href={`/campaigns/${campaign.id}`}>Смотреть заказ →</Link>
               </div>
             </article>
           );

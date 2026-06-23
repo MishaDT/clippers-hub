@@ -5,7 +5,7 @@ import { logoutAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
 
-export async function AppShell({ children, hideBottomNav = false }: { children: React.ReactNode; hideBottomNav?: boolean }) {
+export async function AppShell({ children, hideBottomNav = false, immersive = false }: { children: React.ReactNode; hideBottomNav?: boolean; immersive?: boolean }) {
   const user = await getCurrentUser();
   const roleLabel = user?.role === "CLIENT" ? "Заказчик" : user?.role === "ADMIN" ? "Админ" : "Исполнитель";
 
@@ -32,7 +32,7 @@ export async function AppShell({ children, hideBottomNav = false }: { children: 
           )}
         </div>
       </header>
-      <main className="content">{children}</main>
+      <main className={clsx("content", immersive && "content-immersive")}>{children}</main>
       {user && !hideBottomNav ? <BottomNav /> : null}
     </>
   );

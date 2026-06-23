@@ -61,10 +61,8 @@ export default async function FeedPage() {
   ]);
 
   return (
-    <AppShell>
-      <section className="section social-feed">
-        <FeedClient likedIds={liked.map((item) => item.campaignId)} savedIds={saved.map((item) => item.campaignId)} campaigns={campaigns} />
-      </section>
+    <AppShell immersive>
+      <FeedClient likedIds={liked.map((item) => item.campaignId)} savedIds={saved.map((item) => item.campaignId)} campaigns={campaigns} />
     </AppShell>
   );
 }
