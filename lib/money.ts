@@ -25,3 +25,8 @@ export function commissionRate(rank: string) {
   if (rank === "SILVER") return 0.13;
   return 0.15;
 }
+
+// Expected clipper payout (in cents) for hitting the view goal, net of platform fee.
+export function expectedPayout(viewThreshold: number, cpmRateCents: number) {
+  return Math.round((viewThreshold / 1000) * cpmRateCents * 0.89);
+}

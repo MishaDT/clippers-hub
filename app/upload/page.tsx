@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { rub } from "@/lib/money";
+import { expectedPayout, rub } from "@/lib/money";
 import { UploadForm } from "./upload-form";
 
 export default async function UploadPage() {
@@ -18,14 +18,13 @@ export default async function UploadPage() {
     id: submission.id,
     title: submission.campaign.title,
     trackingCode: submission.trackingCode,
-    payout: rub(Math.round((submission.campaign.viewThreshold / 1000) * submission.campaign.cpmRateCents * 0.89))
+    payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents))
   }));
 
   return (
     <AppShell>
       <section className="section upload-screen">
         <div className="screen-title">
-          <span className="eyebrow">ReelPay</span>
           <h1>Выложить работу</h1>
           <p className="lead">Вставь ссылку на опубликованный ролик — мы начнём считать просмотры. Оплата после проверки.</p>
         </div>

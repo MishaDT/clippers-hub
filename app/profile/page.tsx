@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BriefcaseBusiness, CheckCircle2, Eye, Plus, Star, Upload, WalletCards, Zap } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Eye, Plus, Upload, WalletCards, Zap } from "lucide-react";
 import { depositAction, switchRoleAction, withdrawAction } from "@/app/actions";
 import { AppShell, Card, Tag } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -49,7 +49,7 @@ export default async function ProfilePage() {
               <h2>{user.name}</h2>
               <p className="muted">@{user.handle}</p>
               <div className="rating-line">
-                <Star size={18} fill="#fbbf24" color="#fbbf24" /> 4,9 <Tag>{view === "client" ? "Заказчик" : "Клиппер"}</Tag>
+                <Tag>{view === "client" ? "Заказчик" : "Клиппер"}</Tag>
               </div>
             </div>
           </div>

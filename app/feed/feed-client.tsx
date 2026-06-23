@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Flame } from "lucide-react";
-import { compactNumber, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, rub } from "@/lib/money";
 
 type FeedCampaign = {
   id: string;
@@ -104,7 +104,7 @@ export function FeedClient({ campaigns }: { campaigns: FeedCampaign[] }) {
 
       <div className="reel-feed" ref={feedRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {visible.map((campaign, index) => {
-          const expected = Math.round((campaign.viewThreshold / 1000) * campaign.cpmRateCents * 0.89);
+          const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
           const days = Math.max(1, Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / 86400000));
           const near = Math.abs(index - activeIndex) <= 1; // preload current + neighbours only
 

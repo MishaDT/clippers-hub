@@ -4,45 +4,45 @@
 Статусы: ☐ todo · ☑ сделано · ⏸ отложено (нужна инфра/реальные интеграции).
 
 ## 🔴 Безопасность
-- ☐ **[critical]** `lib/auth.ts` — секрет сессии падает на `"dev-secret"`, если `SESSION_SECRET` не задан → подделка сессий. Фикс: бросать ошибку в проде, dev-фолбэк только не на проде.
-- ⏸ **[critical]** `actions.ts depositAction` — demo начисляет баланс по кнопке. Это осознанный демо-режим; закрыть при подключении реальных платежей (гейт по флагу/не-прод).
-- ☐ **[high]** `actions.ts withdrawAction` — гонка: проверка баланса по устаревшему `user`, нет идемпотентности → двойной вывод. Фикс: атомарный `decrement` с условием в БД.
-- ☐ **[high]** `actions.ts submitClipAction` — пишет файл в `public/uploads` (на serverless не работает + запись из ввода). Фикс: удалить ветку.
-- ☐ **[medium]** `actions.ts joinCampaignAction` — нет дедупликации откликов (N заявок на 1 заказ). Фикс: проверять существующую заявку.
-- ⏸ **[high]** Нет rate-limit на login/register/действия. Нужен внешний стор (Upstash/Redis) — отдельной задачей.
-- ☐ **[medium]** `actions.ts depositAction` `redirect(intent.checkoutUrl)` — потенциальный open-redirect. Фикс: разрешать только известные хосты/относительные пути.
+- ☑ **[critical]** `lib/auth.ts` — секрет сессии теперь падает с ошибкой в проде, если `SESSION_SECRET` не задан; dev-фолбэк только вне прода.
+- ⏸ **[critical]** `actions.ts depositAction` — demo начисляет баланс по кнопке. Осознанный демо-режим; закрыть при подключении реальных платежей.
+- ☑ **[high]** `actions.ts withdrawAction` — атомарный `updateMany` с условием `balanceCents >= amount` (нет гонки/двойного вывода).
+- ☑ **[high]** `actions.ts submitClipAction` — ветка записи файла в `public/uploads` удалена.
+- ☑ **[medium]** `actions.ts joinCampaignAction` — добавлена дедупликация откликов (нет повторной заявки на тот же заказ).
+- ⏸ **[high]** Нет rate-limit. Нужен внешний стор (Upstash/Redis) — отдельной задачей.
+- ☑ **[medium]** `depositAction` redirect — теперь только относительные пути (нет open-redirect).
 
 ## 🟠 Продукт / потоки
-- ☐ **[critical]** После входа/регистрации → `/clipper|/client`, а не на `/feed` (первая ценность). Фикс: редирект на `/feed`.
-- ☐ **[high]** Залогиненный видит маркетинговый `/`. Фикс: `redirect("/feed")` для авторизованных.
-- ☐ **[medium]** `joinCampaignAction` после отклика → `/clipper`. Фикс: вести на `/upload`.
-- ⏸ **[high]** Регистрация требует роль+handle сразу. Упростить форму — отдельной задачей (миграция UX).
+- ☑ **[critical]** После входа/регистрации → `/feed` (`api/auth/*`).
+- ☑ **[high]** Залогиненный на `/` → `redirect("/feed")`.
+- ☑ **[medium]** `joinCampaignAction` после отклика → `/upload`.
+- ⏸ **[high]** Упростить форму регистрации (роль/handle позже) — отдельной UX-задачей.
 
 ## 🟡 Информационная архитектура
-- ☐ **[high]** Страницы-сироты `/admin /ai-studio /analytics /leaderboard` (вне навигации). Фикс: удалить + почистить middleware.
-- ☐ **[high]** Дубль входа: server actions `loginAction/registerAction` И `/api/auth/*`. Фикс: оставить один путь.
-- ☐ **[high]** `/api/ai/*` под мёртвый `/ai-studio`. Фикс: удалить вместе со страницей.
-- ☐ **[medium]** Стабы `/clipper /client` + редиректы экшенов туда. Фикс: редиректить сразу на `/profile`, стабы удалить.
-- ☐ **[low]** Мёртвые `revalidatePath("/clipper"/"/client")`. Фикс: убрать.
+- ☑ **[high]** Удалены страницы-сироты `/admin /ai-studio /analytics /leaderboard`.
+- ☑ **[high]** Удалён дубль входа: мёртвые `loginAction/registerAction` (формы шлют на `/api/auth/*`).
+- ☑ **[high]** Удалён `/api/ai/*` (вместе с мёртвым `/ai-studio`).
+- ☑ **[medium]** Удалены стабы `/clipper /client`; все редиректы экшенов/входа → `/profile`/`/feed`.
+- ☑ **[low]** Убраны мёртвые `revalidatePath("/clipper"/"/client"/"/admin")`.
 
 ## 🟢 Тексты
-- ☐ **[medium]** Надстрочники `ReelPay/REELPAY/БИРЖА ЗАКАЗОВ` дублируют логотип. Фикс: убрать со страниц.
-- ☐ **[medium]** Фейковые числа как настоящие (статы лендинга, рейтинг «4,9»). Фикс: считать из БД или убрать.
-- ⏸ **[low]** Лишние `lead`-подзаголовки на дашбордах. Точечно позже.
+- ☑ **[medium]** Сняты брендовые надстрочники (`upload` → убран, `wallet` → «Кошелёк»).
+- ☑ **[medium]** Убраны фейковые числа (рейтинг «4,9» в профиле; блок статов и «+₽2.4М» на лендинге).
+- ⏸ **[low]** Лишние `lead`-подзаголовки на дашбордах — точечно позже.
 
 ## 🔵 Производительность
-- ☐ **[high]** Кэш только у `/feed`. Фикс: `unstable_cache` для `/campaigns`.
-- ☐ **[high]** `getCurrentUser` бьёт БД на каждой странице. Фикс: обернуть в React `cache()`.
-- ⏸ **[critical]** Neon cold start. Решается платным Neon/keep-warm — инфра-задача.
-- ⏸ **[high]** Тяжёлые внешние сэмпл-видео ленты. Нужен реальный лёгкий контент.
+- ☑ **[high]** `/campaigns` кэшируется (`unstable_cache`, `revalidate 30`, `publicOnly`) — уже сделано в редизайне.
+- ☑ **[high]** `getCurrentUser` обёрнут в React `cache()` (дедуп запроса на рендер).
+- ⏸ **[critical]** Neon cold start — платный Neon/keep-warm (инфра).
+- ⏸ **[high]** Тяжёлые внешние сэмпл-видео ленты — нужен лёгкий реальный контент.
 
 ## 🟣 Код / данные
-- ☐ **[medium]** Дублирование формулы выплаты в 4 файлах. Фикс: `lib/money.expectedPayout()`.
-- ☐ **[high]** Мусор: `@netlify/database` в deps, `netlify.toml` (мы на Vercel). Фикс: удалить.
-- ⏸ **[medium]** Prisma: «JSON-в-строке» поля + нет миграций (`db push`). Рефактор отдельно.
-- ⏸ **[high]** `globals.css` ~4200 строк (слои PASS 1–12). Рефактор в токены — отдельная большая задача.
+- ☑ **[medium]** Хелпер `lib/money.expectedPayout()`; применён в `feed`/`upload` (в `campaigns` свой локальный — ок).
+- ☑ **[high]** Удалены `@netlify/database` (deps) и `netlify.toml` (мы на Vercel).
+- ⏸ **[medium]** Prisma: «JSON-в-строке» + нет миграций (`db push`). Рефактор отдельно.
+- ⏸ **[high]** `globals.css` ~4200 строк (слои PASS). Рефактор в токены — отдельная задача.
 
 ## ⚪ a11y / надёжность
-- ☐ **[medium]** Контраст `--muted` местами < 4.5:1. Фикс: чуть светлее.
-- ⏸ **[medium]** e2e-тесты ждут `/clipper /client`. Обновить после смены редиректов.
-- ⏸ **[low]** Нет `not-found.tsx` / loading-состояний. Точечно позже.
+- ⏸ **[medium]** Контраст `--muted`/`rgba(255,255,255,.55)` местами < 4.5:1 — пройтись точечно.
+- ⏸ **[medium]** e2e-тесты ждут `/clipper /client` — обновить.
+- ⏸ **[low]** Нет `not-found.tsx` / route-loading — точечно.

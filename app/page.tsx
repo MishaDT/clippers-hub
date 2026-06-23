@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, Search, TrendingUp, Video, WalletCards } from "lucide-react";
-import { AppShell, Card, RoleChoice, Stat } from "@/components/ui";
+import { AppShell, Card, RoleChoice } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function HomePage() {
@@ -9,7 +9,7 @@ export default async function HomePage() {
   return (
     <AppShell>
       <section className="section lp-hero">
-        <span className="lp-proof"><TrendingUp size={15} /> +₽2.4М выплачено клипперам</span>
+        <span className="lp-proof"><TrendingUp size={15} /> Оплата за просмотры · вывод на карту</span>
         <h1>Видео, которые <span className="gradient-text">приносят деньги</span></h1>
         <p className="lead">Заказчики публикуют задания, клипперы режут рилсы из стримов и подкастов. Оплата — за просмотры.</p>
         <div className="lp-cta">
@@ -46,13 +46,6 @@ export default async function HomePage() {
           <p className="muted">Выбери роль — это бесплатно и займёт минуту.</p>
         </div>
         <RoleChoice />
-      </section>
-
-      <section className="section grid grid-4 lp-stats">
-        <Stat value="1 200+" label="заказов на клипы" />
-        <Stat value="8.4М" label="просмотров у роликов" />
-        <Stat value="₽2.4М" label="выплачено клипперам" tone="good" />
-        <Stat value="4.9★" label="средняя оценка" />
       </section>
     </AppShell>
   );

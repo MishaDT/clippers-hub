@@ -39,7 +39,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
       <section className="section wallet-screen">
         <div className="wallet-hero">
           <div>
-            <span className="eyebrow">ReelPay Wallet</span>
+            <span className="eyebrow">Кошелёк</span>
             <h1>Деньги за ролики и заказы</h1>
             <p className="lead">Баланс, выплаты, пополнения и история операций в одном месте.</p>
           </div>
