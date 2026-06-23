@@ -72,6 +72,9 @@ export async function createCampaignAction(formData: FormData) {
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
   const platforms = formData.getAll("platforms").map(String);
+  const deadlineDays = Math.max(1, Number(formData.get("deadlineDays") || 7));
+  const sourcePlatform = String(formData.get("sourcePlatform") || "TWITCH");
+  const visibility = String(formData.get("visibility") || "PUBLIC");
   const trackingPrefix = `ch_${String(formData.get("trackingPrefix") || "CPV").replace(/[^a-z0-9_]/gi, "").toUpperCase().slice(0, 8)}_${Math.floor(Math.random() * 90 + 10)}`;
 
   const campaign = await prisma.campaign.create({
@@ -80,7 +83,7 @@ export async function createCampaignAction(formData: FormData) {
       title: String(formData.get("title") || "Новая CPV-кампания"),
       description: String(formData.get("description") || ""),
       sourceUrl: String(formData.get("sourceUrl") || ""),
-      sourcePlatform: String(formData.get("sourcePlatform") || "TWITCH") as "YOUTUBE",
+      sourcePlatform: (["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK", "TWITCH"].includes(sourcePlatform) ? sourcePlatform : "TWITCH") as "YOUTUBE",
       allowedPlatformsJson: stringify(platforms.length ? platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"]),
       rulesJson: stringify({
         requiredTags: String(formData.get("requiredTags") || "").split(",").map((item) => item.trim()).filter(Boolean),
@@ -92,9 +95,9 @@ export async function createCampaignAction(formData: FormData) {
       totalBudgetCents: budget || 5000000,
       remainingBudgetCents: budget || 5000000,
       status: "ACTIVE",
-      visibility: String(formData.get("visibility") || "PUBLIC") as "PUBLIC",
+      visibility: (["PUBLIC", "FEATURED", "PRIVATE_INVITE"].includes(visibility) ? visibility : "PUBLIC") as "PUBLIC",
       trackingPrefix,
-      deadline: new Date(String(formData.get("deadline") || new Date(Date.now() + 14 * 86400000).toISOString())),
+      deadline: new Date(Date.now() + deadlineDays * 86400000),
       language: String(formData.get("language") || "ru"),
       niche: String(formData.get("niche") || "Gaming"),
       metricsJson: stringify({ views: 0, roi: 0, fillRate: 0 })
@@ -114,6 +117,7 @@ export async function createCampaignAction(formData: FormData) {
   });
 
   revalidatePath("/campaigns");
+  revalidatePath("/client");
   redirect(`/campaigns/${campaign.id}`);
 }
 
