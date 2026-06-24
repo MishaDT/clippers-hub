@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Flame } from "lucide-react";
+import { Flame, Play } from "lucide-react";
 import { compactNumber, expectedPayout, rub } from "@/lib/money";
 
 type FeedCampaign = {
@@ -26,7 +26,7 @@ type Tab = (typeof tabs)[number];
 
 export function FeedClient({ campaigns }: { campaigns: FeedCampaign[] }) {
   const [activeTab, setActiveTab] = useState<Tab>("Для тебя");
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [playingId, setPlayingId] = useState<string | null>(null);
   const videoRefs = useRef(new Map<string, HTMLVideoElement>());
   const feedRef = useRef<HTMLDivElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -42,29 +42,28 @@ export function FeedClient({ campaigns }: { campaigns: FeedCampaign[] }) {
     if (next !== activeTab) setActiveTab(next);
   }
 
-  // Only the reel snapped into view plays; track its index to preload the next one.
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const video = entry.target as HTMLVideoElement;
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-            setActiveIndex(Number(video.dataset.index) || 0);
-            void video.play().catch(() => undefined);
-          } else {
-            video.pause();
-          }
-        }
-      },
-      { threshold: [0, 0.6, 1] }
-    );
-    videoRefs.current.forEach((video) => observer.observe(video));
-    return () => observer.disconnect();
-  }, [visible]);
+  // Light feed: nothing autoplays. Posters (local images) show instantly; the heavy
+  // video is fetched only when the user taps a reel (preload="none").
+  function playOnly(id: string) {
+    videoRefs.current.forEach((video, key) => {
+      if (key === id) void video.play().catch(() => undefined);
+      else video.pause();
+    });
+    setPlayingId(id);
+  }
+
+  function toggle(id: string) {
+    const video = videoRefs.current.get(id);
+    if (!video) return;
+    if (video.paused) playOnly(id);
+    else {
+      video.pause();
+      setPlayingId(null);
+    }
+  }
 
   useEffect(() => {
-    setActiveIndex(0);
+    setPlayingId(null);
     feedRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
 
@@ -103,28 +102,33 @@ export function FeedClient({ campaigns }: { campaigns: FeedCampaign[] }) {
       </div>
 
       <div className="reel-feed" ref={feedRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        {visible.map((campaign, index) => {
+        {visible.map((campaign) => {
           const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
           const days = Math.max(1, Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / 86400000));
-          const near = Math.abs(index - activeIndex) <= 1; // preload current + neighbours only
-
+          const isPlaying = playingId === campaign.id;
           return (
             <article className="reel" key={campaign.id}>
               <video
                 className="reel-video"
-                data-index={index}
                 ref={(el) => {
                   if (el) videoRefs.current.set(campaign.id, el);
                   else videoRefs.current.delete(campaign.id);
                 }}
                 src={campaign.video}
-                poster={near ? campaign.cover : undefined}
+                poster={campaign.cover}
                 muted
                 loop
                 playsInline
-                preload={near ? "auto" : "none"}
+                preload="none"
+                onClick={() => toggle(campaign.id)}
               />
               <div className="reel-shade" />
+
+              {!isPlaying ? (
+                <button className="reel-play" type="button" aria-label="Смотреть ролик" onClick={() => playOnly(campaign.id)}>
+                  <Play size={26} fill="#fff" />
+                </button>
+              ) : null}
 
               <div className="reel-info">
                 <div className="reel-creator-row">

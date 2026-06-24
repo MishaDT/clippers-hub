@@ -4256,3 +4256,27 @@ body::before {
 .stack-list { padding: 8px 16px; }
 .profile-actions { gap: 10px; margin: 0; }
 .campaign-mini, .progress-row, .pay-row { padding: 14px 0; }
+
+/* PASS 13 — light feed: tap-to-play (no autoplay download), poster shows instantly */
+.reel-shade { pointer-events: none; }
+.reel-play {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .42);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .45);
+  transition: transform .2s var(--ease-spring), background .2s var(--ease-out);
+}
+.reel-play:hover { background: rgba(0, 0, 0, .55); }
+.reel-play:active { transform: translate(-50%, -50%) scale(.9); }
