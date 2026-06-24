@@ -808,7 +808,7 @@ h3 { font-size: 18px; margin-bottom: 8px; }
   max-width: 100%;
   margin-top: 9px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #8b5cf6, #f43f8f);
+  background: linear-gradient(90deg, var(--primary-2), var(--primary));
 }
 .progress-row > span { color: #c4b5fd; font-size: 13px; }
 .campaign-mini {
@@ -2319,7 +2319,7 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
   bottom: 9px;
   width: calc((100% - 18px) / 5);
   border-radius: 22px;
-  background: linear-gradient(155deg, #f43f8f, #8b5cf6);
+  background: linear-gradient(155deg, var(--primary), var(--primary-2));
   box-shadow: 0 8px 22px rgba(244, 63, 143, .45), inset 0 1px 0 rgba(255, 255, 255, .28);
   transition: transform .45s var(--ease-spring);
 }
@@ -2825,7 +2825,7 @@ body::before {
   flex: 0 1 auto;
   color: #fff;
   padding: 0 18px;
-  background: linear-gradient(135deg, #f43f8f, #8b5cf6);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
   box-shadow: 0 8px 22px rgba(244, 63, 143, .42), inset 0 1px 0 rgba(255, 255, 255, .25);
 }
 .bottom-nav a.active svg { transform: none; }
@@ -2853,7 +2853,7 @@ body::before {
   left: 6px;
   width: calc((100% - 12px) / 5);
   border-radius: 18px;
-  background: linear-gradient(135deg, #f43f8f, #8b5cf6);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
   box-shadow: 0 8px 22px rgba(244, 63, 143, .45), inset 0 1px 0 rgba(255, 255, 255, .28);
   transform: translateX(calc(var(--active-index, 0) * 100%));
   transition: transform .4s var(--ease-spring);
@@ -3523,7 +3523,7 @@ body::before {
 .order-check input {
   width: 18px;
   height: 18px;
-  accent-color: #8b5cf6;
+  accent-color: var(--primary-2);
 }
 .order-check span {
   display: inline-flex;
@@ -4280,3 +4280,51 @@ body::before {
 }
 .reel-play:hover { background: rgba(0, 0, 0, .55); }
 .reel-play:active { transform: translate(-50%, -50%) scale(.9); }
+
+/* ============================================================
+   PASS 14 — theme variants (temporary chooser; default = Aurora)
+   ============================================================ */
+:root[data-theme="mono"] {
+  --bg: #0b0b0f;
+  --panel: #141419;
+  --panel-2: #1b1b21;
+  --panel-3: #232329;
+  --primary: #7c6cf0;
+  --primary-2: #a78bfa;
+  --shadow: 0 18px 50px rgba(0, 0, 0, .55);
+}
+:root[data-theme="indigo"] {
+  --bg: #0a0b12;
+  --panel: #12141d;
+  --panel-2: #181b26;
+  --panel-3: #20232f;
+  --primary: #635bff;
+  --primary-2: #8b8cff;
+  --shadow: 0 18px 50px rgba(0, 0, 0, .5);
+}
+.theme-switch {
+  position: fixed;
+  left: 14px;
+  bottom: calc(var(--safe-b) + 92px);
+  z-index: 36;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(20, 20, 26, .9);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+.theme-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.theme-switch button.active { color: #fff; background: linear-gradient(135deg, var(--primary), var(--primary-2)); }
+@media (min-width: 1181px) { .theme-switch { left: 24px; bottom: 24px; } }

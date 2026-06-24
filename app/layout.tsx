@@ -4,6 +4,7 @@ import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { Mascot } from "@/components/mascot";
+import { ThemeSwitch } from "@/components/theme-switch";
 
 const display = Unbounded({
   subsets: ["latin", "cyrillic"],
@@ -51,8 +52,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru" className={display.variable} data-scroll-behavior="smooth">
       <body>
+        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('reelpay-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}" }} />
         {children}
         <Mascot />
+        <ThemeSwitch />
       </body>
     </html>
   );
