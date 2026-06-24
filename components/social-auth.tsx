@@ -4,7 +4,8 @@ const AUTH_ERRORS: Record<string, string> = {
   too_many: "Слишком много попыток. Подождите минуту и попробуйте снова.",
   bad_credentials: "Неверный email или пароль.",
   invalid: "Проверьте поля формы.",
-  exists: "Аккаунт с таким email уже есть — войдите.",
+  weak_password: "Пароль слишком простой. Используйте более длинную фразу.",
+  register_failed: "Не получилось создать аккаунт. Проверьте данные или попробуйте войти.",
   provider_unconfigured: "Этот способ входа ещё не настроен. Загляните позже.",
   oauth_denied: "Вход отменён.",
   oauth_state: "Сессия входа устарела. Попробуйте ещё раз.",
@@ -75,13 +76,12 @@ export function SocialAuth({ mode = "login" }: { mode?: "login" | "register" }) 
               {inner}
             </a>
           ) : (
-            <span className="social-btn social-off" key={id} aria-disabled="true" title="Скоро">
+            <span className="social-btn social-off" key={id} aria-disabled="true" title="Способ входа пока не настроен">
               {inner}
             </span>
           );
         })}
       </div>
-      <p className="social-soon">Instagram и TikTok — скоро (нужна бизнес-проверка площадок).</p>
     </div>
   );
 }

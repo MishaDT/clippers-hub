@@ -8,6 +8,8 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "clippers_session";
+const BCRYPT_COST = 12;
+const DUMMY_PASSWORD_HASH = "$2b$12$FB24uLHLt.zoJmNQC.tZVezEFQcBLBJgCbJR3nQpiWxC/oMAq2iae";
 
 function secret() {
   const value = process.env.SESSION_SECRET;
@@ -23,11 +25,15 @@ function sign(payload: string) {
 }
 
 export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, BCRYPT_COST);
 }
 
 export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
+}
+
+export async function verifyPasswordOrDummy(password: string, hash?: string | null) {
+  return bcrypt.compare(password, hash || DUMMY_PASSWORD_HASH);
 }
 
 export async function createSession(userId: string) {

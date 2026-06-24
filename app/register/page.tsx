@@ -24,9 +24,9 @@ export default async function RegisterPage({
         ) : null}
 
         <form className="form" action="/api/auth/register" method="post">
-          <label className="field">Имя<input name="name" placeholder="Как тебя зовут" required /></label>
-          <label className="field">Email<input name="email" type="email" placeholder="you@example.com" required /></label>
-          <label className="field">Пароль<input name="password" type="password" placeholder="Минимум 8 символов" minLength={8} required /></label>
+          <label className="field">Имя<input name="name" placeholder="Как тебя зовут" autoComplete="name" required /></label>
+          <label className="field">Email<input name="email" type="email" placeholder="you@example.com" autoComplete="email" required /></label>
+          <label className="field">Пароль<input name="password" type="password" placeholder="Лучше длинная фраза" minLength={8} maxLength={72} autoComplete="new-password" required /></label>
           <button className="btn btn-primary" type="submit"><UserPlus size={18} /> Создать аккаунт</button>
         </form>
 

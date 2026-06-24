@@ -22,10 +22,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   const jar = await cookies();
   const cookieState = jar.get("oauth_state")?.value;
   const verifier = jar.get("oauth_verifier")?.value;
+  const cookieProvider = jar.get("oauth_provider")?.value;
   jar.delete("oauth_state");
   jar.delete("oauth_verifier");
   jar.delete("oauth_provider");
-  if (!cookieState || !verifier || cookieState !== state) return fail("oauth_state");
+  if (!cookieState || !verifier || cookieState !== state || cookieProvider !== provider) return fail("oauth_state");
 
   let profile;
   try {

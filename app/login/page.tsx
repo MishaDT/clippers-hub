@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, ArrowRight, CheckCircle2, Play, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { SocialAuth, authErrorText } from "@/components/social-auth";
 
 export default async function LoginPage({
@@ -22,12 +22,12 @@ export default async function LoginPage({
           <div className="motion-card card-a">
             <span><Play size={18} fill="currentColor" /></span>
             <strong>12 840</strong>
-            <small>просмотров за 2 часа</small>
+            <small>просмотров уже проверяются</small>
           </div>
           <div className="motion-card card-b">
             <span><Sparkles size={18} /></span>
             <strong>+8 700 ₽</strong>
-            <small>ожидает проверки</small>
+            <small>ожидает выплаты</small>
           </div>
           <div className="auth-phone">
             <div className="auth-video-strip">
@@ -46,7 +46,7 @@ export default async function LoginPage({
       <section className="card auth-card auth-card-new">
         <span className="eyebrow">Вход</span>
         <h1>Вернуться к заказам</h1>
-        <p className="muted">Тестовый вход уже заполнен. Можно сразу нажать “Войти” и посмотреть живой кабинет.</p>
+        <p className="muted">Войдите по email или через соцсеть. Мы не храним пароли от Google, VK или Yandex.</p>
 
         {errorText ? (
           <div className="auth-error" role="alert">
@@ -55,16 +55,15 @@ export default async function LoginPage({
         ) : null}
 
         <form className="form" action="/api/auth/login" method="post">
-          <label className="field">Email<input name="email" type="email" defaultValue="anya@clippers.local" required /></label>
-          <label className="field">Пароль<input name="password" type="password" defaultValue="password123" required /></label>
+          <label className="field">Email<input name="email" type="email" autoComplete="email" required /></label>
+          <label className="field">Пароль<input name="password" type="password" autoComplete="current-password" required /></label>
           <button className="btn btn-primary" type="submit">Войти <ArrowRight size={18} /></button>
         </form>
 
         <SocialAuth mode="login" />
 
         <div className="auth-hints">
-          <span><CheckCircle2 size={16} /> anya@clippers.local</span>
-          <span><ShieldCheck size={16} /> nikita@clippers.local</span>
+          <span><ShieldCheck size={16} /> Защищённая сессия и проверка входа</span>
         </div>
         <p className="small">Нет аккаунта? <Link href="/register">Зарегистрироваться</Link></p>
         <p className="auth-legal">

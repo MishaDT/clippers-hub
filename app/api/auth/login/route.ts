@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createSession, verifyPassword } from "@/lib/auth";
+import { createSession, verifyPasswordOrDummy } from "@/lib/auth";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { normalizeEmail, sameOrigin } from "@/lib/security";
 
 function redirectUrl(path: string, request: Request) {
   const url = new URL(path, request.url);
@@ -10,14 +11,23 @@ function redirectUrl(path: string, request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) {
+    return NextResponse.redirect(redirectUrl("/login?error=invalid", request), 303);
+  }
   if (!rateLimit(`login:${clientIp(request)}`, 8, 60_000)) {
     return NextResponse.redirect(redirectUrl("/login?error=too_many", request), 303);
   }
   const formData = await request.formData();
-  const email = String(formData.get("email") || "").toLowerCase();
+  const email = normalizeEmail(formData.get("email"));
   const password = String(formData.get("password") || "");
+  if (!email || !password) {
+    await verifyPasswordOrDummy(password);
+    return NextResponse.redirect(redirectUrl("/login?error=bad_credentials", request), 303);
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  const passwordOk = await verifyPasswordOrDummy(password, user?.passwordHash);
+  if (!user || !passwordOk) {
     return NextResponse.redirect(redirectUrl("/login?error=bad_credentials", request), 303);
   }
   await createSession(user.id);
