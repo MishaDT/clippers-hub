@@ -4319,3 +4319,68 @@ body::before {
   border-color: rgba(255, 255, 255, .1);
 }
 .money, .good strong { color: var(--primary); }
+
+/* ============================================================
+   PASS 16 — premium iOS polish: Apple-clean type + liquid glass + depth
+   ============================================================ */
+:root {
+  --font-display: "Inter Variable", ui-sans-serif, -apple-system, "SF Pro Display", system-ui, sans-serif;
+  --glass: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .028));
+  --glass-border: rgba(255, 255, 255, .10);
+  --r-card: 22px;
+}
+
+/* Clean, tight, Apple-like typography */
+body { letter-spacing: -0.011em; }
+h1, h2, h3, .brand-word, .detail-title, .auth-card-new h1, .order-head h1, .screen-title h1, .market-head h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+h1, .brand-word { font-weight: 850; }
+.lead, .muted, .small { letter-spacing: -0.006em; }
+
+/* Liquid-glass surfaces */
+.card, .metric, .wallet-mini, .wallet-balance-card, .wallet-action-card, .wallet-history, .empty-box {
+  background: var(--glass);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-card);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 18px 48px rgba(0, 0, 0, .5);
+}
+
+/* Buttons — full-pill, glossy lime primary, glass secondary */
+.btn { border-radius: 999px; font-weight: 700; letter-spacing: -0.01em; }
+.btn-primary {
+  background: linear-gradient(180deg, #d9ff45, #c2eb12);
+  color: #0a0a0b;
+  border: 0;
+  box-shadow: 0 8px 24px rgba(201, 243, 29, .32), inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(0, 0, 0, .12);
+}
+.btn-primary:hover { background: linear-gradient(180deg, #e2ff5e, #cbf41f); }
+.btn-primary svg { color: #0a0a0b; }
+
+/* Inputs — soft glass */
+.field input, .field textarea, .field select, .uf-input, .uf-field select,
+.search-box, .market-search label, .numbered-field input, .numbered-field textarea, .inline-input {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .1);
+  backdrop-filter: blur(10px);
+}
+
+/* Chrome — refined glass */
+.topbar { background: rgba(8, 8, 10, .6); backdrop-filter: blur(24px) saturate(140%); border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.bottom-nav {
+  background: linear-gradient(180deg, rgba(26, 28, 22, .72), rgba(10, 12, 8, .82));
+  border: 1px solid rgba(255, 255, 255, .1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 20px 50px rgba(0, 0, 0, .55);
+}
+.bottom-nav-indicator { box-shadow: 0 6px 22px rgba(201, 243, 29, .5), inset 0 1px 0 rgba(255, 255, 255, .5); }
+
+/* Lime as a true accent — subtle glow on key elements */
+.reel-pay-row b, .lp-proof { filter: drop-shadow(0 0 12px rgba(201, 243, 29, .25)); }
+
+/* a touch more air */
+.section { margin-bottom: 28px; }

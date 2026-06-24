@@ -1,15 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Unbounded } from "next/font/google";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { Mascot } from "@/components/mascot";
-
-const display = Unbounded({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-unbounded",
-  display: "swap"
-});
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -49,7 +42,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={display.variable} data-scroll-behavior="smooth">
+    <html lang="ru" data-scroll-behavior="smooth">
       <body>
         {children}
         <Mascot />
