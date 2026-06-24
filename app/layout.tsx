@@ -3,6 +3,7 @@ import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { Mascot } from "@/components/mascot";
+import { CookieConsent } from "@/components/cookie-consent";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <Mascot />
+        <CookieConsent />
       </body>
     </html>
   );

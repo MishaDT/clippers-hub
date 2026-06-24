@@ -1,24 +1,46 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Sparkles, UserPlus } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Sparkles, UserPlus } from "lucide-react";
+import { SocialAuth, authErrorText } from "@/components/social-auth";
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams
+}: {
+  searchParams: Promise<{ error?: string | string[] }>;
+}) {
+  const { error } = await searchParams;
+  const errorText = authErrorText(error);
+
   return (
     <main className="auth-page auth-motion-page">
       <section className="card auth-card auth-card-new">
         <span className="eyebrow">Новый аккаунт</span>
         <h1>Начать в ReelPay</h1>
         <p className="muted">Регистрация за минуту. Роль — клиппер или заказчик — выберешь потом в профиле.</p>
+
+        {errorText ? (
+          <div className="auth-error" role="alert">
+            <AlertCircle size={16} /> {errorText}
+          </div>
+        ) : null}
+
         <form className="form" action="/api/auth/register" method="post">
           <label className="field">Имя<input name="name" placeholder="Как тебя зовут" required /></label>
           <label className="field">Email<input name="email" type="email" placeholder="you@example.com" required /></label>
           <label className="field">Пароль<input name="password" type="password" placeholder="Минимум 8 символов" minLength={8} required /></label>
           <button className="btn btn-primary" type="submit"><UserPlus size={18} /> Создать аккаунт</button>
         </form>
+
+        <SocialAuth mode="register" />
+
         <div className="auth-hints">
           <span><CheckCircle2 size={16} /> Бесплатно</span>
           <span><Sparkles size={16} /> Сразу в ленту заказов</span>
         </div>
         <p className="small">Уже есть аккаунт? <Link href="/login">Войти <ArrowRight size={14} /></Link></p>
+        <p className="auth-legal">
+          Создавая аккаунт, вы принимаете <Link href="/legal/terms">Условия</Link> и{" "}
+          <Link href="/legal/privacy">Политику конфиденциальности</Link>.
+        </p>
       </section>
 
       <section className="auth-stage">

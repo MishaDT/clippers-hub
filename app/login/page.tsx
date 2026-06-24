@@ -1,7 +1,15 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Play, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Play, ShieldCheck, Sparkles } from "lucide-react";
+import { SocialAuth, authErrorText } from "@/components/social-auth";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams
+}: {
+  searchParams: Promise<{ error?: string | string[] }>;
+}) {
+  const { error } = await searchParams;
+  const errorText = authErrorText(error);
+
   return (
     <main className="auth-page auth-motion-page">
       <section className="auth-stage">
@@ -39,16 +47,30 @@ export default function LoginPage() {
         <span className="eyebrow">Вход</span>
         <h1>Вернуться к заказам</h1>
         <p className="muted">Тестовый вход уже заполнен. Можно сразу нажать “Войти” и посмотреть живой кабинет.</p>
+
+        {errorText ? (
+          <div className="auth-error" role="alert">
+            <AlertCircle size={16} /> {errorText}
+          </div>
+        ) : null}
+
         <form className="form" action="/api/auth/login" method="post">
           <label className="field">Email<input name="email" type="email" defaultValue="anya@clippers.local" required /></label>
           <label className="field">Пароль<input name="password" type="password" defaultValue="password123" required /></label>
           <button className="btn btn-primary" type="submit">Войти <ArrowRight size={18} /></button>
         </form>
+
+        <SocialAuth mode="login" />
+
         <div className="auth-hints">
           <span><CheckCircle2 size={16} /> anya@clippers.local</span>
           <span><ShieldCheck size={16} /> nikita@clippers.local</span>
         </div>
         <p className="small">Нет аккаунта? <Link href="/register">Зарегистрироваться</Link></p>
+        <p className="auth-legal">
+          Входя, вы принимаете <Link href="/legal/terms">Условия</Link> и{" "}
+          <Link href="/legal/privacy">Политику конфиденциальности</Link>.
+        </p>
       </section>
     </main>
   );

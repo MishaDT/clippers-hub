@@ -34,6 +34,7 @@ model User {
   submissions     Submission[]
   transactions    Transaction[]
   socialAccounts  SocialAccount[]
+  oauthAccounts   OAuthAccount[]
   notifications   Notification[]
   achievements    UserAchievement[]
   disputes        DisputeCase[]
@@ -56,6 +57,21 @@ model SocialAccount {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([platform, externalId])
+}
+
+// Social login (Google / VK / Yandex). Stores ONLY the identity link —
+// no access/refresh tokens are kept (we never act on the user's behalf).
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  createdAt         DateTime @default(now())
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Campaign {

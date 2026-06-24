@@ -4,6 +4,7 @@ import { BriefcaseBusiness, Search, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
+import { SiteFooter } from "@/components/site-footer";
 
 export async function AppShell({
   children,
@@ -42,7 +43,10 @@ export async function AppShell({
           )}
         </div>
       </header>
-      <main className={clsx("content", immersive && "content-immersive")}>{children}</main>
+      <main className={clsx("content", immersive && "content-immersive")}>
+        {children}
+        {!immersive ? <SiteFooter /> : null}
+      </main>
       {user && !hideBottomNav ? <BottomNav /> : null}
     </>
   );
