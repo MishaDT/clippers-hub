@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowUpRight,
   CalendarDays,
-  CheckCircle2,
+  Check,
   Clock3,
-  Link2,
+  ListChecks,
+  ScrollText,
   ShieldCheck,
   Sparkles,
   Target,
@@ -16,7 +18,21 @@ import { AppShell } from "@/components/ui";
 import { joinCampaignAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
 import { parseJson } from "@/lib/json";
-import { compactNumber, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, rub } from "@/lib/money";
+
+const COVERS = [
+  "/assets/gaming-order.png",
+  "/assets/podcast-order.png",
+  "/assets/marketplace-thumb.png",
+  "/assets/hero-studio.png",
+  "/assets/creator-nika.png"
+];
+
+function coverFor(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return COVERS[hash % COVERS.length];
+}
 
 function timeOf(value: Date | string) {
   return value instanceof Date ? value.getTime() : new Date(value).getTime();
@@ -70,48 +86,104 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
   const rules = parseJson<{ requiredTags?: string[]; bans?: string[] }>(campaign.rulesJson, {});
   const platforms = parseJson<string[]>(campaign.allowedPlatformsJson, []);
-  const expected = Math.round((campaign.viewThreshold / 1000) * campaign.cpmRateCents * 0.89);
+  const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
   const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
   const tasks = fallbackTasks(campaign.description);
+  const cover = coverFor(campaign.id);
 
   return (
-    <AppShell hideBottomNav>
-      <section className="section campaign-focus campaign-simple">
-        <Link className="detail-back" href="/campaigns">
-          <ArrowLeft size={17} /> К заказам
-        </Link>
+    <AppShell>
+      <section className="cd">
+        <header
+          className="cd-hero"
+          style={{
+            backgroundImage: `linear-gradient(180deg, rgba(9,9,11,.04) 0%, rgba(9,9,11,.34) 46%, rgba(9,9,11,.94) 100%), url('${cover}')`
+          }}
+        >
+          <div className="cd-hero-top">
+            <Link className="cd-iconbtn" href="/campaigns" aria-label="К заказам">
+              <ArrowLeft size={19} />
+            </Link>
+            <a
+              className="cd-iconbtn"
+              href={campaign.sourceUrl || "#"}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Открыть исходник"
+            >
+              <ArrowUpRight size={19} />
+            </a>
+          </div>
+          <div className="cd-hero-bottom">
+            <span className="cd-chip">
+              <Sparkles size={14} /> {campaign.niche || "Видео"}
+            </span>
+            <span className="cd-pay-badge">до {rub(expected)}</span>
+          </div>
+        </header>
 
-        <div className="campaign-simple-head">
-          <span className="campaign-pill"><Sparkles size={15} /> {campaign.niche || "Видео"}</span>
-          <h1>{campaign.title}</h1>
-          <p>{campaign.description}</p>
+        <div className="cd-head">
+          <h1 className="cd-title">{campaign.title}</h1>
+          <p className="cd-sub">{campaign.description}</p>
+
+          <div className="cd-owner">
+            <span className="cd-owner-ava">{initials(campaign.owner.name)}</span>
+            <div className="cd-owner-meta">
+              <b>{campaign.owner.name}</b>
+              <span>Заказ {campaign.trackingPrefix}</span>
+            </div>
+            <a className="cd-owner-src" href={campaign.sourceUrl || "#"} target="_blank" rel="noreferrer">
+              исходник <ArrowUpRight size={15} />
+            </a>
+          </div>
         </div>
 
-        <div className="campaign-simple-grid">
-          <article className="campaign-main">
-            <div className="campaign-owner">
-              <div className="owner-avatar">{initials(campaign.owner.name)}</div>
-              <div>
-                <b>{campaign.owner.name}</b>
-                <span>Заказ {campaign.trackingPrefix}</span>
-              </div>
-              <a href={campaign.sourceUrl || "#"} target="_blank" rel="noreferrer">
-                <Link2 size={16} /> Открыть исходник
-              </a>
-            </div>
+        <div className="cd-meta">
+          <div className="cd-meta-item">
+            <Target size={17} />
+            <b>{compactNumber(campaign.viewThreshold)}</b>
+            <em>цель просмотров</em>
+          </div>
+          <div className="cd-meta-item">
+            <WalletCards size={17} />
+            <b>{rub(campaign.cpmRateCents)}</b>
+            <em>за 1000</em>
+          </div>
+          <div className="cd-meta-item">
+            <CalendarDays size={17} />
+            <b>{daysLeft} дн.</b>
+            <em>до дедлайна</em>
+          </div>
+          <div className="cd-meta-item">
+            <Users size={17} />
+            <b>{campaign._count.submissions}</b>
+            <em>откликов</em>
+          </div>
+        </div>
 
-            <section className="campaign-panel">
-              <h2>Что сделать</h2>
-              <div className="task-list">
+        <div className="cd-grid">
+          <div className="cd-body">
+            <section className="cd-block">
+              <h2>
+                <ListChecks size={19} /> Что нужно сделать
+              </h2>
+              <ul className="cd-todo">
                 {tasks.map((task) => (
-                  <div key={task}><CheckCircle2 size={18} /><span>{task}</span></div>
+                  <li key={task}>
+                    <span className="cd-tick">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    {task}
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
 
-            <section className="campaign-panel">
-              <h2>Правила</h2>
-              <div className="rule-grid compact-rules">
+            <section className="cd-block">
+              <h2>
+                <ScrollText size={19} /> Правила
+              </h2>
+              <div className="cd-rules">
                 <div>
                   <b>Площадки</b>
                   <span>{platforms.length ? platforms.join(", ") : "TikTok, Shorts, Reels, VK Clips"}</span>
@@ -130,28 +202,27 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
             </section>
-          </article>
+          </div>
 
-          <aside className="campaign-action">
-            <div className="action-card">
-              <span className="action-label">Оплата за результат</span>
-              <strong>{rub(expected)}</strong>
-              <p>если ролик наберет нужные просмотры.</p>
-
-              <div className="action-metrics">
-                <span><Target size={17} /><b>{compactNumber(campaign.viewThreshold)}</b><em>цель</em></span>
-                <span><WalletCards size={17} /><b>{rub(campaign.cpmRateCents)}</b><em>за 1000</em></span>
-                <span><CalendarDays size={17} /><b>{daysLeft} дн.</b><em>осталось</em></span>
-                <span><Users size={17} /><b>{campaign._count.submissions}</b><em>откликов</em></span>
-              </div>
+          <aside className="cd-action">
+            <div className="cd-action-card">
+              <span className="cd-action-eyebrow">Оплата за результат</span>
+              <strong className="cd-amount">{rub(expected)}</strong>
+              <p>если ролик наберёт нужные просмотры.</p>
 
               <form action={joinCampaignAction}>
                 <input type="hidden" name="campaignId" value={campaign.id} />
-                <button className="join-main" type="submit">Откликнуться</button>
+                <button className="cd-apply" type="submit">
+                  <Sparkles size={18} /> Откликнуться
+                </button>
               </form>
 
-              <small><ShieldCheck size={14} /> Отклик не обязывает сдавать работу сразу.</small>
-              <small><Clock3 size={14} /> Выплата после проверки просмотров.</small>
+              <small>
+                <ShieldCheck size={14} /> Отклик не обязывает сдавать работу сразу.
+              </small>
+              <small>
+                <Clock3 size={14} /> Выплата после проверки просмотров.
+              </small>
             </div>
           </aside>
         </div>
