@@ -94,13 +94,13 @@ export function Mascot() {
         <svg viewBox="0 0 72 72" width="62" height="62" aria-hidden="true">
           <defs>
             <linearGradient id="mascotGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#f43f8f" />
-              <stop offset="1" stopColor="#8b5cf6" />
+              <stop offset="0" stopColor="#c9f31d" />
+              <stop offset="1" stopColor="#a3e635" />
             </linearGradient>
           </defs>
-          <line x1="36" y1="13" x2="36" y2="5" stroke="#f9a8d4" strokeWidth="2.6" strokeLinecap="round" />
-          <circle cx="36" cy="4" r="3.2" fill="#f9a8d4" />
-          <path d="M13 38 a23 21 0 0 1 46 0" fill="none" stroke="#c4b5fd" strokeWidth="4.5" strokeLinecap="round" />
+          <line x1="36" y1="13" x2="36" y2="5" stroke="#a3e635" strokeWidth="2.6" strokeLinecap="round" />
+          <circle cx="36" cy="4" r="3.2" fill="#a3e635" />
+          <path d="M13 38 a23 21 0 0 1 46 0" fill="none" stroke="#a3e635" strokeWidth="4.5" strokeLinecap="round" />
           <rect x="13" y="15" width="46" height="43" rx="15" fill="url(#mascotGrad)" />
           <rect x="19" y="23" width="34" height="27" rx="11" fill="#0b0b10" fillOpacity="0.32" />
           <g className="mascot-eyes">
@@ -112,8 +112,8 @@ export function Mascot() {
             <circle cx="45.4" cy="34.2" r="1" fill="#fff" />
           </g>
           <path d="M30 44 q6 4.5 12 0" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-          <rect x="8" y="32" width="9.5" height="16" rx="4.7" fill="#a78bfa" />
-          <rect x="54.5" y="32" width="9.5" height="16" rx="4.7" fill="#a78bfa" />
+          <rect x="8" y="32" width="9.5" height="16" rx="4.7" fill="#a3e635" />
+          <rect x="54.5" y="32" width="9.5" height="16" rx="4.7" fill="#a3e635" />
         </svg>
       </button>
     </div>
