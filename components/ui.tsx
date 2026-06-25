@@ -32,8 +32,8 @@ export async function AppShell({
         <div className="top-actions">
           {user ? (
             <>
-              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> Admin</Link> : null}
-              <Link className="role-pill" href="/profile"><Zap size={16} /> {roleLabel}</Link>
+              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span></Link> : null}
+              <Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>
               <form action={logoutAction}>
                 <button className="btn btn-small btn-ghost" type="submit">Выйти</button>
               </form>

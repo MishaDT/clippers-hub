@@ -123,7 +123,7 @@ export default async function AdminPage() {
   const stats = await loadAdminStats();
 
   return (
-    <AppShell>
+    <AppShell hideBottomNav>
       <section className="section admin-screen">
         <div className="admin-hero">
           <div>
