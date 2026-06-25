@@ -5,10 +5,11 @@ import { SocialAuth, authErrorText } from "@/components/social-auth";
 export default async function RegisterPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string | string[] }>;
+  searchParams: Promise<{ error?: string | string[]; ref?: string | string[] }>;
 }) {
-  const { error } = await searchParams;
+  const { error, ref } = await searchParams;
   const errorText = authErrorText(error);
+  const refCode = (Array.isArray(ref) ? ref[0] : ref)?.trim().slice(0, 12) || "";
 
   return (
     <main className="auth-page auth-motion-page">
@@ -27,7 +28,14 @@ export default async function RegisterPage({
           </div>
         ) : null}
 
+        {refCode ? (
+          <div className="auth-ref" role="status">
+            <Sparkles size={15} /> Вас пригласил друг — после старта он получит бонус.
+          </div>
+        ) : null}
+
         <form className="form" action="/api/auth/register" method="post">
+          {refCode ? <input type="hidden" name="ref" value={refCode} /> : null}
           <label className="field">Имя<input name="name" placeholder="Как тебя зовут" autoComplete="name" required /></label>
           <label className="field">Email<input name="email" type="email" placeholder="you@example.com" autoComplete="email" required /></label>
           <label className="field">Пароль<input name="password" type="password" placeholder="Лучше длинная фраза" minLength={8} maxLength={72} autoComplete="new-password" required /></label>

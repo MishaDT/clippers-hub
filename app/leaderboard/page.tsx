@@ -5,6 +5,7 @@ import { unstable_cache } from "next/cache";
 import { BadgeCheck, ChevronRight, Crown, Flame, Play, Scissors, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
+import { ReferralCard } from "@/components/referral-card";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { compactNumber } from "@/lib/money";
@@ -105,7 +106,16 @@ async function loadMyProgress() {
   const clips = subs.length;
   const maxViews = subs.reduce((max, s) => Math.max(max, s.currentViews), 0);
   const weekViews = subs.filter((s) => s.createdAt >= since).reduce((sum, s) => sum + s.currentViews, 0);
-  return { name: user.name, lifetimeViews: user.lifetimeViews, clips, maxViews, weekViews };
+  const invited = await prisma.user.count({ where: { referredBy: user.referralCode } });
+  return {
+    name: user.name,
+    lifetimeViews: user.lifetimeViews,
+    clips,
+    maxViews,
+    weekViews,
+    referralCode: user.referralCode,
+    invited
+  };
 }
 
 function leagueRange(min: number, max: number | null) {
@@ -191,6 +201,23 @@ export default async function LeaderboardPage({
                 <div className="leaderboard-hero">
                   <div className="tree-glow" aria-hidden="true" />
                   <div className="root-lines" aria-hidden="true" />
+                  <svg className="tree-svg" viewBox="0 0 400 260" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+                    <g fill="none" stroke="rgba(201,243,29,.55)" strokeLinecap="round">
+                      <path d="M200 260 C200 210 200 180 200 120" strokeWidth="3" />
+                      <path d="M200 188 C168 168 146 150 116 116" strokeWidth="2" />
+                      <path d="M200 188 C232 168 254 150 284 116" strokeWidth="2" />
+                      <path d="M200 156 C182 140 168 126 152 100" strokeWidth="1.6" />
+                      <path d="M200 156 C218 140 232 126 248 100" strokeWidth="1.6" />
+                      <path d="M200 130 C192 114 188 100 184 82" strokeWidth="1.3" />
+                      <path d="M200 130 C208 114 212 100 216 82" strokeWidth="1.3" />
+                    </g>
+                    <g fill="rgba(201,243,29,.9)">
+                      <circle cx="116" cy="116" r="2.4" /><circle cx="284" cy="116" r="2.4" />
+                      <circle cx="152" cy="100" r="2" /><circle cx="248" cy="100" r="2" />
+                      <circle cx="184" cy="82" r="1.8" /><circle cx="216" cy="82" r="1.8" />
+                    </g>
+                  </svg>
+                  <div className="embers" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></div>
                   <ol className="podium">
                     {visualOrder.map((i) => {
                       const row = podium[i];
@@ -249,6 +276,12 @@ export default async function LeaderboardPage({
           </div>
 
           <aside className="leaderboard-rail">
+            {me ? (
+              <section className="rail-panel referral-panel">
+                <ReferralCard code={me.referralCode} invited={me.invited} />
+              </section>
+            ) : null}
+
             <section className="rail-panel">
               <header className="rail-head">
                 <h3>Лиги</h3>

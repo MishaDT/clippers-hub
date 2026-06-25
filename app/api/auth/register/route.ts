@@ -47,6 +47,14 @@ export async function POST(request: Request) {
   const base = input.email.split("@")[0].replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 12) || "user";
   const handle = `${base}${Math.floor(Math.random() * 9000 + 1000)}`;
 
+  // Referral: only accept a code that maps to a real referrer.
+  const refRaw = String(formData.get("ref") || "").trim().toUpperCase().slice(0, 12);
+  let referredBy: string | undefined;
+  if (refRaw) {
+    const referrer = await prisma.user.findUnique({ where: { referralCode: refRaw }, select: { referralCode: true } });
+    if (referrer) referredBy = referrer.referralCode;
+  }
+
   try {
     const user = await prisma.user.create({
       data: {
@@ -55,7 +63,8 @@ export async function POST(request: Request) {
         name: input.name,
         handle,
         role: "BOTH",
-        referralCode: handle.toUpperCase().slice(0, 12)
+        referralCode: handle.toUpperCase().slice(0, 12),
+        referredBy
       }
     });
     await createSession(user.id);
