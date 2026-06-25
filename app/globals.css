@@ -1607,6 +1607,17 @@ h3 { font-size: 18px; margin-bottom: 8px; }
   color: var(--soft);
 }
 .auth-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.auth-simple-page {
+  grid-template-columns: 1fr;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(201,243,29,.10), transparent 24rem),
+    #08080a;
+}
+.auth-logo {
+  display: flex;
+  width: fit-content;
+  margin-bottom: 18px;
+}
 .auth-motion-page {
   grid-template-columns: minmax(320px, .92fr) minmax(360px, 520px);
   gap: 28px;

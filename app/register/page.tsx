@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, ArrowRight, CheckCircle2, Sparkles, UserPlus } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, UserPlus } from "lucide-react";
 import { SocialAuth, authErrorText } from "@/components/social-auth";
 
 export default async function RegisterPage({
@@ -11,11 +11,15 @@ export default async function RegisterPage({
   const errorText = authErrorText(error);
 
   return (
-    <main className="auth-page auth-motion-page">
+    <main className="auth-page auth-simple-page">
       <section className="card auth-card auth-card-new">
+        <Link className="brand auth-logo" href="/">
+          <span className="brand-word">Reel<span>Pay</span></span>
+        </Link>
+
         <span className="eyebrow">Новый аккаунт</span>
         <h1>Начать в ReelPay</h1>
-        <p className="muted">Регистрация за минуту. Роль — клиппер или заказчик — выберешь потом в профиле.</p>
+        <p className="muted">Создайте аккаунт за минуту. Роль клиппера или заказчика можно поменять позже в профиле.</p>
 
         {errorText ? (
           <div className="auth-error" role="alert">
@@ -34,29 +38,14 @@ export default async function RegisterPage({
 
         <div className="auth-hints">
           <span><CheckCircle2 size={16} /> Бесплатно</span>
-          <span><Sparkles size={16} /> Сразу в ленту заказов</span>
+          <span><CheckCircle2 size={16} /> Сразу доступ к заказам</span>
         </div>
+
         <p className="small">Уже есть аккаунт? <Link href="/login">Войти <ArrowRight size={14} /></Link></p>
         <p className="auth-legal">
           Создавая аккаунт, вы принимаете <Link href="/legal/terms">Условия</Link> и{" "}
           <Link href="/legal/privacy">Политику конфиденциальности</Link>.
         </p>
-      </section>
-
-      <section className="auth-stage">
-        <div className="auth-brand">
-          <span className="brand-word">Reel<span>Pay</span></span>
-          <p>После регистрации попадаешь в ленту заказов: берёшь задание, делаешь клип, отправляешь ссылку — и получаешь за просмотры.</p>
-        </div>
-        <div className="auth-showcase" aria-hidden="true">
-          <div className="auth-phone">
-            <div className="auth-video-strip"><i /><i /><i /></div>
-            <div className="auth-task">
-              <b>Первый заказ готов</b>
-              <span>выбери ролик и отправь ссылку</span>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
   );

@@ -36,7 +36,7 @@ export function CookieConsent() {
   const [details, setDetails] = useState(false);
 
   useEffect(() => {
-    if (pathname === "/legal/cookies") {
+    if (pathname === "/legal/cookies" || pathname === "/login" || pathname === "/register") {
       setShow(false);
       return;
     }
