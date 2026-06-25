@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { normalizeEmail, sameOrigin, validatePassword } from "@/lib/security";
 
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
       }
     });
     await createSession(user.id);
+    await trackEvent({ request, userId: user.id, type: "REGISTER_SUCCESS", path: "/register" });
     return NextResponse.redirect(redirectUrl("/feed", request), 303);
   } catch {
     // unique email/handle collision, etc.

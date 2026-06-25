@@ -41,6 +41,7 @@ model User {
   auditLogs        AuditLog[]
   savedCampaigns  SavedCampaign[]
   likedCampaigns  LikedCampaign[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model SocialAccount {
@@ -239,6 +240,26 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   user      User?    @relation(fields: [userId], references: [id])
+}
+
+model AnalyticsEvent {
+  id            String   @id @default(cuid())
+  userId        String?
+  type          String
+  path          String?
+  provider      String?
+  ipHash        String?
+  userAgentHash String?
+  metadata      String   @default("{}")
+  createdAt     DateTime @default(now())
+
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+  @@index([path, createdAt])
+  @@index([provider, createdAt])
+  @@index([ipHash, createdAt])
 }
 
 enum Role {

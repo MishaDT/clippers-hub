@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { clsx } from "clsx";
-import { BriefcaseBusiness, Search, Zap } from "lucide-react";
+import { BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
+import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
 import { SiteFooter } from "@/components/site-footer";
@@ -18,6 +19,7 @@ export async function AppShell({
   publicOnly?: boolean;
 }) {
   const user = publicOnly ? null : await getCurrentUser();
+  const isAdmin = canAccessAdmin(user);
   const roleLabel = user?.role === "CLIENT" ? "Заказчик" : user?.role === "ADMIN" ? "Админ" : "Исполнитель";
 
   return (
@@ -30,6 +32,7 @@ export async function AppShell({
         <div className="top-actions">
           {user ? (
             <>
+              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> Admin</Link> : null}
               <Link className="role-pill" href="/profile"><Zap size={16} /> {roleLabel}</Link>
               <form action={logoutAction}>
                 <button className="btn btn-small btn-ghost" type="submit">Выйти</button>

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { createSession, getCurrentUser, hashPassword } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 import { callbackUri, exchangeAndFetchProfile, isConfigured, isProvider, redirectBase } from "@/lib/oauth";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
@@ -57,6 +58,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
           data: { userId: currentUser.id, provider, providerAccountId: profile.providerAccountId }
         });
       }
+      await trackEvent({ request, userId: currentUser.id, type: "OAUTH_LINK", path: "/profile", provider });
       return NextResponse.redirect(new URL("/profile?settings=account", base), 303);
     }
 
@@ -65,6 +67,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
     const email = profile.email.toLowerCase();
 
     let user = linked?.user ?? null;
+    let createdUser = false;
     if (!user) {
       user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
@@ -82,6 +85,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
             referralCode: handle.toUpperCase().slice(0, 12)
           }
         });
+        createdUser = true;
       }
       await prisma.oAuthAccount.create({
         data: { userId: user.id, provider, providerAccountId: profile.providerAccountId }
@@ -89,6 +93,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
     }
 
     await createSession(user.id);
+    await trackEvent({
+      request,
+      userId: user.id,
+      type: createdUser ? "OAUTH_REGISTER" : "OAUTH_LOGIN",
+      path: "/login",
+      provider
+    });
     return NextResponse.redirect(new URL("/feed", base), 303);
   } catch {
     return fail("oauth_failed");

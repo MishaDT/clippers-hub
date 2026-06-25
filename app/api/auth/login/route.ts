@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession, verifyPasswordOrDummy } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { normalizeEmail, sameOrigin } from "@/lib/security";
 
@@ -31,5 +32,6 @@ export async function POST(request: Request) {
     return NextResponse.redirect(redirectUrl("/login?error=bad_credentials", request), 303);
   }
   await createSession(user.id);
+  await trackEvent({ request, userId: user.id, type: "LOGIN_SUCCESS", path: "/login" });
   return NextResponse.redirect(redirectUrl("/feed", request), 303);
 }

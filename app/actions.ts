@@ -3,13 +3,16 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { canManageClient, canWork, destroySession, requireUser } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
+import { canManageClient, canWork, destroySession, getCurrentUser, requireUser } from "@/lib/auth";
 import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { stringify } from "@/lib/json";
 import { syncMockViews } from "@/lib/social-sync";
 
 export async function logoutAction() {
+  const user = await getCurrentUser();
+  if (user) await trackEvent({ userId: user.id, type: "LOGOUT", path: "/profile" });
   await destroySession();
   redirect("/login");
 }
