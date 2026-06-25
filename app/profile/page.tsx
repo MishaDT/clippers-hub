@@ -1,10 +1,17 @@
 import Link from "next/link";
-import { BriefcaseBusiness, CheckCircle2, Eye, Plus, Upload, WalletCards, Zap } from "lucide-react";
-import { depositAction, switchRoleAction, withdrawAction } from "@/app/actions";
+import { BriefcaseBusiness, CheckCircle2, Eye, Link2, Plus, ShieldCheck, Trash2, Upload, WalletCards, Zap } from "lucide-react";
+import { deleteAccountAction, depositAction, switchRoleAction, unlinkOAuthAccountAction, withdrawAction } from "@/app/actions";
 import { AppShell, Card, Tag } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
+import { isConfigured, type ProviderId } from "@/lib/oauth";
 import { prisma } from "@/lib/prisma";
 import { compactNumber, rub } from "@/lib/money";
+
+const OAUTH_PROVIDERS: Array<{ id: ProviderId; label: string }> = [
+  { id: "google", label: "Google" },
+  { id: "vk", label: "VK ID" },
+  { id: "yandex", label: "Yandex" }
+];
 
 async function loadWorker(userId: string) {
   const [submissions, earnings, transactions] = await Promise.all([
@@ -36,8 +43,11 @@ async function loadClient(userId: string, role: string) {
 export default async function ProfilePage() {
   const user = await requireUser();
   const view = user.role === "CLIENT" ? "client" : "worker";
-  const worker = view === "worker" ? await loadWorker(user.id) : null;
-  const client = view === "client" ? await loadClient(user.id, user.role) : null;
+  const [worker, client, oauthAccounts] = await Promise.all([
+    view === "worker" ? loadWorker(user.id) : Promise.resolve(null),
+    view === "client" ? loadClient(user.id, user.role) : Promise.resolve(null),
+    prisma.oAuthAccount.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } })
+  ]);
 
   return (
     <AppShell>
@@ -173,6 +183,66 @@ export default async function ProfilePage() {
             </section>
           </>
         ) : null}
+
+        <section className="section-list account-settings">
+          <div className="section-head compact">
+            <h2>Данные и безопасность</h2>
+          </div>
+          <Card className="account-card">
+            <div className="account-card-head">
+              <ShieldCheck color="#22c55e" />
+              <div>
+                <strong>Социальный вход</strong>
+                <p>Мы храним только связку “провайдер + id аккаунта”. Токены соцсетей не сохраняем.</p>
+              </div>
+            </div>
+            <div className="oauth-list">
+              {OAUTH_PROVIDERS.map((provider) => {
+                const linked = oauthAccounts.find((account) => account.provider === provider.id);
+                const configured = isConfigured(provider.id);
+                return (
+                  <div className="oauth-row" key={provider.id}>
+                    <div>
+                      <b>{provider.label}</b>
+                      <span>
+                        {linked ? "Привязано" : configured ? "Можно привязать" : "Нужны ключи OAuth в Vercel"}
+                      </span>
+                    </div>
+                    {linked ? (
+                      <form action={unlinkOAuthAccountAction}>
+                        <input type="hidden" name="oauthAccountId" value={linked.id} />
+                        <button className="btn btn-small btn-ghost" type="submit">Отвязать</button>
+                      </form>
+                    ) : configured ? (
+                      <Link className="btn btn-small" href={`/api/auth/oauth/${provider.id}?mode=link`}>
+                        <Link2 size={15} /> Привязать
+                      </Link>
+                    ) : (
+                      <span className="btn btn-small btn-ghost disabled">Не настроено</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="account-card danger-zone">
+            <div className="account-card-head">
+              <Trash2 color="#fb7185" />
+              <div>
+                <strong>Удалить аккаунт</strong>
+                <p>Удалятся профиль, заказы, отклики, сохранённые реакции и привязки соцсетей.</p>
+              </div>
+            </div>
+            <form className="delete-account-form" action={deleteAccountAction}>
+              <label className="field">
+                Для подтверждения введите УДАЛИТЬ
+                <input name="confirmation" placeholder="УДАЛИТЬ" />
+              </label>
+              <button className="btn btn-ghost danger-btn" type="submit">Удалить аккаунт</button>
+            </form>
+          </Card>
+        </section>
       </section>
     </AppShell>
   );

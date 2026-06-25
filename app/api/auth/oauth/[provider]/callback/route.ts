@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { createSession, hashPassword } from "@/lib/auth";
+import { createSession, getCurrentUser, hashPassword } from "@/lib/auth";
 import { callbackUri, exchangeAndFetchProfile, isConfigured, isProvider, redirectBase } from "@/lib/oauth";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
@@ -23,9 +23,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   const cookieState = jar.get("oauth_state")?.value;
   const verifier = jar.get("oauth_verifier")?.value;
   const cookieProvider = jar.get("oauth_provider")?.value;
+  const intent = jar.get("oauth_intent")?.value === "link" ? "link" : "login";
   jar.delete("oauth_state");
   jar.delete("oauth_verifier");
   jar.delete("oauth_provider");
+  jar.delete("oauth_intent");
   if (!cookieState || !verifier || cookieState !== state || cookieProvider !== provider) return fail("oauth_state");
 
   let profile;
@@ -40,15 +42,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
     return fail("oauth_failed");
   }
 
-  // We only link/create accounts when the provider gives a verified email.
-  if (!profile.email || !profile.emailVerified) return fail("oauth_no_email");
-  const email = profile.email.toLowerCase();
-
   try {
     const linked = await prisma.oAuthAccount.findUnique({
       where: { provider_providerAccountId: { provider, providerAccountId: profile.providerAccountId } },
       include: { user: true }
     });
+
+    if (intent === "link") {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) return fail("oauth_state");
+      if (linked && linked.userId !== currentUser.id) return NextResponse.redirect(new URL("/profile?error=oauth_taken", base), 303);
+      if (!linked) {
+        await prisma.oAuthAccount.create({
+          data: { userId: currentUser.id, provider, providerAccountId: profile.providerAccountId }
+        });
+      }
+      return NextResponse.redirect(new URL("/profile?settings=account", base), 303);
+    }
+
+    // Login/create flow only trusts providers that return a verified email.
+    if (!profile.email || !profile.emailVerified) return fail("oauth_no_email");
+    const email = profile.email.toLowerCase();
 
     let user = linked?.user ?? null;
     if (!user) {

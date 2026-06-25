@@ -14,6 +14,8 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   const base = redirectBase(request.url);
+  const url = new URL(request.url);
+  const intent = url.searchParams.get("mode") === "link" ? "link" : "login";
 
   if (!isProvider(provider)) {
     return NextResponse.redirect(new URL("/login?error=oauth_failed", base));
@@ -39,6 +41,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   jar.set("oauth_state", state, cookieOpts);
   jar.set("oauth_verifier", verifier, cookieOpts);
   jar.set("oauth_provider", provider, cookieOpts);
+  jar.set("oauth_intent", intent, cookieOpts);
 
   const authorizeUrl = buildAuthorizeUrl(provider, {
     redirectUri: callbackUri(request.url, provider),

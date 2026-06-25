@@ -4833,6 +4833,20 @@ a.social-btn:hover {
 .cookie-text b { font-size: 14px; }
 .cookie-text p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .cookie-text a { color: var(--primary-2); font-weight: 700; }
+.cookie-details {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+.cookie-details div {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .055);
+}
+.cookie-details strong { font-size: 12px; color: var(--text); }
+.cookie-details span { color: var(--muted); font-size: 12px; line-height: 1.35; }
 .cookie-actions { display: flex; gap: 8px; flex: none; }
 @media (max-width: 640px) {
   .auth-page {
@@ -4855,6 +4869,9 @@ a.social-btn:hover {
     line-height: 1.35;
   }
   .cookie-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .cookie-actions .btn-primary {
+    grid-column: 1 / -1;
+  }
   .cookie-actions .btn {
     min-height: 44px;
     padding-inline: 10px;
@@ -4880,4 +4897,91 @@ a.social-btn:hover {
 .site-footer-links { display: flex; flex-wrap: wrap; gap: 16px; }
 .site-footer-links a { color: var(--muted); transition: color .2s ease; }
 .site-footer-links a:hover { color: var(--text); }
+
+.privacy-controls,
+.account-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .035);
+}
+.privacy-controls {
+  margin: 22px 0 28px;
+}
+.privacy-controls h2,
+.privacy-controls p {
+  margin: 0;
+}
+.privacy-controls p,
+.privacy-done {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.privacy-done {
+  margin: 0;
+  color: #86efac;
+  font-weight: 800;
+}
+.account-settings {
+  margin-bottom: 24px;
+}
+.account-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.account-card-head strong {
+  display: block;
+  margin-bottom: 3px;
+}
+.account-card-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.oauth-list {
+  display: grid;
+  gap: 9px;
+}
+.oauth-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .04);
+}
+.oauth-row b,
+.oauth-row span {
+  display: block;
+}
+.oauth-row span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.btn.disabled {
+  pointer-events: none;
+  opacity: .55;
+}
+.danger-zone {
+  border-color: rgba(251, 113, 133, .22);
+}
+.delete-account-form {
+  display: grid;
+  gap: 10px;
+}
+.danger-btn {
+  color: #fecdd3;
+  border-color: rgba(251, 113, 133, .34);
+}
+@media (max-width: 640px) {
+  .oauth-row {
+    grid-template-columns: 1fr;
+  }
+}
 .site-footer-copy { color: var(--muted); }

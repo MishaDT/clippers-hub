@@ -14,6 +14,29 @@ export async function logoutAction() {
   redirect("/login");
 }
 
+export async function unlinkOAuthAccountAction(formData: FormData) {
+  const user = await requireUser();
+  const id = String(formData.get("oauthAccountId") || "");
+  if (!id) redirect("/profile?error=oauth");
+
+  await prisma.oAuthAccount.deleteMany({ where: { id, userId: user.id } });
+  revalidatePath("/profile");
+  redirect("/profile?settings=account");
+}
+
+export async function deleteAccountAction(formData: FormData) {
+  const user = await requireUser();
+  const confirmation = String(formData.get("confirmation") || "").trim().toUpperCase();
+  if (confirmation !== "УДАЛИТЬ" && confirmation !== "DELETE") {
+    redirect("/profile?error=delete_confirm");
+  }
+
+  await prisma.auditLog.deleteMany({ where: { userId: user.id } });
+  await prisma.user.delete({ where: { id: user.id } });
+  await destroySession();
+  redirect("/?account=deleted");
+}
+
 export async function switchRoleAction(formData: FormData) {
   const user = await requireUser();
   const nextRole = String(formData.get("role"));
