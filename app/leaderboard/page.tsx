@@ -129,8 +129,20 @@ const LEAGUE_HINTS: Record<string, string> = {
 };
 
 function Avatar({ row, podium }: { row: Row; podium?: boolean }) {
+  if (podium) {
+    return (
+      <div className="podium-avatar fire-orb">
+        <span className="fire-ring" aria-hidden="true" />
+        <span className="fire-ring fire-ring--alt" aria-hidden="true" />
+        <span className="fire-jet" aria-hidden="true" />
+        <span className="flame" aria-hidden="true" />
+        <img src={row.avatar} alt="" loading="lazy" />
+      </div>
+    );
+  }
   return (
-    <div className={podium ? "podium-avatar" : "lr-ava-wrap"}>
+    <div className="lr-ava-wrap fire-orb">
+      <span className="fire-ring" aria-hidden="true" />
       <span className="flame" aria-hidden="true" />
       <img src={row.avatar} alt="" loading="lazy" />
     </div>

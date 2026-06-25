@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { commissionRate } from "@/lib/money";
 import { stringify } from "@/lib/json";
 import { viewProviders, type ViewPlatform } from "@/lib/view-providers";
+import { checkOwnership, platformIsVerifiable, type OwnershipResult } from "@/lib/antifraud";
 
 function canUseProvider(platform: string): platform is ViewPlatform {
   return platform === "YOUTUBE" || platform === "VK" || platform === "TIKTOK" || platform === "INSTAGRAM";
@@ -9,6 +10,30 @@ function canUseProvider(platform: string): platform is ViewPlatform {
 
 function allowDemoSync() {
   return process.env.DEMO_VIEW_SYNC === "1" || process.env.DEMO_VIEW_SYNC === "true";
+}
+
+// One OWNERSHIP VideoCheck row per submission, upserted to reflect the latest result.
+async function recordOwnershipCheck(submissionId: string, status: "PASS" | "FAIL", proof: OwnershipResult) {
+  const data = {
+    checkType: "OWNERSHIP",
+    status,
+    score: status === "PASS" ? 100 : 0,
+    resultJson: stringify({
+      reason: proof.reason,
+      verifiable: proof.verifiable,
+      evidence: proof.evidence,
+      checkedAt: new Date().toISOString()
+    })
+  };
+  const existing = await prisma.videoCheck.findFirst({
+    where: { submissionId, checkType: "OWNERSHIP" },
+    select: { id: true }
+  });
+  if (existing) {
+    await prisma.videoCheck.update({ where: { id: existing.id }, data });
+  } else {
+    await prisma.videoCheck.create({ data: { submissionId, ...data } });
+  }
 }
 
 async function settlePendingEarnings() {
@@ -27,6 +52,13 @@ async function settlePendingEarnings() {
   let released = 0;
   for (const tx of pending) {
     if (!tx.submission || tx.submission.fraudScore >= 70 || tx.submission.status === "REJECTED") continue;
+    // Final ownership gate before money actually leaves hold: never release if the
+    // latest tracking-code check on this clip failed.
+    const ownershipFail = await prisma.videoCheck.findFirst({
+      where: { submissionId: tx.submission.id, checkType: "OWNERSHIP", status: "FAIL" },
+      select: { id: true }
+    });
+    if (ownershipFail) continue;
     await prisma.$transaction([
       prisma.transaction.update({ where: { id: tx.id }, data: { status: "COMPLETED" } }),
       prisma.submission.update({ where: { id: tx.submission.id }, data: { status: "PAID", paidAt: new Date() } }),
@@ -92,15 +124,63 @@ export async function syncViews() {
     }
 
     const ratio = likes === 0 ? 999 : views / likes;
-    const fraudScore = Math.min(96, Math.max(4, Math.round(ratio > 200 ? 75 : 8 + Math.random() * 24)));
-    const status =
-      fraudScore >= 70
-        ? "REJECTED"
-        : views >= submission.campaign.viewThreshold && submission.status !== "SETTLING"
-          ? "THRESHOLD_MET"
-          : submission.status === "THRESHOLD_MET"
-            ? "SETTLING"
-            : submission.status;
+    let fraudScore = Math.min(96, Math.max(4, Math.round(ratio > 200 ? 75 : 8 + Math.random() * 24)));
+
+    // ---- Ownership gate ----------------------------------------------------
+    // A clip may only advance toward payout once we've confirmed its tracking
+    // code is present in the published video's description (proves the clipper
+    // owns it). We re-verify on every cycle up to SETTLING, so removing the code
+    // after the fact also freezes the money.
+    const lockedIn = submission.status === "SETTLING" || submission.status === "PAID";
+    let ownershipOk = lockedIn;
+    let ownershipNote = lockedIn ? "locked_in" : "unverified";
+
+    if (!ownershipOk) {
+      if (providerMode.includes("demo")) {
+        ownershipOk = true; // sandbox economy — no real platform to check against
+        ownershipNote = "demo_bypass";
+      } else if (platformIsVerifiable(submission.platform)) {
+        const proof = await checkOwnership({
+          platform: submission.platform,
+          postUrl: submission.postUrl,
+          trackingCode: submission.trackingCode
+        });
+        if (proof.matched) {
+          ownershipOk = true;
+          ownershipNote = "code_found";
+          fraudScore = Math.min(fraudScore, 30);
+          await recordOwnershipCheck(submission.id, "PASS", proof);
+        } else if (proof.reason.startsWith("fetch_failed")) {
+          ownershipNote = proof.reason; // transient (quota/private/deleted) — hold, no penalty
+        } else {
+          ownershipNote = "code_missing"; // genuinely absent — flag, block earning, allow recovery
+          fraudScore = Math.max(fraudScore, 60);
+          await recordOwnershipCheck(submission.id, "FAIL", proof);
+        }
+      } else {
+        // TikTok / Instagram have no public metadata — require a manual moderator pass.
+        const manual = await prisma.videoCheck.findFirst({
+          where: { submissionId: submission.id, checkType: "OWNERSHIP", status: "PASS" },
+          select: { id: true }
+        });
+        ownershipOk = Boolean(manual);
+        ownershipNote = manual ? "manual_pass" : "awaiting_manual_ownership";
+      }
+    }
+
+    const reachedThreshold = views >= submission.campaign.viewThreshold;
+    let status = submission.status;
+    if (fraudScore >= 70) {
+      status = "REJECTED";
+    } else if (!ownershipOk) {
+      status = submission.status; // accumulate views for display, never enter earning states
+    } else if (submission.status === "THRESHOLD_MET") {
+      status = "SETTLING";
+    } else if (reachedThreshold && submission.status !== "SETTLING") {
+      status = "THRESHOLD_MET";
+    } else if (submission.status === "POSTED") {
+      status = "VERIFIED";
+    }
 
     const updated = await prisma.submission.update({
       where: { id: submission.id },
@@ -111,10 +191,11 @@ export async function syncViews() {
         peakViews: Math.max(views, submission.peakViews),
         fraudScore,
         status,
+        verifiedAt: ownershipOk && !submission.verifiedAt ? new Date() : submission.verifiedAt,
         lastSyncedAt: new Date(),
         viewVelocityJson: stringify([
           ...JSON.parse(submission.viewVelocityJson || "[]").slice(-20),
-          { at: new Date().toISOString(), from: submission.currentViews, to: views, mode: providerMode }
+          { at: new Date().toISOString(), from: submission.currentViews, to: views, mode: providerMode, ownership: ownershipNote }
         ])
       }
     });

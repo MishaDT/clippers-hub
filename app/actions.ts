@@ -8,6 +8,7 @@ import { canManageClient, canWork, destroySession, getCurrentUser, requireUser }
 import { validateChatMessage } from "@/lib/chat-safety";
 import { extractPlatformPostId, validatePublicMediaUrl } from "@/lib/content-safety";
 import { scoreSubmissionFraud } from "@/lib/fraud";
+import { checkOwnership, platformIsVerifiable } from "@/lib/antifraud";
 import { stringify } from "@/lib/json";
 import { canEndorse } from "@/lib/leagues";
 import { parseRubToCents } from "@/lib/money";
@@ -254,6 +255,31 @@ export async function submitClipAction(formData: FormData) {
     }
   });
 
+  // Best-effort instant ownership check: on platforms that expose public
+  // metadata (YouTube/VK) we confirm the tracking code is already in the
+  // description so the clipper gets immediate feedback. Real enforcement (and
+  // re-checks) happen in syncViews — this is non-blocking and never throws.
+  let ownershipState: "verified" | "code_missing" | "pending" = "pending";
+  if (status === "POSTED" && platformIsVerifiable(platform)) {
+    try {
+      const proof = await checkOwnership({ platform, postUrl, trackingCode: submission.trackingCode });
+      if (proof.matched) {
+        ownershipState = "verified";
+        await prisma.submission.update({ where: { id: updatedSubmission.id }, data: { status: "VERIFIED", verifiedAt: new Date() } });
+        await prisma.videoCheck.create({
+          data: { submissionId: updatedSubmission.id, checkType: "OWNERSHIP", status: "PASS", score: 100, resultJson: stringify({ reason: proof.reason, evidence: proof.evidence, createdFrom: "submitClipAction" }) }
+        });
+      } else if (proof.reason === "code_missing") {
+        ownershipState = "code_missing";
+        await prisma.videoCheck.create({
+          data: { submissionId: updatedSubmission.id, checkType: "OWNERSHIP", status: "FAIL", score: 0, resultJson: stringify({ reason: proof.reason, evidence: proof.evidence, createdFrom: "submitClipAction" }) }
+        });
+      }
+    } catch {
+      // missing keys / quota / private video — leave verification to syncViews
+    }
+  }
+
   const watermarkRequired = Boolean(campaignRules.watermarkBonus);
   let videoCheckId: string | null = null;
   if (watermarkRequired || status === "REJECTED") {
@@ -312,7 +338,15 @@ export async function submitClipAction(formData: FormData) {
 
   revalidatePath("/upload");
   revalidatePath("/profile");
-  redirect(status === "REJECTED" ? "/upload?flagged=1" : "/upload?sent=1");
+  redirect(
+    status === "REJECTED"
+      ? "/upload?flagged=1"
+      : ownershipState === "code_missing"
+        ? "/upload?nocode=1"
+        : ownershipState === "verified"
+          ? "/upload?verified=1"
+          : "/upload?sent=1"
+  );
 }
 
 export async function toggleCampaignReactionAction(campaignId: string, kind: "LIKE" | "SAVE") {

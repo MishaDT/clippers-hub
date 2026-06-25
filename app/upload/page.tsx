@@ -54,6 +54,20 @@ export default async function UploadPage({
           </Card>
         ) : null}
 
+        {params.verified ? (
+          <Card className="upload-status ok">
+            <strong>Владение подтверждено ✓</strong>
+            <span>Мы нашли твой трекинг-код в описании ролика — публикация привязана к заказу. Просмотры считаются, выплата начнётся при достижении порога.</span>
+          </Card>
+        ) : null}
+
+        {params.nocode ? (
+          <Card className="upload-status warn">
+            <strong>Не нашли трекинг-код в описании</strong>
+            <span>Ролик принят, но без кода из заказа в описании выплата не начисляется — так мы убеждаемся, что клип твой. Добавь код в описание и пересдай ссылку: проверка пройдёт автоматически.</span>
+          </Card>
+        ) : null}
+
         {params.flagged ? (
           <Card className="upload-status warn">
             <strong>Нужна ручная проверка</strong>

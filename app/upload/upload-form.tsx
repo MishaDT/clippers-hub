@@ -67,7 +67,7 @@ export function UploadForm({ orders }: { orders: Order[] }) {
 
       <div className="uf-note">
         <ShieldCheck size={18} />
-        <span>Добавь код <b>{selected?.trackingCode}</b> в описание ролика. Так мы связываем публикацию с заказом и выплатой.</span>
+        <span>Добавь код <b>{selected?.trackingCode}</b> в описание ролика. Мы проверяем его через API площадки — без кода в описании выплата не начисляется (так подтверждается, что клип твой).</span>
       </div>
 
       {selected?.requiredTags.length ? (

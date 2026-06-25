@@ -91,7 +91,8 @@ export default async function ClipperPortfolioPage({
         </Link>
 
         <header className="clipper-hero">
-          <div className="clipper-ava">
+          <div className="clipper-ava fire-orb">
+            <span className="fire-ring" aria-hidden="true" />
             <span className="flame" aria-hidden="true" />
             <img src={avatar} alt="" />
           </div>
