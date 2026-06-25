@@ -9,7 +9,7 @@ import { clampPage, fullDate, pageHref, providerLabel, roleLabel } from "@/lib/a
 
 export const dynamic = "force-dynamic";
 
-const pageSize = 12;
+const pageSize = 40;
 const roles = ["ALL", "ADMIN", "CLIENT", "WORKER", "BOTH"] as const;
 const providers = ["all", "google", "email"] as const;
 
@@ -36,7 +36,7 @@ export default async function AdminUsersPage({
   if (provider === "google") where.oauthAccounts = { some: { provider: "google" } };
   if (provider === "email") where.oauthAccounts = { none: {} };
 
-  const [total, users, roleGroups, googleUsers] = await Promise.all([
+  const [total, users, googleUsers] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
@@ -48,7 +48,6 @@ export default async function AdminUsersPage({
       skip: (page - 1) * pageSize,
       take: pageSize
     }),
-    prisma.user.groupBy({ by: ["role"], _count: { role: true } }),
     prisma.oAuthAccount.findMany({ where: { provider: "google" }, distinct: ["userId"], select: { userId: true } })
   ]);
 
@@ -58,7 +57,7 @@ export default async function AdminUsersPage({
         where: { userId: { in: userIds } },
         orderBy: { createdAt: "desc" },
         select: { userId: true, createdAt: true, type: true },
-        take: 200
+        take: 300
       })
     : [];
   const lastByUser = new Map<string, (typeof lastEvents)[number]>();
@@ -71,31 +70,23 @@ export default async function AdminUsersPage({
 
   return (
     <AdminShell>
-      <div className="admin-screen">
+      <div className="admin-screen admin-dense-screen">
         <AdminPageHeader
           eyebrow="Пользователи"
-          title="Люди, роли и входы"
-          description="Поиск по аккаунтам, фильтры по роли и способу входа, баланс, активность и привязанные соцсети."
+          title="Пользователи"
+          description="Плотный список аккаунтов. На телефоне нажми строку, чтобы раскрыть детали."
         />
 
-        <div className="admin-grid compact">
-          <Card className="admin-metric"><UserRound /><span>Найдено</span><strong>{total}</strong><small>по текущим фильтрам</small></Card>
-          <Card className="admin-metric"><UserRound /><span>Google</span><strong>{googleUsers.length}</strong><small>пользователей с Google</small></Card>
-          {roleGroups.slice(0, 2).map((item) => (
-            <Card className="admin-metric" key={item.role}>
-              <UserRound />
-              <span>{roleLabel(item.role)}</span>
-              <strong>{item._count.role}</strong>
-              <small>аккаунтов</small>
-            </Card>
-          ))}
+        <div className="admin-grid compact admin-kpi-strip">
+          <Card className="admin-metric"><UserRound /><span>Найдено</span><strong>{total}</strong><small>по фильтрам</small></Card>
+          <Card className="admin-metric"><UserRound /><span>Google</span><strong>{googleUsers.length}</strong><small>соц-вход</small></Card>
         </div>
 
-        <Card className="admin-panel">
+        <Card className="admin-panel admin-filter-panel">
           <form className="admin-filter-bar" action="/admin/users">
             <label>
               <Search size={18} />
-              <input name="q" defaultValue={q} placeholder="Найти по email, имени или нику" />
+              <input name="q" defaultValue={q} placeholder="Email, имя или ник" />
             </label>
             <select name="role" defaultValue={role}>
               <option value="ALL">Все роли</option>
@@ -107,7 +98,7 @@ export default async function AdminUsersPage({
             <select name="provider" defaultValue={provider}>
               <option value="all">Любой вход</option>
               <option value="google">Google</option>
-              <option value="email">Только email</option>
+              <option value="email">Email</option>
             </select>
             <button className="btn btn-primary" type="submit">Найти</button>
           </form>
@@ -124,6 +115,7 @@ export default async function AdminUsersPage({
             </div>
             {users.map((user) => {
               const last = lastByUser.get(user.id);
+              const auth = user.oauthAccounts.length ? user.oauthAccounts.map((item) => providerLabel(item.provider)).join(", ") : "Email";
               return (
                 <div className="admin-table-row" key={user.id}>
                   <div className="admin-user-cell">
@@ -131,23 +123,39 @@ export default async function AdminUsersPage({
                     <div>
                       <strong>{user.name}</strong>
                       <span>{user.email}</span>
-                      <small>@{user.handle} · создан {fullDate(user.createdAt)}</small>
+                      <small>@{user.handle} · {fullDate(user.createdAt)}</small>
                     </div>
                   </div>
                   <div><Tag tone={user.role === "ADMIN" ? "warn" : "soft"}>{roleLabel(user.role)}</Tag></div>
-                  <div>
-                    <strong>{rub(user.balanceCents)}</strong>
-                    <span>hold {rub(user.holdBalanceCents)}</span>
-                  </div>
-                  <div>
-                    <strong>{last ? fullDate(last.createdAt) : "нет событий"}</strong>
-                    <span>{user.oauthAccounts.length ? user.oauthAccounts.map((item) => providerLabel(item.provider)).join(", ") : "Email"}</span>
-                  </div>
-                  <div>
-                    <strong>{user._count.ownedCampaigns} заказов</strong>
-                    <span>{user._count.submissions} работ · {user._count.transactions} операций</span>
-                  </div>
+                  <div><strong>{rub(user.balanceCents)}</strong><span>hold {rub(user.holdBalanceCents)}</span></div>
+                  <div><strong>{last ? fullDate(last.createdAt) : "нет"}</strong><span>{auth}</span></div>
+                  <div><strong>{user._count.ownedCampaigns} заказов</strong><span>{user._count.submissions} работ · {user._count.transactions} операций</span></div>
                 </div>
+              );
+            })}
+          </div>
+
+          <div className="admin-dense-list">
+            {users.map((user) => {
+              const last = lastByUser.get(user.id);
+              const auth = user.oauthAccounts.length ? user.oauthAccounts.map((item) => providerLabel(item.provider)).join(", ") : "Email";
+              return (
+                <details className="admin-dense-row" key={user.id}>
+                  <summary>
+                    <span>{user.name}</span>
+                    <b>{roleLabel(user.role)}</b>
+                    <em>{rub(user.balanceCents)}</em>
+                  </summary>
+                  <div className="admin-dense-details">
+                    <p><b>Email:</b> {user.email}</p>
+                    <p><b>Ник:</b> @{user.handle}</p>
+                    <p><b>Вход:</b> {auth}</p>
+                    <p><b>Создан:</b> {fullDate(user.createdAt)}</p>
+                    <p><b>Последняя активность:</b> {last ? fullDate(last.createdAt) : "нет событий"}</p>
+                    <p><b>Баланс:</b> {rub(user.balanceCents)} · hold {rub(user.holdBalanceCents)}</p>
+                    <p><b>Контент:</b> {user._count.ownedCampaigns} заказов · {user._count.submissions} работ · {user._count.transactions} операций</p>
+                  </div>
+                </details>
               );
             })}
           </div>

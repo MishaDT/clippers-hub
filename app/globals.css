@@ -16,6 +16,167 @@
   --shadow: 0 20px 60px rgba(0, 0, 0, .35);
 }
 
+/* Dense admin rows for scale */
+.admin-dense-list {
+  display: none;
+}
+.admin-dense-list.always {
+  display: grid;
+}
+.admin-dense-list {
+  gap: 4px;
+}
+.admin-dense-row {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 10px;
+  background: rgba(255,255,255,.032);
+  overflow: hidden;
+}
+.admin-dense-row summary {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(74px, .55fr) minmax(82px, .65fr);
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+}
+.admin-dense-row summary::-webkit-details-marker {
+  display: none;
+}
+.admin-dense-row summary::before {
+  content: "+";
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(251,113,133,.12);
+  color: #fecdd3;
+  font-weight: 900;
+}
+.admin-dense-row summary {
+  grid-template-columns: 18px minmax(0, 1.35fr) minmax(72px, .5fr) minmax(78px, .65fr);
+}
+.admin-dense-row[open] summary::before {
+  content: "-";
+}
+.admin-dense-row summary span,
+.admin-dense-row summary b,
+.admin-dense-row summary em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-dense-row summary b {
+  color: var(--text);
+  font-weight: 850;
+}
+.admin-dense-row summary em {
+  color: var(--muted);
+  font-style: normal;
+  text-align: right;
+}
+.admin-dense-details {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px 10px 36px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.16);
+}
+.admin-dense-details p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.admin-dense-details b,
+.admin-dense-details a {
+  color: var(--text);
+}
+
+@media (max-width: 760px) {
+  .admin-dense-screen .admin-page-head {
+    padding: 12px;
+  }
+  .admin-dense-screen .admin-page-head h1 {
+    font-size: 28px;
+    margin: 2px 0 0;
+  }
+  .admin-dense-screen .admin-page-head p {
+    display: none;
+  }
+  .admin-kpi-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px;
+  }
+  .admin-kpi-strip .admin-metric {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+    min-height: 58px;
+    padding: 8px;
+  }
+  .admin-kpi-strip .admin-metric svg {
+    display: none;
+  }
+  .admin-kpi-strip .admin-metric span {
+    font-size: 11px;
+  }
+  .admin-kpi-strip .admin-metric strong {
+    font-size: 20px;
+  }
+  .admin-kpi-strip .admin-metric small {
+    display: none;
+  }
+  .admin-filter-panel {
+    padding: 8px;
+  }
+  .admin-dense-screen .admin-table {
+    display: none;
+  }
+  .admin-dense-screen .admin-dense-list {
+    display: grid;
+  }
+  .admin-dense-screen .admin-panel {
+    padding: 8px;
+    border-radius: 14px;
+  }
+  .admin-dense-row summary {
+    min-height: 34px;
+    padding: 6px 7px;
+    gap: 6px;
+    grid-template-columns: 16px minmax(0, 1.4fr) minmax(58px, .48fr) minmax(64px, .56fr);
+    font-size: 11px;
+  }
+  .admin-dense-row summary::before {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+  }
+  .admin-dense-details {
+    padding: 7px 8px 8px 29px;
+  }
+  .admin-dense-details p {
+    font-size: 11px;
+  }
+  .admin-pagination {
+    gap: 6px;
+    padding: 6px;
+  }
+  .admin-pagination a,
+  .admin-pagination span {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
 /* Admin console v2 */
 .admin-console {
   width: min(1280px, 100%);
