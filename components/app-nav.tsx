@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { CirclePlus, Home, MessageCircle, Search, Trophy, UserRound, WalletCards } from "lucide-react";
+import { CirclePlus, Handshake, Home, MessageCircle, Search, Trophy, UserRound, WalletCards } from "lucide-react";
 
 const items = [
   { href: "/feed", label: "Лента", icon: Home },
@@ -22,6 +22,7 @@ const desktopItems = [
   items[0],
   items[1],
   { href: "/leaderboard", label: "Лидеры", icon: Trophy },
+  { href: "/collabs", label: "Коллабы", icon: Handshake },
   ...items.slice(3)
 ];
 

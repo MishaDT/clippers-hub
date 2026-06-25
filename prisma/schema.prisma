@@ -45,6 +45,10 @@ model User {
   clientChats     ChatThread[]      @relation("ChatClient")
   workerChats     ChatThread[]      @relation("ChatWorker")
   sentChatMessages ChatMessage[]    @relation("ChatSender")
+  collabSent      CollabInvite[]    @relation("CollabClient")
+  collabReceived  CollabInvite[]    @relation("CollabWorker")
+  endorsementsGiven    Endorsement[] @relation("EndorseClient")
+  endorsementsReceived Endorsement[] @relation("EndorseWorker")
 }
 
 model SocialAccount {
@@ -318,6 +322,38 @@ model AnalyticsEvent {
   @@index([path, createdAt])
   @@index([provider, createdAt])
   @@index([ipHash, createdAt])
+}
+
+// Client -> clipper collaboration request (joint clip).
+model CollabInvite {
+  id          String    @id @default(cuid())
+  clientId    String
+  workerId    String
+  message     String
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  client      User      @relation("CollabClient", fields: [clientId], references: [id], onDelete: Cascade)
+  worker      User      @relation("CollabWorker", fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([workerId, status])
+  @@index([clientId, status])
+}
+
+// A large client endorsing a clipper ("{client} рекомендует").
+model Endorsement {
+  id        String   @id @default(cuid())
+  clientId  String
+  workerId  String
+  note      String?
+  createdAt DateTime @default(now())
+
+  client    User     @relation("EndorseClient", fields: [clientId], references: [id], onDelete: Cascade)
+  worker    User     @relation("EndorseWorker", fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, workerId])
+  @@index([workerId])
 }
 
 enum Role {

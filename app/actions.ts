@@ -9,6 +9,7 @@ import { validateChatMessage } from "@/lib/chat-safety";
 import { extractPlatformPostId, validatePublicMediaUrl } from "@/lib/content-safety";
 import { scoreSubmissionFraud } from "@/lib/fraud";
 import { stringify } from "@/lib/json";
+import { canEndorse } from "@/lib/leagues";
 import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { syncMockViews } from "@/lib/social-sync";
@@ -400,4 +401,93 @@ export async function syncViewsAction() {
   await syncMockViews();
   revalidatePath("/campaigns");
   revalidatePath("/profile");
+}
+
+export async function sendCollabInviteAction(formData: FormData) {
+  const user = await requireUser();
+  const handle = String(formData.get("handle") || "");
+  if (!canManageClient(user.role)) redirect(`/clippers/${handle}?error=role`);
+  const workerId = String(formData.get("workerId") || "");
+  const message = String(formData.get("message") || "").trim().slice(0, 600);
+  if (!workerId || workerId === user.id || message.length < 3) redirect(`/clippers/${handle}?error=invite`);
+
+  const worker = await prisma.user.findUnique({ where: { id: workerId }, select: { id: true } });
+  if (!worker) redirect("/leaderboard");
+
+  const existing = await prisma.collabInvite.findFirst({
+    where: { clientId: user.id, workerId, status: "PENDING" },
+    select: { id: true }
+  });
+  if (!existing) {
+    await prisma.collabInvite.create({ data: { clientId: user.id, workerId, message } });
+    await prisma.notification.create({
+      data: {
+        userId: workerId,
+        title: "Приглашение на коллаб",
+        body: `${user.name} зовёт на совместный клип`,
+        channel: "IN_APP",
+        priority: "NORMAL"
+      }
+    });
+  }
+  revalidatePath(`/clippers/${handle}`);
+  redirect(`/clippers/${handle}?invited=1`);
+}
+
+export async function respondCollabInviteAction(formData: FormData) {
+  const user = await requireUser();
+  const inviteId = String(formData.get("inviteId") || "");
+  const accept = String(formData.get("decision") || "") === "accept";
+
+  const invite = await prisma.collabInvite.findFirst({
+    where: { id: inviteId, workerId: user.id, status: "PENDING" },
+    select: { id: true, clientId: true }
+  });
+  if (invite) {
+    await prisma.collabInvite.update({
+      where: { id: invite.id },
+      data: { status: accept ? "ACCEPTED" : "DECLINED", respondedAt: new Date() }
+    });
+    await prisma.notification.create({
+      data: {
+        userId: invite.clientId,
+        title: accept ? "Коллаб принят" : "Коллаб отклонён",
+        body: `${user.name} ${accept ? "принял приглашение" : "отклонил приглашение"}`,
+        channel: "IN_APP",
+        priority: "NORMAL"
+      }
+    });
+  }
+  revalidatePath("/collabs");
+  redirect("/collabs");
+}
+
+export async function endorseClipperAction(formData: FormData) {
+  const user = await requireUser();
+  const handle = String(formData.get("handle") || "");
+  if (!canManageClient(user.role)) redirect(`/clippers/${handle}?error=role`);
+  const workerId = String(formData.get("workerId") || "");
+  const note = String(formData.get("note") || "").trim().slice(0, 200) || null;
+  if (!workerId || workerId === user.id) redirect(`/clippers/${handle}`);
+
+  // Only "large" clients (by order count) may endorse.
+  const orders = await prisma.campaign.count({ where: { ownerId: user.id } });
+  if (!canEndorse(orders)) redirect(`/clippers/${handle}?error=tier`);
+
+  await prisma.endorsement.upsert({
+    where: { clientId_workerId: { clientId: user.id, workerId } },
+    update: { note },
+    create: { clientId: user.id, workerId, note }
+  });
+  await prisma.notification.create({
+    data: {
+      userId: workerId,
+      title: "Вас рекомендуют",
+      body: `${user.name} рекомендует вас как клиппера`,
+      channel: "IN_APP",
+      priority: "HIGH"
+    }
+  });
+  revalidatePath(`/clippers/${handle}`);
+  redirect(`/clippers/${handle}?endorsed=1`);
 }

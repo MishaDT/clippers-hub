@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import { BadgeCheck, ChevronRight, Crown, Flame, Play, Scissors, Sparkles, Star, Trophy } from "lucide-react";
+import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Play, Scissors, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
 import { ReferralCard } from "@/components/referral-card";
@@ -280,6 +280,13 @@ export default async function LeaderboardPage({
               <section className="rail-panel referral-panel">
                 <ReferralCard code={me.referralCode} invited={me.invited} />
               </section>
+            ) : null}
+
+            {me ? (
+              <Link className="rail-link-panel" href="/collabs">
+                <span><Handshake size={16} /> Мои коллабы</span>
+                <ChevronRight size={16} />
+              </Link>
             ) : null}
 
             <section className="rail-panel">

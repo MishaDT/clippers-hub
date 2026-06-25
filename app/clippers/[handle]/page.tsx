@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Eye, Film, Play, Sparkles } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, Check, Eye, Film, Play, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
+import { endorseClipperAction, sendCollabInviteAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, canManageClient } from "@/lib/auth";
+import { canEndorse } from "@/lib/leagues";
 import { compactNumber } from "@/lib/money";
 
 const COVERS = [
@@ -27,25 +29,59 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   return { title: `@${handle} — клиппер` };
 }
 
-export default async function ClipperPortfolioPage({ params }: { params: Promise<{ handle: string }> }) {
+export default async function ClipperPortfolioPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ handle: string }>;
+  searchParams: Promise<{ invited?: string; endorsed?: string; error?: string }>;
+}) {
   const { handle } = await params;
+  const { invited, endorsed, error } = await searchParams;
+
   const user = await prisma.user.findUnique({
     where: { handle },
     select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true }
   });
   if (!user) notFound();
 
-  const subs = await prisma.submission.findMany({
-    where: { workerId: user.id },
-    select: { id: true, currentViews: true, postUrl: true, platform: true },
-    orderBy: { currentViews: "desc" },
-    take: 9
-  });
-  const totalViews = subs.reduce((sum, s) => sum + s.currentViews, 0);
+  const [subs, endorsements, viewer] = await Promise.all([
+    prisma.submission.findMany({
+      where: { workerId: user.id },
+      select: { id: true, currentViews: true, postUrl: true },
+      orderBy: { currentViews: "desc" },
+      take: 9
+    }),
+    prisma.endorsement.findMany({
+      where: { workerId: user.id },
+      select: { id: true, note: true, client: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 12
+    }),
+    getCurrentUser()
+  ]);
+
   const best = subs[0]?.currentViews ?? 0;
-  const viewer = await getCurrentUser();
-  const canInvite = viewer ? canManageClient(viewer.role) : false;
+  const isClient = viewer ? canManageClient(viewer.role) : false;
+  const isSelf = viewer?.id === user.id;
   const avatar = user.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(user.handle)}`;
+
+  let pendingInvite = false;
+  let alreadyEndorsed = false;
+  let viewerCanEndorse = false;
+  if (viewer && isClient && !isSelf) {
+    const [pi, ae, orders] = await Promise.all([
+      prisma.collabInvite.findFirst({ where: { clientId: viewer.id, workerId: user.id, status: "PENDING" }, select: { id: true } }),
+      prisma.endorsement.findFirst({ where: { clientId: viewer.id, workerId: user.id }, select: { id: true } }),
+      prisma.campaign.count({ where: { ownerId: viewer.id } })
+    ]);
+    pendingInvite = Boolean(pi);
+    alreadyEndorsed = Boolean(ae);
+    viewerCanEndorse = canEndorse(orders);
+  }
+
+  const showInviteForm = isClient && !isSelf && !pendingInvite && invited !== "1";
+  const showEndorseForm = isClient && !isSelf && viewerCanEndorse && !alreadyEndorsed && endorsed !== "1";
 
   return (
     <AppShell>
@@ -66,14 +102,15 @@ export default async function ClipperPortfolioPage({ params }: { params: Promise
             </h1>
             <span className="clipper-handle">@{user.handle}</span>
             <LeagueBadge views={user.lifetimeViews} />
-          </div>
-          <div className="clipper-cta">
-            {canInvite ? (
-              <button className="btn btn-primary" type="button" disabled title="Коллаб-приглашения скоро">
-                <Sparkles size={16} /> Пригласить на коллаб
-              </button>
+            {endorsements.length ? (
+              <div className="endorse-badges">
+                {endorsements.map((e) => (
+                  <span className="endorse-badge" key={e.id} title={e.note || undefined}>
+                    <Award size={13} /> {e.client.name} рекомендует
+                  </span>
+                ))}
+              </div>
             ) : null}
-            <small>Коллаб-приглашения подключаем — скоро.</small>
           </div>
         </header>
 
@@ -82,6 +119,47 @@ export default async function ClipperPortfolioPage({ params }: { params: Promise
           <div><Film size={17} /><b>{subs.length}</b><em>клипов</em></div>
           <div><Sparkles size={17} /><b>{compactNumber(best)}</b><em>лучший клип</em></div>
         </div>
+
+        {invited === "1" ? (
+          <div className="collab-note ok"><Check size={15} /> Приглашение отправлено — ждём ответа клиппера.</div>
+        ) : null}
+        {endorsed === "1" ? (
+          <div className="collab-note ok"><Award size={15} /> Рекомендация добавлена. Спасибо!</div>
+        ) : null}
+        {error === "tier" ? (
+          <div className="collab-note warn">Рекомендовать могут только крупные заказчики (от 10 заказов).</div>
+        ) : null}
+        {error === "invite" ? (
+          <div className="collab-note warn">Не удалось отправить приглашение — добавьте текст.</div>
+        ) : null}
+
+        {isClient && !isSelf ? (
+          <div className="collab-actions">
+            {showInviteForm ? (
+              <form className="collab-form" action={sendCollabInviteAction}>
+                <input type="hidden" name="workerId" value={user.id} />
+                <input type="hidden" name="handle" value={user.handle} />
+                <label className="collab-label">Приглашение на совместный клип</label>
+                <textarea name="message" required maxLength={600} placeholder="Идея коллаба, условия, сроки…" />
+                <button className="btn btn-primary" type="submit"><Sparkles size={16} /> Пригласить на коллаб</button>
+              </form>
+            ) : (
+              <div className="collab-sent"><Check size={16} /> Приглашение уже отправлено</div>
+            )}
+
+            {showEndorseForm ? (
+              <form className="endorse-form" action={endorseClipperAction}>
+                <input type="hidden" name="workerId" value={user.id} />
+                <input type="hidden" name="handle" value={user.handle} />
+                <label className="collab-label">Рекомендация (бейдж «{viewer?.name} рекомендует»)</label>
+                <input name="note" maxLength={200} placeholder="За что рекомендуете (необязательно)" />
+                <button className="btn btn-gold" type="submit"><Award size={16} /> Рекомендовать</button>
+              </form>
+            ) : !viewerCanEndorse ? (
+              <p className="collab-hint">Рекомендовать клипперов могут заказчики от 10 заказов.</p>
+            ) : null}
+          </div>
+        ) : null}
 
         <h2 className="clipper-section-title">Лучшие работы</h2>
         {subs.length === 0 ? (
