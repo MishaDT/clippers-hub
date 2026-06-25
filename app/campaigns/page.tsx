@@ -13,6 +13,7 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
+  Trophy,
   Tv,
   Users
 } from "lucide-react";
@@ -165,6 +166,10 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           <span><b>{rub(topPayout)}</b> максимум</span>
           <span><b>{quickCount}</b> срочных</span>
         </div>
+
+        <nav className="market-discovery" aria-label="Рейтинги">
+          <Link href="/leaderboard"><Trophy size={16} /> Доска лидеров недели</Link>
+        </nav>
 
         <form className="market-search" action="/campaigns">
           <label>

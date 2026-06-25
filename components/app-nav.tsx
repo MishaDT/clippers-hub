@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { CirclePlus, Home, MessageCircle, Search, UserRound, WalletCards } from "lucide-react";
+import { CirclePlus, Home, MessageCircle, Search, Trophy, UserRound, WalletCards } from "lucide-react";
 
 const items = [
   { href: "/feed", label: "Лента", icon: Home },
@@ -14,6 +14,15 @@ const items = [
   { href: "/chats", label: "Чаты", icon: MessageCircle },
   { href: "/wallet", label: "Кошелек", icon: WalletCards },
   { href: "/profile", label: "Профиль", icon: UserRound }
+];
+
+// Desktop top-bar shows a couple of extra destinations that don't fit the
+// 6-slot mobile bottom nav.
+const desktopItems = [
+  items[0],
+  items[1],
+  { href: "/leaderboard", label: "Лидеры", icon: Trophy },
+  ...items.slice(3)
 ];
 
 function isActive(pathname: string, href: string) {
@@ -26,7 +35,7 @@ export function DesktopNav() {
 
   return (
     <nav className="top-nav" aria-label="Навигация">
-      {items.map(({ href, label, icon: Icon }) => (
+      {desktopItems.map(({ href, label, icon: Icon }) => (
         <Link className={clsx(isActive(pathname, href) && "active")} href={href} key={href}>
           <Icon size={16} />
           {label}
