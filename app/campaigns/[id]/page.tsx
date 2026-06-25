@@ -15,7 +15,10 @@ import {
   WalletCards
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
+import { CampaignChat } from "@/components/campaign-chat";
 import { joinCampaignAction } from "@/app/actions";
+import { getCurrentUser } from "@/lib/auth";
+import { buildSafePreview } from "@/lib/chat-safety";
 import { prisma } from "@/lib/prisma";
 import { parseJson } from "@/lib/json";
 import { compactNumber, expectedPayout, rub } from "@/lib/money";
@@ -62,12 +65,24 @@ function fallbackTasks(description: string) {
   return tasks;
 }
 
+function shortDate(value: Date) {
+  return value.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function stepClass(done: boolean, active: boolean) {
+  if (done) return "done";
+  if (active) return "active";
+  return "";
+}
+
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const currentUser = await getCurrentUser();
   const campaign = await prisma.campaign.findUnique({
     where: { id },
     select: {
       id: true,
+      ownerId: true,
       title: true,
       description: true,
       sourceUrl: true,
@@ -78,7 +93,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       deadline: true,
       niche: true,
       trackingPrefix: true,
-      owner: { select: { name: true } },
+      owner: { select: { id: true, name: true } },
       _count: { select: { submissions: true } }
     }
   });
@@ -90,6 +105,33 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
   const tasks = fallbackTasks(campaign.description);
   const cover = coverFor(campaign.id);
+  const sourcePreview = buildSafePreview(campaign.sourceUrl);
+  const isOwner = currentUser?.id === campaign.ownerId;
+  const collabSubmission = currentUser
+    ? await prisma.submission.findFirst({
+        where: { campaignId: campaign.id, ...(isOwner ? {} : { workerId: currentUser.id }) },
+        include: { worker: { select: { id: true, name: true, handle: true } } },
+        orderBy: { updatedAt: "desc" }
+      })
+    : null;
+  const chatThread = currentUser
+    ? await prisma.chatThread.findFirst({
+        where: { campaignId: campaign.id, OR: [{ clientId: currentUser.id }, { workerId: currentUser.id }] },
+        include: {
+          client: { select: { id: true, name: true } },
+          worker: { select: { id: true, name: true, handle: true } },
+          messages: { include: { sender: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 60 }
+        },
+        orderBy: { updatedAt: "desc" }
+      })
+    : null;
+  const postPreview = collabSubmission?.postUrl && !collabSubmission.postUrl.includes("example.com") ? buildSafePreview(collabSubmission.postUrl) : null;
+  const progressSteps = [
+    { key: "ACCEPTED", title: "Заказ взят", done: Boolean(collabSubmission), active: collabSubmission?.status === "ACCEPTED" },
+    { key: "POSTED", title: "Ссылка сдана", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(collabSubmission?.status || ""), active: collabSubmission?.status === "POSTED" },
+    { key: "TRACKING", title: "Идет трекинг", done: ["THRESHOLD_MET", "SETTLING", "PAID"].includes(collabSubmission?.status || ""), active: ["VERIFIED", "POSTED"].includes(collabSubmission?.status || "") },
+    { key: "PAID", title: "Выплата", done: collabSubmission?.status === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(collabSubmission?.status || "") }
+  ];
 
   return (
     <AppShell>
@@ -226,6 +268,76 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
             </div>
           </aside>
         </div>
+
+        <section className="collab-grid">
+          {sourcePreview ? (
+            <div className="collab-card preview-card">
+              <div className="collab-head">
+                <div>
+                  <span>Безопасное превью</span>
+                  <h2>Исходный материал</h2>
+                </div>
+                <a className="chat-refresh" href={sourcePreview.url} target="_blank" rel="noreferrer"><ArrowUpRight size={17} /></a>
+              </div>
+              <a className="source-preview" href={sourcePreview.url} target="_blank" rel="noreferrer">
+                <span>{sourcePreview.platform}</span>
+                <b>{campaign.title}</b>
+                <small>{sourcePreview.host}</small>
+              </a>
+            </div>
+          ) : null}
+
+          <div className="collab-card progress-card">
+            <div className="collab-head">
+              <div>
+                <span>Карта выполнения</span>
+                <h2>{collabSubmission ? `@${collabSubmission.worker.handle}` : "Исполнитель еще не выбран"}</h2>
+              </div>
+              <b className="live-pill">Live</b>
+            </div>
+            <div className="progress-map">
+              {progressSteps.map((step) => (
+                <div className={`progress-node ${stepClass(step.done, step.active)}`} key={step.key}>
+                  <i />
+                  <span>{step.title}</span>
+                </div>
+              ))}
+            </div>
+            <div className="live-stats">
+              <span><b>{compactNumber(collabSubmission?.currentViews || 0)}</b><em>просмотры</em></span>
+              <span><b>{compactNumber(collabSubmission?.currentLikes || 0)}</b><em>лайки</em></span>
+              <span><b>{collabSubmission?.fraudScore ?? 0}%</b><em>fraud</em></span>
+            </div>
+            {postPreview ? (
+              <a className="safe-preview wide" href={postPreview.url} target="_blank" rel="noreferrer">
+                <b>{postPreview.title}</b>
+                <span>{postPreview.host}</span>
+              </a>
+            ) : (
+              <p className="muted">После сдачи ссылки здесь появится превью ролика и live-статистика просмотров.</p>
+            )}
+          </div>
+        </section>
+
+        {chatThread && currentUser ? (
+          <CampaignChat
+            threadId={chatThread.id}
+            currentUserId={currentUser.id}
+            peerName={currentUser.id === chatThread.clientId ? chatThread.worker.name : chatThread.client.name}
+            messages={chatThread.messages.map((message) => {
+              const meta = parseJson<{ urls?: string[] }>(message.metadataJson, {});
+              return {
+                id: message.id,
+                senderId: message.senderId,
+                senderName: message.sender.name,
+                body: message.body,
+                type: message.type,
+                createdAt: shortDate(message.createdAt),
+                previews: (meta.urls || []).map(buildSafePreview).filter(Boolean) as Array<{ url: string; host: string; platform: string; title: string }>
+              };
+            })}
+          />
+        ) : null}
       </section>
     </AppShell>
   );

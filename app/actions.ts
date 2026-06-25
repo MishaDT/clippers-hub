@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { trackEvent } from "@/lib/analytics";
 import { canManageClient, canWork, destroySession, getCurrentUser, requireUser } from "@/lib/auth";
+import { validateChatMessage } from "@/lib/chat-safety";
 import { extractPlatformPostId, validatePublicMediaUrl } from "@/lib/content-safety";
 import { scoreSubmissionFraud } from "@/lib/fraud";
 import { stringify } from "@/lib/json";
@@ -142,7 +143,7 @@ export async function joinCampaignAction(formData: FormData) {
   if (existing) redirect("/upload");
 
   const trackingCode = `${campaign.trackingPrefix}_${user.handle.toUpperCase().slice(0, 4)}_${Math.floor(Math.random() * 900 + 100)}`;
-  await prisma.submission.create({
+  const submission = await prisma.submission.create({
     data: {
       campaignId,
       workerId: user.id,
@@ -154,9 +155,54 @@ export async function joinCampaignAction(formData: FormData) {
       fraudScore: 0
     }
   });
+  await prisma.chatThread.create({
+    data: {
+      campaignId,
+      submissionId: submission.id,
+      clientId: campaign.ownerId,
+      workerId: user.id,
+      messages: {
+        create: {
+          senderId: user.id,
+          type: "SYSTEM",
+          body: "Исполнитель взял заказ. Здесь можно уточнить детали и прислать вопросы по ролику."
+        }
+      }
+    }
+  });
   revalidatePath("/upload");
   revalidatePath("/profile");
   redirect("/upload");
+}
+
+export async function sendChatMessageAction(formData: FormData) {
+  const user = await requireUser();
+  const threadId = String(formData.get("threadId") || "");
+  const messageType = String(formData.get("messageType") || "TEXT") === "VOICE_TRANSCRIPT" ? "VOICE_TRANSCRIPT" : "TEXT";
+  const checked = validateChatMessage(String(formData.get("body") || ""));
+  if (!threadId || !checked.ok) return { ok: false, error: checked.reasons[0] || "bad_message" };
+
+  const thread = await prisma.chatThread.findFirst({
+    where: {
+      id: threadId,
+      OR: [{ clientId: user.id }, { workerId: user.id }]
+    },
+    select: { id: true, campaignId: true }
+  });
+  if (!thread) return { ok: false, error: "forbidden" };
+
+  await prisma.chatMessage.create({
+    data: {
+      threadId,
+      senderId: user.id,
+      type: messageType,
+      body: checked.body,
+      metadataJson: stringify({ urls: checked.urls })
+    }
+  });
+  await prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: new Date() } });
+  revalidatePath(`/campaigns/${thread.campaignId}`);
+  return { ok: true };
 }
 
 export async function submitClipAction(formData: FormData) {
