@@ -64,7 +64,7 @@ export default async function ClipperPortfolioPage({
   const best = subs[0]?.currentViews ?? 0;
   const isClient = viewer ? canManageClient(viewer.role) : false;
   const isSelf = viewer?.id === user.id;
-  const avatar = user.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(user.handle)}`;
+  const avatar = user.avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(user.handle)}&backgroundColor=transparent`;
 
   let pendingInvite = false;
   let alreadyEndorsed = false;

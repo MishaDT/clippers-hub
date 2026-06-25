@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Play, Scissors, Sparkles, Star, Trophy } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronRight, Crown, Flame, Handshake, Play, Scissors, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
 import { ReferralCard } from "@/components/referral-card";
@@ -46,7 +46,7 @@ function coverFor(seed: string) {
 }
 
 function avatarFor(handle: string, avatar: string | null) {
-  return avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(handle || "clipper")}`;
+  return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "clipper")}&backgroundColor=transparent`;
 }
 
 const SINCE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -140,14 +140,16 @@ function Avatar({ row, podium }: { row: Row; podium?: boolean }) {
 export default async function LeaderboardPage({
   searchParams
 }: {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; expand?: string }>;
 }) {
-  const { period: rawPeriod } = await searchParams;
+  const { period: rawPeriod, expand: rawExpand } = await searchParams;
   const period: Period = rawPeriod === "all" ? "all" : "week";
+  const expand = rawExpand === "1";
   const [rows, me] = await Promise.all([loadLeaders(period), loadMyProgress()]);
 
   const podium = rows.slice(0, 3);
   const rest = rows.slice(3);
+  const shownRest = expand ? rest : rest.slice(0, 7);
   const visualOrder = [1, 0, 2].filter((i) => podium[i]); // 2nd, 1st, 3rd
 
   const achievements = me
@@ -245,7 +247,7 @@ export default async function LeaderboardPage({
 
                 {rest.length > 0 ? (
                   <ol className="leaderboard-table">
-                    {rest.map((row) => (
+                    {shownRest.map((row) => (
                       <li className="leaderboard-row" key={row.id}>
                         <span className="lr-rank">{row.rank}</span>
                         <Avatar row={row} />
@@ -270,6 +272,12 @@ export default async function LeaderboardPage({
                       </li>
                     ))}
                   </ol>
+                ) : null}
+
+                {!expand && rest.length > 7 ? (
+                  <Link className="lb-more" href={`/leaderboard?period=${period}&expand=1`}>
+                    Показать больше <ChevronDown size={16} />
+                  </Link>
                 ) : null}
               </>
             )}

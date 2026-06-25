@@ -16,7 +16,7 @@ const STATUS: Record<string, string> = {
 };
 
 function avatarFor(handle: string, avatar: string | null) {
-  return avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(handle || "user")}`;
+  return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "user")}&backgroundColor=transparent`;
 }
 
 export default async function CollabsPage() {
