@@ -6,6 +6,7 @@ import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { rub } from "@/lib/money";
 import { clampPage, fullDate, pageHref, providerLabel, roleLabel } from "@/lib/admin-format";
+import { adminCreateUserAction } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,22 @@ export default async function AdminUsersPage({
         </Card>
 
         <Card className="admin-panel">
+          <div className="section-head compact"><h2>Добавить пользователя</h2></div>
+          <form className="admin-inline-form" action={adminCreateUserAction}>
+            <input name="email" type="email" placeholder="email@example.com" required />
+            <input name="name" placeholder="Имя" required />
+            <input name="handle" placeholder="ник" required />
+            <select name="role" defaultValue="WORKER">
+              <option value="WORKER">Клиппер</option>
+              <option value="CLIENT">Заказчик</option>
+              <option value="BOTH">Обе роли</option>
+              <option value="ADMIN">Админ</option>
+            </select>
+            <button className="btn btn-primary" type="submit">Создать</button>
+          </form>
+        </Card>
+
+        <Card className="admin-panel">
           <div className="admin-table user-table">
             <div className="admin-table-head">
               <span>Пользователь</span>
@@ -121,10 +138,11 @@ export default async function AdminUsersPage({
                   <div className="admin-user-cell">
                     <div className="order-avatar">{user.name.slice(0, 2).toUpperCase()}</div>
                     <div>
-                      <strong>{user.name}</strong>
+                      <strong><Link href={`/admin/users/${user.id}`}>{user.name}</Link></strong>
                       <span>{user.email}</span>
                       <small>@{user.handle} · {fullDate(user.createdAt)}</small>
                     </div>
+                    <p><Link href={`/admin/users/${user.id}`}>Открыть полную историю</Link></p>
                   </div>
                   <div><Tag tone={user.role === "ADMIN" ? "warn" : "soft"}>{roleLabel(user.role)}</Tag></div>
                   <div><strong>{rub(user.balanceCents)}</strong><span>hold {rub(user.holdBalanceCents)}</span></div>

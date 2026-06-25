@@ -306,6 +306,10 @@
 .security-table .admin-table-row {
   grid-template-columns: minmax(220px, 1.35fr) minmax(130px, .75fr) minmax(120px, .7fr) minmax(160px, .95fr) minmax(130px, .8fr);
 }
+.finance-table .admin-table-head,
+.finance-table .admin-table-row {
+  grid-template-columns: minmax(180px, 1fr) minmax(190px, 1fr) minmax(130px, .65fr) minmax(105px, .5fr) minmax(170px, .75fr);
+}
 .admin-table-head { padding: 0 12px 5px; color: var(--muted); font-size: 12px; font-weight: 800; }
 .admin-table-row {
   min-width: 0;
@@ -326,6 +330,56 @@
 .admin-table-row span,
 .admin-table-row small { color: var(--muted); margin-top: 3px; }
 .admin-user-cell { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.admin-inline-form,
+.admin-edit-form,
+.admin-row-form {
+  display: grid;
+  gap: 8px;
+}
+.admin-inline-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+.admin-edit-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.admin-inline-form input,
+.admin-inline-form select,
+.admin-edit-form input,
+.admin-edit-form select,
+.admin-row-form select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  background: #111114;
+  color: var(--text);
+  padding: 0 10px;
+}
+.admin-edit-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.admin-edit-form .btn { grid-column: 1 / -1; }
+.admin-row-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.admin-row-form button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 10px;
+  background: rgba(201,243,29,.16);
+  color: var(--text);
+  font-weight: 900;
+}
+.danger-panel {
+  border-color: rgba(239,68,68,.24) !important;
+  background: rgba(239,68,68,.06) !important;
+}
 .admin-pagination { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .admin-pagination a,
 .admin-pagination span {
@@ -368,7 +422,8 @@
   .user-table .admin-table-row,
   .activity-table .admin-table-row,
   .content-table .admin-table-row,
-  .security-table .admin-table-row {
+  .security-table .admin-table-row,
+  .finance-table .admin-table-row {
     grid-template-columns: 1fr;
     gap: 10px;
     padding: 12px;
@@ -382,6 +437,11 @@
     border-top: 0;
   }
   .admin-user-cell { grid-template-columns: 42px minmax(0, 1fr); }
+  .admin-inline-form,
+  .admin-edit-form,
+  .admin-row-form {
+    grid-template-columns: 1fr;
+  }
   .admin-pagination {
     position: sticky;
     bottom: 10px;

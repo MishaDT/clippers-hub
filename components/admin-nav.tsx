@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ClipboardList, DatabaseZap, ShieldAlert, SlidersHorizontal, UsersRound } from "lucide-react";
+import { BarChart3, ClipboardList, DatabaseZap, ShieldAlert, SlidersHorizontal, UsersRound, WalletCards } from "lucide-react";
 import { clsx } from "clsx";
 
 const items = [
@@ -10,6 +10,7 @@ const items = [
   { href: "/admin/users", label: "Пользователи", hint: "Поиск и роли", icon: UsersRound },
   { href: "/admin/activity", label: "События", hint: "Посещения и входы", icon: ClipboardList },
   { href: "/admin/content", label: "Контент", hint: "Заказы и работы", icon: DatabaseZap },
+  { href: "/admin/finance", label: "Финансы", hint: "Платежи и выводы", icon: WalletCards },
   { href: "/admin/security", label: "Безопасность", hint: "Риски и контроль", icon: ShieldAlert },
   { href: "/admin/settings", label: "Настройки", hint: "Интеграции", icon: SlidersHorizontal }
 ];

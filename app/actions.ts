@@ -11,6 +11,16 @@ import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { syncMockViews } from "@/lib/social-sync";
 
+function safeCheckoutUrl(url: string | undefined) {
+  if (!url) return "/wallet?deposit=ok";
+  if (url.startsWith("/")) return url;
+  try {
+    const host = new URL(url).hostname;
+    if (host.endsWith("stripe.com") || host.endsWith("checkout.stripe.com") || host.endsWith("yookassa.ru") || host.endsWith("yoomoney.ru")) return url;
+  } catch {}
+  return "/wallet?deposit=blocked";
+}
+
 export async function logoutAction() {
   const user = await getCurrentUser();
   if (user) await trackEvent({ userId: user.id, type: "LOGOUT", path: "/profile" });
@@ -234,7 +244,7 @@ export async function depositAction(formData: FormData) {
       feeCents: provider === "stripe" ? Math.round(amountCents * 0.029) : 0,
       netCents: amountCents,
       type: "DEPOSIT",
-      status: intent.mode === "demo" ? "COMPLETED" : "PENDING",
+        status: intent.mode === "demo" ? "COMPLETED" : "PENDING",
       provider,
       providerData: stringify(intent)
     }
@@ -244,7 +254,7 @@ export async function depositAction(formData: FormData) {
   }
   revalidatePath("/wallet");
   revalidatePath("/profile");
-  redirect(intent.checkoutUrl && intent.checkoutUrl.startsWith("/") ? intent.checkoutUrl : "/wallet?deposit=ok");
+  redirect(safeCheckoutUrl(intent.checkoutUrl));
 }
 
 export async function withdrawAction(formData: FormData) {
