@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { BarChart3, Eye, LockKeyhole, ShieldCheck, UserRound, Users } from "lucide-react";
-import { AppShell, Card, Tag } from "@/components/ui";
-import { requireAdmin } from "@/lib/admin";
+import { AlertTriangle, ArrowRight, BarChart3, Eye, LockKeyhole, ShieldCheck, Users } from "lucide-react";
+import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
+import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
-import { compactNumber } from "@/lib/money";
+import { compactNumber, rub } from "@/lib/money";
+import { eventLabel, providerLabel, shortDate } from "@/lib/admin-format";
 
 export const dynamic = "force-dynamic";
 
@@ -17,27 +18,6 @@ function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-function eventLabel(type: string) {
-  const labels: Record<string, string> = {
-    PAGE_VIEW: "Просмотр страницы",
-    LOGIN_SUCCESS: "Вход",
-    REGISTER_SUCCESS: "Регистрация",
-    OAUTH_LOGIN: "Вход через соцсеть",
-    OAUTH_REGISTER: "Регистрация через соцсеть",
-    OAUTH_LINK: "Привязка соцсети",
-    LOGOUT: "Выход",
-    CTA_CLICK: "Клик"
-  };
-  return labels[type] || type;
-}
-
-function providerLabel(provider: string | null | undefined) {
-  if (provider === "google") return "Google";
-  if (provider === "vk") return "VK ID";
-  if (provider === "yandex") return "Yandex";
-  return "Обычный вход";
-}
-
 async function loadAdminStats() {
   const today = startOfDay();
   const week = daysAgo(7);
@@ -48,23 +28,27 @@ async function loadAdminStats() {
     usersToday,
     usersWeek,
     totalCampaigns,
+    activeCampaigns,
     totalSubmissions,
+    riskySubmissions,
+    pendingPayouts,
     googleLinks,
     oauthUsers,
     pageViewsDay,
     pageViewsWeek,
     activeUsersRaw,
     uniqueVisitorsRaw,
-    providerGroups,
     topPages,
-    recentUsers,
     recentEvents
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: today } } }),
     prisma.user.count({ where: { createdAt: { gte: week } } }),
     prisma.campaign.count(),
+    prisma.campaign.count({ where: { status: { in: ["ACTIVE", "LOW_BUDGET"] } } }),
     prisma.submission.count(),
+    prisma.submission.count({ where: { fraudScore: { gte: 60 } } }),
+    prisma.transaction.aggregate({ where: { status: "PENDING" }, _sum: { netCents: true }, _count: true }),
     prisma.oAuthAccount.count({ where: { provider: "google" } }),
     prisma.oAuthAccount.findMany({ distinct: ["userId"], select: { userId: true } }),
     prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: day } } }),
@@ -79,23 +63,17 @@ async function loadAdminStats() {
       distinct: ["ipHash"],
       select: { ipHash: true }
     }),
-    prisma.oAuthAccount.groupBy({ by: ["provider"], _count: { provider: true } }),
     prisma.analyticsEvent.groupBy({
       by: ["path"],
       where: { type: "PAGE_VIEW", path: { not: null }, createdAt: { gte: week } },
       _count: { path: true },
       orderBy: { _count: { path: "desc" } },
-      take: 8
-    }),
-    prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      include: { oauthAccounts: true }
+      take: 6
     }),
     prisma.analyticsEvent.findMany({
       orderBy: { createdAt: "desc" },
-      take: 18,
-      include: { user: { select: { name: true, email: true, handle: true } } }
+      take: 10,
+      include: { user: { select: { email: true } } }
     })
   ]);
 
@@ -104,88 +82,88 @@ async function loadAdminStats() {
     usersToday,
     usersWeek,
     totalCampaigns,
+    activeCampaigns,
     totalSubmissions,
+    riskySubmissions,
+    pendingPayoutCents: pendingPayouts._sum.netCents || 0,
+    pendingPayoutCount: pendingPayouts._count,
     googleLinks,
     oauthUsers: oauthUsers.length,
     pageViewsDay,
     pageViewsWeek,
     activeUsersDay: activeUsersRaw.length,
     uniqueVisitorsDay: uniqueVisitorsRaw.length,
-    providerGroups,
     topPages,
-    recentUsers,
     recentEvents
   };
 }
 
 export default async function AdminPage() {
-  const admin = await requireAdmin();
   const stats = await loadAdminStats();
 
   return (
-    <AppShell hideBottomNav>
-      <section className="section admin-screen">
-        <div className="admin-hero">
-          <div>
-            <span className="eyebrow">Закрытая панель</span>
-            <h1>Админка ReelPay</h1>
-            <p>Пользователи, входы через Google, посещения страниц и свежая активность сайта. Доступ есть только у администратора.</p>
-          </div>
-          <div className="admin-lock">
-            <ShieldCheck size={18} />
-            <span>Вы вошли как {admin.email}</span>
-          </div>
-        </div>
+    <AdminShell>
+      <div className="admin-screen">
+        <AdminPageHeader
+          eyebrow="Закрытая панель"
+          title="Центр управления ReelPay"
+          description="Смотри рост, входы, активность, контент, выплаты и риски. Действия пока безопасные: диагностика и контроль без опасных массовых операций."
+          action={<Link className="btn btn-primary" href="/admin/users">Пользователи <ArrowRight size={16} /></Link>}
+        />
 
         <div className="admin-grid">
           <Card className="admin-metric">
             <Users />
-            <span>Всего пользователей</span>
+            <span>Пользователи</span>
             <strong>{stats.totalUsers}</strong>
-            <small>+{stats.usersToday} сегодня · +{stats.usersWeek} за 7 дней</small>
+            <small>+{stats.usersToday} сегодня · +{stats.usersWeek} за неделю</small>
           </Card>
           <Card className="admin-metric">
             <LockKeyhole />
-            <span>Через Google</span>
+            <span>Google-вход</span>
             <strong>{stats.googleLinks}</strong>
-            <small>{stats.oauthUsers} пользователей с соц-входом</small>
+            <small>{stats.oauthUsers} с соц-авторизацией</small>
           </Card>
           <Card className="admin-metric">
             <Eye />
-            <span>Просмотры за 24 часа</span>
+            <span>Просмотры 24ч</span>
             <strong>{compactNumber(stats.pageViewsDay)}</strong>
-            <small>{stats.uniqueVisitorsDay} уникальных устройств</small>
+            <small>{stats.uniqueVisitorsDay} устройств · {stats.activeUsersDay} вошли</small>
           </Card>
           <Card className="admin-metric">
             <BarChart3 />
-            <span>Активность</span>
-            <strong>{stats.activeUsersDay}</strong>
-            <small>{compactNumber(stats.pageViewsWeek)} просмотров за 7 дней</small>
+            <span>Контент</span>
+            <strong>{stats.activeCampaigns}/{stats.totalCampaigns}</strong>
+            <small>{stats.totalSubmissions} работ на платформе</small>
           </Card>
+        </div>
+
+        <div className="admin-command-grid">
+          <Link className="admin-command-card" href="/admin/security">
+            <AlertTriangle size={20} />
+            <strong>{stats.riskySubmissions}</strong>
+            <span>работ с fraud score 60+</span>
+            <em>Открыть риски</em>
+          </Link>
+          <Link className="admin-command-card" href="/admin/content">
+            <ShieldCheck size={20} />
+            <strong>{rub(stats.pendingPayoutCents)}</strong>
+            <span>{stats.pendingPayoutCount} ожидающих операций</span>
+            <em>Проверить контент</em>
+          </Link>
+          <Link className="admin-command-card" href="/admin/activity">
+            <Eye size={20} />
+            <strong>{compactNumber(stats.pageViewsWeek)}</strong>
+            <span>просмотров страниц за неделю</span>
+            <em>Открыть события</em>
+          </Link>
         </div>
 
         <div className="admin-two">
           <Card className="admin-panel">
             <div className="section-head compact">
-              <h2>Способы входа</h2>
-            </div>
-            <div className="admin-bars">
-              <div>
-                <span>Обычные аккаунты</span>
-                <b>{Math.max(0, stats.totalUsers - stats.oauthUsers)}</b>
-              </div>
-              {stats.providerGroups.map((item) => (
-                <div key={item.provider}>
-                  <span>{providerLabel(item.provider)}</span>
-                  <b>{item._count.provider}</b>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="admin-panel">
-            <div className="section-head compact">
               <h2>Популярные страницы</h2>
+              <Link href="/admin/activity">Все события</Link>
             </div>
             <div className="admin-list">
               {stats.topPages.length ? stats.topPages.map((page) => (
@@ -196,49 +174,46 @@ export default async function AdminPage() {
               )) : <p className="muted">Данные появятся после первых посещений.</p>}
             </div>
           </Card>
-        </div>
-
-        <div className="admin-two">
-          <Card className="admin-panel">
-            <div className="section-head compact">
-              <h2>Последние пользователи</h2>
-              <Link href="/profile">Мой профиль</Link>
-            </div>
-            <div className="admin-list">
-              {stats.recentUsers.map((user) => (
-                <div className="admin-user" key={user.id}>
-                  <div className="order-avatar">{user.name.slice(0, 2).toUpperCase()}</div>
-                  <div>
-                    <strong>{user.name}</strong>
-                    <span>{user.email}</span>
-                  </div>
-                  <Tag tone={user.oauthAccounts.some((account) => account.provider === "google") ? "good" : "soft"}>
-                    {user.oauthAccounts.length ? user.oauthAccounts.map((account) => providerLabel(account.provider)).join(", ") : "Email"}
-                  </Tag>
-                </div>
-              ))}
-            </div>
-          </Card>
 
           <Card className="admin-panel">
             <div className="section-head compact">
               <h2>Последние события</h2>
+              <Link href="/admin/activity">Журнал</Link>
             </div>
             <div className="admin-list">
               {stats.recentEvents.map((event) => (
                 <div className="admin-event" key={event.id}>
-                  <UserRound size={16} />
+                  <ShieldCheck size={16} />
                   <div>
                     <strong>{eventLabel(event.type)} {event.provider ? `· ${providerLabel(event.provider)}` : ""}</strong>
                     <span>{event.user?.email || "Гость"} {event.path ? `· ${event.path}` : ""}</span>
                   </div>
-                  <time>{event.createdAt.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>
+                  <time>{shortDate(event.createdAt)}</time>
                 </div>
               ))}
             </div>
           </Card>
         </div>
-      </section>
-    </AppShell>
+
+        <Card className="admin-panel">
+          <div className="section-head compact">
+            <h2>Быстрые переходы</h2>
+          </div>
+          <div className="admin-quick-grid">
+            <Link href="/admin/users"><b>Пользователи</b><span>Поиск, роли, соц-вход, балансы</span></Link>
+            <Link href="/admin/activity"><b>События</b><span>Входы, регистрации, просмотры страниц</span></Link>
+            <Link href="/admin/content"><b>Контент</b><span>Заказы, работы, бюджеты, выплаты</span></Link>
+            <Link href="/admin/security"><b>Безопасность</b><span>Fraud score, повторы устройств, чеклист</span></Link>
+            <Link href="/admin/settings"><b>Настройки</b><span>OAuth, база, платежи, интеграции</span></Link>
+            <Link href="/legal/cookies"><b>Прозрачность</b><span>Что собираем и зачем</span></Link>
+          </div>
+        </Card>
+
+        <div className="admin-note">
+          <Tag tone="good">Безопасный режим</Tag>
+          <span>Админка сейчас ничего не удаляет и не меняет деньги. Это правильно для первого этапа: сначала наблюдаем и находим проблемы.</span>
+        </div>
+      </div>
+    </AdminShell>
   );
 }
