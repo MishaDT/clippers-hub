@@ -2660,6 +2660,202 @@ h3 { font-size: 18px; margin-bottom: 8px; }
   .upload-preview { min-height: 214px; }
 }
 
+/* PASS 26 — compact podiums + real canvas flame, clean table */
+.leaderboard-hero {
+  min-height: clamp(360px, 43vw, 500px);
+  padding: clamp(44px, 5.8vw, 64px) clamp(10px, 2vw, 18px) clamp(16px, 2vw, 24px);
+}
+.lb-fire-canvas {
+  opacity: .6;
+}
+.podium {
+  min-height: clamp(275px, 30vw, 365px);
+  gap: clamp(10px, 1.2vw, 14px);
+}
+.podium-card {
+  --podium-h: 210px;
+  min-height: var(--podium-h);
+  padding: 76px 12px 18px;
+  gap: 5px;
+  border-radius: 16px 16px 9px 9px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.05), transparent 20%),
+    linear-gradient(180deg, rgba(15, 29, 22, .9), rgba(5, 7, 5, .97));
+}
+.podium-card--second {
+  --podium-h: 198px;
+}
+.podium-card--third {
+  --podium-h: 190px;
+  padding-top: 72px;
+}
+.podium-card--first {
+  --podium-h: 252px;
+  padding-top: 96px;
+}
+.podium-top-light {
+  height: 3px;
+  opacity: .82;
+}
+.podium-avatar {
+  top: -44px;
+}
+.podium-card--first .podium-avatar {
+  top: -58px;
+}
+.podium-avatar img {
+  width: clamp(66px, 5.8vw, 84px);
+  height: clamp(66px, 5.8vw, 84px);
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(4, 6, 4, .72), 0 12px 24px rgba(0,0,0,.42);
+}
+.podium-card--first .podium-avatar img {
+  width: clamp(88px, 7.2vw, 108px);
+  height: clamp(88px, 7.2vw, 108px);
+}
+.podium-flame-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  width: 220px;
+  height: 220px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: saturate(1.35) brightness(1.16);
+}
+.podium-card--first .podium-flame-canvas {
+  width: 300px;
+  height: 300px;
+}
+.podium-rank {
+  width: 34px;
+  height: 34px;
+  margin-top: 0;
+  font-size: 16px;
+  border-radius: 12px;
+  transform: none;
+}
+.podium-card--first .podium-rank {
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+}
+.podium-name strong {
+  font-size: clamp(14px, 1.25vw, 17px);
+}
+.podium-views b {
+  font-size: clamp(22px, 2.2vw, 30px);
+}
+.podium-card--first .podium-views b {
+  font-size: clamp(28px, 3vw, 38px);
+}
+.podium-views span,
+.podium-clips {
+  font-size: 11px;
+}
+.podium-crown {
+  top: -92px;
+  font-size: clamp(32px, 3.6vw, 48px);
+}
+.podium::after {
+  height: 48px;
+  opacity: .7;
+}
+
+.leaderboard-table {
+  padding: 0;
+  border-radius: 18px;
+  background: rgba(255,255,255,.018);
+  border: 1px solid rgba(255,255,255,.07);
+}
+.leaderboard-row {
+  min-height: 58px;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,.065);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.leaderboard-row:first-child {
+  border-radius: 18px 18px 0 0;
+}
+.leaderboard-row:last-child {
+  border-bottom: 0;
+  border-radius: 0 0 18px 18px;
+}
+.leaderboard-row:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(255,255,255,.065);
+  background: rgba(255,255,255,.035);
+}
+.lr-ava-wrap img {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: none;
+}
+.lr-ava-wrap .fire-ring,
+.lr-ava-wrap .flame {
+  display: none !important;
+}
+.lr-clip {
+  width: 66px;
+  height: 38px;
+  box-shadow: none;
+}
+.invite-btn {
+  box-shadow: none;
+}
+
+@media (max-width: 900px) {
+  .leaderboard-hero {
+    padding-top: 62px;
+  }
+  .podium-card {
+    --podium-h: 190px;
+    padding-top: 70px;
+  }
+  .podium-card--first {
+    --podium-h: 230px;
+    padding-top: 90px;
+  }
+}
+@media (max-width: 760px) {
+  .leaderboard-hero {
+    padding: 78px 10px 16px;
+  }
+  .podium-card {
+    --podium-h: 180px;
+    padding-top: 68px;
+  }
+  .podium-card--first {
+    --podium-h: 220px;
+    padding-top: 86px;
+  }
+  .podium-card--first .podium-avatar {
+    top: -44px;
+  }
+  .podium-flame-canvas {
+    width: 132px;
+    height: 132px;
+  }
+  .podium-card--first .podium-flame-canvas {
+    width: 132px;
+    height: 132px;
+  }
+}
+@media (max-width: 420px) {
+  .podium-card--second,
+  .podium-card--third {
+    --podium-h: 170px;
+    padding-top: 62px;
+  }
+}
+
 /* ============================================================
    PREMIUM UPGRADE LAYER
    tokens · display type · motion · iPhone safe-areas · bottom nav

@@ -7,6 +7,7 @@ import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
 import { LeaderboardFireCanvas } from "@/components/leaderboard-fire-canvas";
 import { ReferralCard } from "@/components/referral-card";
+import { PodiumFlameCanvas } from "@/components/podium-flame-canvas";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { compactNumber } from "@/lib/money";
@@ -131,20 +132,16 @@ const LEAGUE_HINTS: Record<string, string> = {
 
 function Avatar({ row, podium }: { row: Row; podium?: boolean }) {
   if (podium) {
+    const tone = row.rank === 1 ? "gold" : row.rank === 3 ? "bronze" : "lime";
     return (
       <div className="podium-avatar fire-orb">
-        <span className="fire-ring" aria-hidden="true" />
-        <span className="fire-ring fire-ring--alt" aria-hidden="true" />
-        <span className="fire-jet" aria-hidden="true" />
-        <span className="flame" aria-hidden="true" />
+        <PodiumFlameCanvas tone={tone} jet={row.rank === 1} />
         <img src={row.avatar} alt="" loading="lazy" />
       </div>
     );
   }
   return (
-    <div className="lr-ava-wrap fire-orb">
-      <span className="fire-ring" aria-hidden="true" />
-      <span className="flame" aria-hidden="true" />
+    <div className="lr-ava-wrap">
       <img src={row.avatar} alt="" loading="lazy" />
     </div>
   );
