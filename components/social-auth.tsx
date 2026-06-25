@@ -6,7 +6,7 @@ const AUTH_ERRORS: Record<string, string> = {
   invalid: "Проверьте поля формы.",
   weak_password: "Пароль слишком простой. Используйте более длинную фразу.",
   register_failed: "Не получилось создать аккаунт. Проверьте данные или попробуйте войти.",
-  provider_unconfigured: "Этот способ входа ещё не настроен. Загляните позже.",
+  provider_unconfigured: "Этот способ входа ещё не настроен. Нужны ключи провайдера.",
   oauth_denied: "Вход отменён.",
   oauth_state: "Сессия входа устарела. Попробуйте ещё раз.",
   oauth_no_email: "Соцсеть не передала подтверждённый email. Войдите по email или другим способом.",
@@ -58,11 +58,11 @@ const ALL: ProviderId[] = ["google", "vk", "yandex"];
 
 export function SocialAuth({ mode = "login" }: { mode?: "login" | "register" }) {
   const enabled = enabledProviders();
-  const verb = mode === "register" ? "Регистрация" : "Вход";
+  const verb = mode === "register" ? "регистрация" : "вход";
 
   return (
     <div className="social-auth">
-      <div className="social-sep"><span>или {verb.toLowerCase()} через</span></div>
+      <div className="social-sep"><span>или {verb} через</span></div>
       <div className="social-grid">
         {ALL.map((id) => {
           const inner = (
@@ -76,7 +76,7 @@ export function SocialAuth({ mode = "login" }: { mode?: "login" | "register" }) 
               {inner}
             </a>
           ) : (
-            <span className="social-btn social-off" key={id} aria-disabled="true" title="Способ входа пока не настроен">
+            <span className="social-btn social-off" key={id} aria-disabled="true" title="Нужны OAuth-ключи в Vercel">
               {inner}
             </span>
           );

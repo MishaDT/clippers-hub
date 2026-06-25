@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, ArrowRight, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { SocialAuth, authErrorText } from "@/components/social-auth";
 
 export default async function LoginPage({
@@ -11,7 +11,7 @@ export default async function LoginPage({
   const errorText = authErrorText(error);
 
   return (
-    <main className="auth-page auth-simple-page">
+    <main className="auth-page auth-motion-page">
       <section className="card auth-card auth-card-new">
         <Link className="brand auth-logo" href="/">
           <span className="brand-word">Reel<span>Pay</span></span>
@@ -44,6 +44,32 @@ export default async function LoginPage({
           Входя, вы принимаете <Link href="/legal/terms">Условия</Link> и{" "}
           <Link href="/legal/privacy">Политику конфиденциальности</Link>.
         </p>
+      </section>
+
+      <section className="auth-stage" aria-hidden="true">
+        <div className="auth-brand">
+          <span className="brand-word">Reel<span>Pay</span></span>
+          <p>Заказчики платят за просмотры, клипперы делают короткие ролики и видят весь процесс.</p>
+        </div>
+        <div className="auth-showcase">
+          <div className="motion-card card-a">
+            <span><Play size={18} fill="currentColor" /></span>
+            <strong>12 840</strong>
+            <small>просмотров проверяются</small>
+          </div>
+          <div className="motion-card card-b">
+            <span><Sparkles size={18} /></span>
+            <strong>+8 700 ₽</strong>
+            <small>ожидает выплаты</small>
+          </div>
+          <div className="auth-phone">
+            <div className="auth-video-strip"><i /><i /><i /></div>
+            <div className="auth-task">
+              <b>Нарезка стрима</b>
+              <span>цель 10K · дедлайн 3 дня</span>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   );

@@ -1948,7 +1948,7 @@ h3 { font-size: 18px; margin-bottom: 8px; }
 @media (max-width: 760px) {
   body { background: #09090b; }
   .auth-motion-page { padding: 16px; gap: 16px; }
-  .auth-stage { min-height: auto; }
+  .auth-stage { display: none; }
   .auth-brand p { font-size: 15px; }
   .auth-showcase { min-height: 210px; }
   .auth-phone {
