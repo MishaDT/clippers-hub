@@ -1,0 +1,24 @@
+<svg width="520" height="124" viewBox="0 0 520 124" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rpGradient" x1="32" y1="20" x2="488" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff3fb4"/>
+      <stop offset="0.48" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <filter id="glow" x="-40" y="-40" width="600" height="204" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect x="10" y="10" width="500" height="104" rx="52" fill="#09090B" fill-opacity="0.74"/>
+  <rect x="11.5" y="11.5" width="497" height="101" rx="50.5" stroke="url(#rpGradient)" stroke-opacity="0.72" stroke-width="3"/>
+  <g filter="url(#glow)">
+    <circle cx="64" cy="62" r="30" fill="url(#rpGradient)"/>
+    <path d="M68.8 34L45 67.2H63.4L57.8 90L81.2 56.4H63.8L68.8 34Z" fill="white"/>
+    <text x="112" y="72" fill="white" font-family="Inter, Manrope, Arial, sans-serif" font-size="38" font-weight="900">ReelPay</text>
+    <text x="292" y="72" fill="#D4D4D8" font-family="Inter, Manrope, Arial, sans-serif" font-size="22" font-weight="800">verified clip</text>
+  </g>
+</svg>

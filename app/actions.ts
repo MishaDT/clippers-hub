@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { trackEvent } from "@/lib/analytics";
 import { canManageClient, canWork, destroySession, getCurrentUser, requireUser } from "@/lib/auth";
-import { extractPlatformPostId, scoreSubmissionFraud } from "@/lib/fraud";
+import { extractPlatformPostId, validatePublicMediaUrl } from "@/lib/content-safety";
+import { scoreSubmissionFraud } from "@/lib/fraud";
 import { stringify } from "@/lib/json";
 import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
@@ -19,6 +20,14 @@ function safeCheckoutUrl(url: string | undefined) {
     if (host.endsWith("stripe.com") || host.endsWith("checkout.stripe.com") || host.endsWith("yookassa.ru") || host.endsWith("yoomoney.ru")) return url;
   } catch {}
   return "/wallet?deposit=blocked";
+}
+
+function safeJson<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 export async function logoutAction() {
@@ -64,10 +73,13 @@ export async function createCampaignAction(formData: FormData) {
 
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
-  const platforms = formData.getAll("platforms").map(String);
+  const platforms = formData.getAll("platforms").map(String).filter((item) => ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"].includes(item));
   const deadlineDays = Math.max(1, Number(formData.get("deadlineDays") || 7));
   const sourcePlatform = String(formData.get("sourcePlatform") || "TWITCH");
   const visibility = String(formData.get("visibility") || "PUBLIC");
+  const cleanSourcePlatform = (["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK", "TWITCH"].includes(sourcePlatform) ? sourcePlatform : "TWITCH") as "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "VK" | "TWITCH";
+  const sourceUrlCheck = validatePublicMediaUrl(String(formData.get("sourceUrl") || ""), cleanSourcePlatform);
+  if (!sourceUrlCheck.ok) redirect(`/campaigns/new?error=source_url&reason=${encodeURIComponent(sourceUrlCheck.reasons[0] || "bad_url")}`);
   const trackingPrefix = `ch_${String(formData.get("trackingPrefix") || "CPV").replace(/[^a-z0-9_]/gi, "").toUpperCase().slice(0, 8)}_${Math.floor(Math.random() * 90 + 10)}`;
 
   const campaign = await prisma.campaign.create({
@@ -75,13 +87,19 @@ export async function createCampaignAction(formData: FormData) {
       ownerId: user.id,
       title: String(formData.get("title") || "Новая CPV-кампания"),
       description: String(formData.get("description") || ""),
-      sourceUrl: String(formData.get("sourceUrl") || ""),
-      sourcePlatform: (["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK", "TWITCH"].includes(sourcePlatform) ? sourcePlatform : "TWITCH") as "YOUTUBE",
+      sourceUrl: sourceUrlCheck.normalizedUrl,
+      sourcePlatform: cleanSourcePlatform,
       allowedPlatformsJson: stringify(platforms.length ? platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"]),
       rulesJson: stringify({
         requiredTags: String(formData.get("requiredTags") || "").split(",").map((item) => item.trim()).filter(Boolean),
         bans: String(formData.get("bans") || "").split(",").map((item) => item.trim()).filter(Boolean),
-        watermarkBonus: formData.get("watermarkBonus") === "on"
+        watermarkBonus: formData.get("watermarkBonus") === "on",
+        watermarkAsset: "/watermark/reelpay-watermark.svg",
+        safety: {
+          sourceUrlChecked: true,
+          sourcePlatform: cleanSourcePlatform,
+          checkedAt: new Date().toISOString()
+        }
       }),
       cpmRateCents: cpm || 4500,
       viewThreshold: Number(formData.get("viewThreshold") || 10000),
@@ -147,15 +165,33 @@ export async function submitClipAction(formData: FormData) {
   const postUrl = String(formData.get("postUrl") || "").trim();
   const platformInput = String(formData.get("platform") || "TIKTOK");
   const platform = (["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"].includes(platformInput) ? platformInput : "TIKTOK") as "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "VK";
+  const watermarkConfirmed = formData.get("watermarkConfirmed") === "on";
 
   const [submission, duplicate, recentSubmissions] = await Promise.all([
-    prisma.submission.findFirstOrThrow({ where: { id: submissionId, workerId: user.id } }),
+    prisma.submission.findFirstOrThrow({ where: { id: submissionId, workerId: user.id }, include: { campaign: true } }),
     prisma.submission.findFirst({ where: { postUrl, NOT: { id: submissionId } }, select: { id: true } }),
     prisma.submission.findMany({ where: { workerId: user.id }, orderBy: { createdAt: "desc" }, take: 20 })
   ]);
 
-  const fraud = scoreSubmissionFraud({ postUrl, platform, user, duplicateUrl: Boolean(duplicate), recentSubmissions });
-  const status = fraud.score >= 75 ? "REJECTED" : "POSTED";
+  const campaignRules = safeJson<{ watermarkBonus?: boolean }>(submission.campaign.rulesJson, {});
+  const allowedPlatforms = safeJson<string[]>(submission.campaign.allowedPlatformsJson, ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"]);
+  const fraud = scoreSubmissionFraud({
+    postUrl,
+    platform,
+    user,
+    duplicateUrl: Boolean(duplicate),
+    recentSubmissions,
+    watermarkRequired: Boolean(campaignRules.watermarkBonus),
+    watermarkConfirmed
+  });
+  const reasons = [...fraud.reasons];
+  let fraudScore = fraud.score;
+  if (!allowedPlatforms.includes(platform)) {
+    fraudScore += 35;
+    reasons.push("Площадка не разрешена заказчиком");
+  }
+  fraudScore = Math.min(95, fraudScore);
+  const status = fraudScore >= 75 ? "REJECTED" : "POSTED";
 
   await prisma.submission.update({
     where: { id: submissionId, workerId: user.id },
@@ -164,9 +200,9 @@ export async function submitClipAction(formData: FormData) {
       platform,
       platformPostId: extractPlatformPostId(postUrl),
       status,
-      fraudScore: fraud.score,
+      fraudScore,
       verifiedAt: status === "POSTED" ? new Date() : null,
-      viewVelocityJson: stringify([{ at: new Date().toISOString(), event: "submitted", fraudScore: fraud.score, reasons: fraud.reasons }])
+      viewVelocityJson: stringify([{ at: new Date().toISOString(), event: "submitted", fraudScore, reasons, watermarkConfirmed }])
     }
   });
 
@@ -186,7 +222,7 @@ export async function submitClipAction(formData: FormData) {
       action: status === "REJECTED" ? "SUBMISSION_FLAGGED" : "SUBMISSION_POSTED",
       entity: "Submission",
       entityId: submission.id,
-      metadata: stringify({ platform, postUrl, fraudScore: fraud.score, reasons: fraud.reasons })
+      metadata: stringify({ platform, postUrl, fraudScore, reasons, watermarkConfirmed })
     }
   });
 
@@ -195,7 +231,7 @@ export async function submitClipAction(formData: FormData) {
     type: status === "REJECTED" ? "SUBMISSION_FLAGGED" : "SUBMISSION_POSTED",
     path: "/upload",
     provider: platform.toLowerCase(),
-    metadata: { submissionId, fraudScore: fraud.score, reasons: fraud.reasons }
+    metadata: { submissionId, fraudScore, reasons, watermarkConfirmed }
   });
 
   revalidatePath("/upload");

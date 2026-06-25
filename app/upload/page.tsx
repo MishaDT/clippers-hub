@@ -5,6 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { expectedPayout, rub } from "@/lib/money";
 import { UploadForm } from "./upload-form";
 
+function parseRules(value: string) {
+  try {
+    return JSON.parse(value) as { watermarkBonus?: boolean; requiredTags?: string[] };
+  } catch {
+    return {};
+  }
+}
+
 export default async function UploadPage({
   searchParams
 }: {
@@ -19,12 +27,17 @@ export default async function UploadPage({
     take: 20
   });
 
-  const orders = submissions.map((submission) => ({
-    id: submission.id,
-    title: submission.campaign.title,
-    trackingCode: submission.trackingCode,
-    payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents))
-  }));
+  const orders = submissions.map((submission) => {
+    const rules = parseRules(submission.campaign.rulesJson);
+    return {
+      id: submission.id,
+      title: submission.campaign.title,
+      trackingCode: submission.trackingCode,
+      payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents)),
+      watermarkRequired: Boolean(rules.watermarkBonus),
+      requiredTags: rules.requiredTags || []
+    };
+  });
 
   return (
     <AppShell>

@@ -3392,8 +3392,70 @@ body::before {
   line-height: 1.42;
 }
 .uf-note svg { color: #c9f31d; flex: none; margin-top: 1px; }
+.uf-note b { color: var(--text); }
+.uf-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.uf-tags span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 800;
+}
+.watermark-kit {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 18px;
+  background: rgba(255,255,255,.045);
+}
+.watermark-preview {
+  min-height: 80px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+    radial-gradient(circle at 20% 20%, rgba(236,72,153,.24), transparent 45%);
+  overflow: hidden;
+}
+.watermark-preview img { width: 132px; height: auto; }
+.watermark-kit > div:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+.watermark-kit strong { font-size: 16px; }
+.watermark-kit span { color: var(--muted); line-height: 1.4; font-size: 13px; }
+.watermark-kit .btn { width: fit-content; min-height: 38px; padding: 8px 12px; }
+.uf-checkbox {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--soft);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.uf-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--primary);
+}
 .uf-submit { min-height: 56px; border-radius: 16px; font-size: 16px; box-shadow: 0 12px 30px rgba(201, 243, 29, .28); }
 .uf-submit:disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+
+@media (max-width: 560px) {
+  .watermark-kit { grid-template-columns: 1fr; }
+  .watermark-preview img { width: min(220px, 80%); }
+}
 
 /* Рилзи — peeking mascot */
 .mascot {
