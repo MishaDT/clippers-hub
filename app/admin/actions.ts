@@ -147,6 +147,49 @@ export async function adminModerateSubmissionAction(formData: FormData) {
   redirect("/admin/security?moderated=1");
 }
 
+export async function adminUpdateVideoCheckAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const checkId = clean(formData.get("checkId"));
+  const decision = clean(formData.get("decision"), "NEEDS_REVIEW");
+  const note = clean(formData.get("note")).slice(0, 180);
+  if (!checkId) redirect("/admin/security");
+
+  const status = decision === "PASSED" ? "PASSED" : decision === "FAILED" ? "FAILED" : "NEEDS_REVIEW";
+  const score = status === "PASSED" ? 5 : status === "FAILED" ? 95 : 55;
+  const check = await prisma.videoCheck.update({
+    where: { id: checkId },
+    data: {
+      status,
+      score,
+      resultJson: stringify({ adminDecision: status, note, decidedAt: new Date().toISOString(), adminId: admin.id })
+    },
+    include: { submission: true }
+  });
+
+  await prisma.$transaction([
+    prisma.submission.update({
+      where: { id: check.submissionId },
+      data: {
+        fraudScore: status === "PASSED" ? Math.min(check.submission.fraudScore, 25) : Math.max(check.submission.fraudScore, score),
+        status: status === "FAILED" ? "REJECTED" : check.submission.status === "REJECTED" && status === "PASSED" ? "VERIFIED" : check.submission.status
+      }
+    }),
+    prisma.auditLog.create({
+      data: {
+        userId: admin.id,
+        action: "ADMIN_VIDEO_CHECK_UPDATE",
+        entity: "VideoCheck",
+        entityId: checkId,
+        metadata: stringify({ status, score, note, submissionId: check.submissionId })
+      }
+    })
+  ]);
+
+  revalidatePath("/admin/security");
+  revalidatePath("/admin/content");
+  redirect("/admin/security?video_check=1");
+}
+
 export async function adminDeleteUserAction(formData: FormData) {
   const admin = await requireAdmin();
   const userId = clean(formData.get("userId"));

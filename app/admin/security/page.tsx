@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Fingerprint, KeyRound, ShieldAlert } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
-import { Card, Tag } from "@/components/ui";
-import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui";
+import { adminModerateSubmissionAction, adminUpdateVideoCheckAction } from "@/app/admin/actions";
+import { eventLabel, fullDate, providerLabel, statusLabel } from "@/lib/admin-format";
 import { compactNumber } from "@/lib/money";
-import { fullDate, providerLabel, statusLabel } from "@/lib/admin-format";
 import { isConfigured } from "@/lib/oauth";
-import { adminModerateSubmissionAction } from "@/app/admin/actions";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +17,7 @@ function daysAgo(days: number) {
 export default async function AdminSecurityPage() {
   const day = daysAgo(1);
   const week = daysAgo(7);
-
-  const [riskySubmissions, repeatedDevices, oauthLogins, recentSecurityEvents] = await Promise.all([
+  const [riskySubmissions, videoChecks, repeatedDevices, oauthLogins, recentSecurityEvents] = await Promise.all([
     prisma.submission.findMany({
       where: { OR: [{ fraudScore: { gte: 50 } }, { status: "REJECTED" }] },
       include: {
@@ -26,6 +25,19 @@ export default async function AdminSecurityPage() {
         campaign: { select: { id: true, title: true, viewThreshold: true } }
       },
       orderBy: [{ fraudScore: "desc" }, { updatedAt: "desc" }],
+      take: 60
+    }),
+    prisma.videoCheck.findMany({
+      where: { status: { in: ["PENDING", "NEEDS_REVIEW", "FAILED"] } },
+      include: {
+        submission: {
+          include: {
+            worker: { select: { email: true, handle: true } },
+            campaign: { select: { id: true, title: true } }
+          }
+        }
+      },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
       take: 60
     }),
     prisma.analyticsEvent.groupBy({
@@ -50,7 +62,7 @@ export default async function AdminSecurityPage() {
     { label: "VK ID OAuth", ok: isConfigured("vk"), detail: "RU-вход" },
     { label: "Yandex OAuth", ok: isConfigured("yandex"), detail: "доп. вход" },
     { label: "SESSION_SECRET", ok: Boolean(process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16), detail: "сессии" },
-    { label: "CRON_SECRET", ok: Boolean(process.env.CRON_SECRET), detail: "защита sync" },
+    { label: "CRON_SECRET", ok: Boolean(process.env.CRON_SECRET), detail: "воркеры" },
     { label: "ANALYTICS_SALT", ok: Boolean(process.env.ANALYTICS_SALT), detail: "хеш IP/UA" }
   ];
 
@@ -60,11 +72,12 @@ export default async function AdminSecurityPage() {
         <AdminPageHeader
           eyebrow="Безопасность"
           title="Риски и модерация"
-          description="Компактная очередь: подозрительные работы, повторяющиеся устройства, входы и состояние ключей."
+          description="Компактная очередь для fraud, watermark, повторов устройств и событий входа."
         />
 
         <div className="admin-grid compact admin-kpi-strip">
           <Card className="admin-metric"><ShieldAlert /><span>Fraud 50+</span><strong>{riskySubmissions.length}</strong><small>работ</small></Card>
+          <Card className="admin-metric"><ShieldAlert /><span>Watermark</span><strong>{videoChecks.length}</strong><small>проверок</small></Card>
           <Card className="admin-metric"><Fingerprint /><span>Повторы 24ч</span><strong>{repeatedHigh.length}</strong><small>частые IP hash</small></Card>
           <Card className="admin-metric"><KeyRound /><span>OAuth 7д</span><strong>{oauthLogins}</strong><small>входы</small></Card>
         </div>
@@ -75,11 +88,37 @@ export default async function AdminSecurityPage() {
             {checks.map((check) => (
               <details className="admin-dense-row" key={check.label}>
                 <summary><span>{check.label}</span><b>{check.ok ? "OK" : "Нужно"}</b><em>{check.detail}</em></summary>
+                <div className="admin-dense-details"><p>{check.ok ? "Настроено." : "Нужно добавить env-переменную в Vercel и сделать redeploy."}</p></div>
+              </details>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="admin-panel">
+          <div className="section-head compact"><h2>Очередь watermark</h2></div>
+          <div className="admin-dense-list always">
+            {videoChecks.map((check) => (
+              <details className="admin-dense-row" key={check.id}>
+                <summary><span>{check.submission.campaign.title}</span><b>{check.status}</b><em>@{check.submission.worker.handle}</em></summary>
                 <div className="admin-dense-details">
-                  <p>{check.ok ? "Настроено." : "Нужно добавить env-переменную в Vercel и сделать redeploy."}</p>
+                  <p><b>Исполнитель:</b> {check.submission.worker.email}</p>
+                  <p><b>Ссылка:</b> {check.submission.postUrl}</p>
+                  <p><b>Score:</b> {check.score}%</p>
+                  <p><Link href={`/campaigns/${check.submission.campaign.id}`}>Открыть заказ</Link></p>
+                  <form className="admin-row-form" action={adminUpdateVideoCheckAction}>
+                    <input type="hidden" name="checkId" value={check.id} />
+                    <select name="decision" defaultValue="PASSED">
+                      <option value="PASSED">Watermark есть</option>
+                      <option value="NEEDS_REVIEW">Нужно ревью</option>
+                      <option value="FAILED">Отклонить</option>
+                    </select>
+                    <input name="note" placeholder="Комментарий" />
+                    <button type="submit">OK</button>
+                  </form>
                 </div>
               </details>
             ))}
+            {!videoChecks.length ? <p className="muted">Очередь watermark пустая.</p> : null}
           </div>
         </Card>
 
@@ -125,7 +164,7 @@ export default async function AdminSecurityPage() {
             <div className="admin-dense-list always">
               {recentSecurityEvents.map((event) => (
                 <details className="admin-dense-row" key={event.id}>
-                  <summary><span>{event.user?.email || "Гость"}</span><b>{event.type}</b><em>{fullDate(event.createdAt)}</em></summary>
+                  <summary><span>{event.user?.email || "Гость"}</span><b>{eventLabel(event.type)}</b><em>{fullDate(event.createdAt)}</em></summary>
                   <div className="admin-dense-details">
                     <p><b>Источник:</b> {providerLabel(event.provider)}</p>
                     <p><b>Страница:</b> {event.path || "нет"}</p>

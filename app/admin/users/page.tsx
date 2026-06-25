@@ -3,22 +3,18 @@ import type { Prisma } from "@prisma/client";
 import { Search, UserRound } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
-import { prisma } from "@/lib/prisma";
-import { rub } from "@/lib/money";
-import { clampPage, fullDate, pageHref, providerLabel, roleLabel } from "@/lib/admin-format";
 import { adminCreateUserAction } from "@/app/admin/actions";
+import { clampPage, fullDate, pageHref, providerLabel, roleLabel } from "@/lib/admin-format";
+import { rub } from "@/lib/money";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const pageSize = 40;
+const pageSize = 60;
 const roles = ["ALL", "ADMIN", "CLIENT", "WORKER", "BOTH"] as const;
 const providers = ["all", "google", "email"] as const;
 
-export default async function AdminUsersPage({
-  searchParams
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const q = String(params.q || "").trim();
   const role = roles.includes(String(params.role) as (typeof roles)[number]) ? String(params.role) : "ALL";
@@ -41,15 +37,24 @@ export default async function AdminUsersPage({
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
-      include: {
-        oauthAccounts: true,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        handle: true,
+        role: true,
+        balanceCents: true,
+        holdBalanceCents: true,
+        trustScore: true,
+        createdAt: true,
+        oauthAccounts: { select: { provider: true } },
         _count: { select: { ownedCampaigns: true, submissions: true, transactions: true } }
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize
     }),
-    prisma.oAuthAccount.findMany({ where: { provider: "google" }, distinct: ["userId"], select: { userId: true } })
+    prisma.oAuthAccount.count({ where: { provider: "google" } })
   ]);
 
   const userIds = users.map((user) => user.id);
@@ -58,7 +63,7 @@ export default async function AdminUsersPage({
         where: { userId: { in: userIds } },
         orderBy: { createdAt: "desc" },
         select: { userId: true, createdAt: true, type: true },
-        take: 300
+        take: pageSize * 4
       })
     : [];
   const lastByUser = new Map<string, (typeof lastEvents)[number]>();
@@ -73,22 +78,19 @@ export default async function AdminUsersPage({
     <AdminShell>
       <div className="admin-screen admin-dense-screen">
         <AdminPageHeader
-          eyebrow="Пользователи"
+          eyebrow="Админка"
           title="Пользователи"
-          description="Плотный список аккаунтов. На телефоне нажми строку, чтобы раскрыть детали."
+          description="Плотный список для масштаба. Нажми строку, чтобы открыть полную историю пользователя."
         />
 
         <div className="admin-grid compact admin-kpi-strip">
           <Card className="admin-metric"><UserRound /><span>Найдено</span><strong>{total}</strong><small>по фильтрам</small></Card>
-          <Card className="admin-metric"><UserRound /><span>Google</span><strong>{googleUsers.length}</strong><small>соц-вход</small></Card>
+          <Card className="admin-metric"><UserRound /><span>Google</span><strong>{googleUsers}</strong><small>соц-входы</small></Card>
         </div>
 
         <Card className="admin-panel admin-filter-panel">
           <form className="admin-filter-bar" action="/admin/users">
-            <label>
-              <Search size={18} />
-              <input name="q" defaultValue={q} placeholder="Email, имя или ник" />
-            </label>
+            <label><Search size={18} /><input name="q" defaultValue={q} placeholder="Email, имя или ник" /></label>
             <select name="role" defaultValue={role}>
               <option value="ALL">Все роли</option>
               <option value="ADMIN">Админы</option>
@@ -106,7 +108,7 @@ export default async function AdminUsersPage({
         </Card>
 
         <Card className="admin-panel">
-          <div className="section-head compact"><h2>Добавить пользователя</h2></div>
+          <div className="section-head compact"><h2>Создать пользователя</h2></div>
           <form className="admin-inline-form" action={adminCreateUserAction}>
             <input name="email" type="email" placeholder="email@example.com" required />
             <input name="name" placeholder="Имя" required />
@@ -134,46 +136,33 @@ export default async function AdminUsersPage({
               const last = lastByUser.get(user.id);
               const auth = user.oauthAccounts.length ? user.oauthAccounts.map((item) => providerLabel(item.provider)).join(", ") : "Email";
               return (
-                <div className="admin-table-row" key={user.id}>
+                <Link className="admin-table-row clickable" href={`/admin/users/${user.id}`} key={user.id}>
                   <div className="admin-user-cell">
                     <div className="order-avatar">{user.name.slice(0, 2).toUpperCase()}</div>
                     <div>
-                      <strong><Link href={`/admin/users/${user.id}`}>{user.name}</Link></strong>
+                      <strong>{user.name}</strong>
                       <span>{user.email}</span>
                       <small>@{user.handle} · {fullDate(user.createdAt)}</small>
                     </div>
-                    <p><Link href={`/admin/users/${user.id}`}>Открыть полную историю</Link></p>
                   </div>
-                  <div><Tag tone={user.role === "ADMIN" ? "warn" : "soft"}>{roleLabel(user.role)}</Tag></div>
+                  <div><Tag tone={user.role === "ADMIN" ? "warn" : "soft"}>{roleLabel(user.role)}</Tag><span>trust {user.trustScore}</span></div>
                   <div><strong>{rub(user.balanceCents)}</strong><span>hold {rub(user.holdBalanceCents)}</span></div>
                   <div><strong>{last ? fullDate(last.createdAt) : "нет"}</strong><span>{auth}</span></div>
                   <div><strong>{user._count.ownedCampaigns} заказов</strong><span>{user._count.submissions} работ · {user._count.transactions} операций</span></div>
-                </div>
+                </Link>
               );
             })}
           </div>
 
-          <div className="admin-dense-list">
+          <div className="admin-dense-list mobile-full-list">
             {users.map((user) => {
               const last = lastByUser.get(user.id);
-              const auth = user.oauthAccounts.length ? user.oauthAccounts.map((item) => providerLabel(item.provider)).join(", ") : "Email";
               return (
-                <details className="admin-dense-row" key={user.id}>
-                  <summary>
-                    <span>{user.name}</span>
-                    <b>{roleLabel(user.role)}</b>
-                    <em>{rub(user.balanceCents)}</em>
-                  </summary>
-                  <div className="admin-dense-details">
-                    <p><b>Email:</b> {user.email}</p>
-                    <p><b>Ник:</b> @{user.handle}</p>
-                    <p><b>Вход:</b> {auth}</p>
-                    <p><b>Создан:</b> {fullDate(user.createdAt)}</p>
-                    <p><b>Последняя активность:</b> {last ? fullDate(last.createdAt) : "нет событий"}</p>
-                    <p><b>Баланс:</b> {rub(user.balanceCents)} · hold {rub(user.holdBalanceCents)}</p>
-                    <p><b>Контент:</b> {user._count.ownedCampaigns} заказов · {user._count.submissions} работ · {user._count.transactions} операций</p>
-                  </div>
-                </details>
+                <Link className="admin-mobile-row" href={`/admin/users/${user.id}`} key={user.id}>
+                  <span>{user.name}<em>{user.email}</em></span>
+                  <b>{roleLabel(user.role)}</b>
+                  <small>{last ? fullDate(last.createdAt) : "нет входов"}</small>
+                </Link>
               );
             })}
           </div>

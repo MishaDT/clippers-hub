@@ -12,6 +12,7 @@ import { stringify } from "@/lib/json";
 import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { syncMockViews } from "@/lib/social-sync";
+import { notifyModerators } from "@/lib/video-checks";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -239,7 +240,7 @@ export async function submitClipAction(formData: FormData) {
   fraudScore = Math.min(95, fraudScore);
   const status = fraudScore >= 75 ? "REJECTED" : "POSTED";
 
-  await prisma.submission.update({
+  const updatedSubmission = await prisma.submission.update({
     where: { id: submissionId, workerId: user.id },
     data: {
       postUrl,
@@ -251,6 +252,34 @@ export async function submitClipAction(formData: FormData) {
       viewVelocityJson: stringify([{ at: new Date().toISOString(), event: "submitted", fraudScore, reasons, watermarkConfirmed }])
     }
   });
+
+  const watermarkRequired = Boolean(campaignRules.watermarkBonus);
+  let videoCheckId: string | null = null;
+  if (watermarkRequired || status === "REJECTED") {
+    const check = await prisma.videoCheck.create({
+      data: {
+        submissionId: updatedSubmission.id,
+        checkType: "WATERMARK",
+        status: "PENDING",
+        score: fraudScore,
+        resultJson: stringify({
+          postUrl,
+          platform,
+          watermarkRequired,
+          watermarkConfirmed,
+          trackingCode: submission.trackingCode,
+          createdFrom: "submitClipAction"
+        })
+      }
+    });
+    videoCheckId = check.id;
+    await notifyModerators(prisma, {
+      title: "Новая проверка ролика",
+      body: `Работа по заказу "${submission.campaign.title}" ждёт проверки watermark и fraud-score.`,
+      entityId: check.id,
+      metadata: { submissionId: updatedSubmission.id, fraudScore, platform, watermarkRequired }
+    });
+  }
 
   await prisma.notification.create({
     data: {
@@ -268,7 +297,7 @@ export async function submitClipAction(formData: FormData) {
       action: status === "REJECTED" ? "SUBMISSION_FLAGGED" : "SUBMISSION_POSTED",
       entity: "Submission",
       entityId: submission.id,
-      metadata: stringify({ platform, postUrl, fraudScore, reasons, watermarkConfirmed })
+      metadata: stringify({ platform, postUrl, fraudScore, reasons, watermarkConfirmed, videoCheckId })
     }
   });
 
@@ -277,7 +306,7 @@ export async function submitClipAction(formData: FormData) {
     type: status === "REJECTED" ? "SUBMISSION_FLAGGED" : "SUBMISSION_POSTED",
     path: "/upload",
     provider: platform.toLowerCase(),
-    metadata: { submissionId, fraudScore, reasons, watermarkConfirmed }
+    metadata: { submissionId, fraudScore, reasons, watermarkConfirmed, videoCheckId }
   });
 
   revalidatePath("/upload");

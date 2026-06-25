@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Mic, RefreshCw, Send } from "lucide-react";
+import { CheckCircle2, ChevronUp, Mic, RefreshCw, Send, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { sendChatMessageAction } from "@/app/actions";
 
@@ -13,6 +13,20 @@ type Message = {
   type: string;
   createdAt: string;
   previews: Array<{ url: string; host: string; platform: string; title: string }>;
+};
+
+type ProgressStep = {
+  title: string;
+  done: boolean;
+  active: boolean;
+};
+
+type Progress = {
+  statusLabel: string;
+  views: string;
+  target: string;
+  fraudScore: number;
+  steps: ProgressStep[];
 };
 
 declare global {
@@ -32,18 +46,21 @@ export function CampaignChat({
   threadId,
   currentUserId,
   peerName,
-  messages
+  messages,
+  progress
 }: {
   threadId: string;
   currentUserId: string;
   peerName: string;
   messages: Message[];
+  progress?: Progress;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const [error, setError] = useState("");
   const [listening, setListening] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -70,16 +87,42 @@ export function CampaignChat({
   }
 
   return (
-    <section className="collab-card chat-card">
-      <div className="collab-head">
+    <section className="chat-card-v2" id="chat">
+      <div className="chat-card-head">
         <div>
           <span>Чат по заказу</span>
           <h2>{peerName}</h2>
         </div>
-        <button className="chat-refresh" type="button" onClick={() => router.refresh()} aria-label="Обновить чат">
+        <button className="chat-icon-btn" type="button" onClick={() => router.refresh()} aria-label="Обновить чат">
           <RefreshCw size={17} />
         </button>
       </div>
+
+      {progress ? (
+        <div className={`chat-progress-strip ${progressOpen ? "open" : "closed"}`}>
+          <button className="chat-progress-toggle" type="button" onClick={() => setProgressOpen((value) => !value)}>
+            {progressOpen ? <X size={15} /> : <ChevronUp size={15} />}
+            <span>{progress.statusLabel}</span>
+          </button>
+          {progressOpen ? (
+            <>
+              <div className="chat-progress-metrics">
+                <span><b>{progress.views}</b><em>просмотры</em></span>
+                <span><b>{progress.target}</b><em>цель</em></span>
+                <span><b>{progress.fraudScore}%</b><em>риск</em></span>
+              </div>
+              <div className="chat-progress-steps">
+                {progress.steps.map((step) => (
+                  <span className={step.done ? "done" : step.active ? "active" : ""} key={step.title}>
+                    <CheckCircle2 size={15} />
+                    {step.title}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="chat-list">
         {messages.map((message) => {
@@ -97,7 +140,7 @@ export function CampaignChat({
             </article>
           );
         })}
-        {!messages.length ? <p className="muted">Пока сообщений нет. Напиши первое уточнение по заказу.</p> : null}
+        {!messages.length ? <p className="muted">Сообщений пока нет. Напиши уточнение по ролику или заказу.</p> : null}
       </div>
 
       <form
@@ -118,7 +161,14 @@ export function CampaignChat({
       >
         <input type="hidden" name="threadId" value={threadId} />
         <input type="hidden" name="messageType" value={listening ? "VOICE_TRANSCRIPT" : "TEXT"} />
-        <textarea ref={textRef} name="body" rows={2} placeholder="Напиши сообщение. Ссылки только на ReelPay или видеоплощадки." maxLength={1000} required />
+        <textarea
+          ref={textRef}
+          name="body"
+          rows={2}
+          placeholder="Напиши сообщение. Ссылки разрешены только на видео-площадки и ReelPay."
+          maxLength={1000}
+          required
+        />
         <div className="chat-actions">
           <button className={`chat-voice ${listening ? "active" : ""}`} type="button" onClick={startVoiceInput}>
             <Mic size={18} /> {listening ? "Слушаю" : "Голосом"}

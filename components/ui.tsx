@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { clsx } from "clsx";
-import { BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
+import { Bell, BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -20,6 +21,9 @@ export async function AppShell({
 }) {
   const user = publicOnly ? null : await getCurrentUser();
   const isAdmin = canAccessAdmin(user);
+  const adminAlerts = isAdmin && user
+    ? await prisma.notification.count({ where: { userId: user.id, readAt: null, priority: "HIGH" } })
+    : 0;
   const roleLabel = user?.role === "CLIENT" ? "Заказчик" : user?.role === "ADMIN" ? "Админ" : "Исполнитель";
 
   return (
@@ -33,6 +37,12 @@ export async function AppShell({
           {user ? (
             <>
               {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span></Link> : null}
+              {isAdmin ? (
+                <Link className="role-pill admin-bell" href="/admin/security" aria-label="Модерация">
+                  <Bell size={16} />
+                  <span>{adminAlerts}</span>
+                </Link>
+              ) : null}
               <Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>
               <form action={logoutAction}>
                 <button className="btn btn-small btn-ghost" type="submit">Выйти</button>
