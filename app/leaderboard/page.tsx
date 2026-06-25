@@ -5,6 +5,7 @@ import { unstable_cache } from "next/cache";
 import { BadgeCheck, ChevronDown, ChevronRight, Crown, Flame, Handshake, Play, Scissors, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
+import { LeaderboardFireCanvas } from "@/components/leaderboard-fire-canvas";
 import { ReferralCard } from "@/components/referral-card";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -213,6 +214,8 @@ export default async function LeaderboardPage({
             ) : (
               <>
                 <div className="leaderboard-hero">
+                  <LeaderboardFireCanvas />
+                  <div className="lb-stage-vignette" aria-hidden="true" />
                   <div className="tree-glow" aria-hidden="true" />
                   <div className="root-lines" aria-hidden="true" />
                   <svg className="tree-svg" viewBox="0 0 400 260" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
@@ -238,6 +241,7 @@ export default async function LeaderboardPage({
                       const pos = row.rank === 1 ? "first" : row.rank === 2 ? "second" : "third";
                       return (
                         <li className={`podium-card podium-card--${pos}`} key={row.id}>
+                          <span className="podium-top-light" aria-hidden="true" />
                           {row.rank === 1 ? <div className="podium-crown" aria-hidden="true">👑</div> : null}
                           <Avatar row={row} podium />
                           <div className="podium-rank">{row.rank}</div>
