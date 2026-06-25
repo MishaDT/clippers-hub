@@ -7,10 +7,15 @@ import { clientIp } from "@/lib/rate-limit";
 export const ANALYTICS_TYPES = new Set([
   "PAGE_VIEW",
   "LOGIN_SUCCESS",
+  "LOGIN_FAILED",
   "REGISTER_SUCCESS",
+  "REGISTER_FAILED",
   "OAUTH_LOGIN",
   "OAUTH_REGISTER",
   "OAUTH_LINK",
+  "OAUTH_FAILED",
+  "SUBMISSION_POSTED",
+  "SUBMISSION_FLAGGED",
   "LOGOUT",
   "CTA_CLICK"
 ]);

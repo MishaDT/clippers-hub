@@ -9,7 +9,21 @@ import { clampPage, eventLabel, fullDate, pageHref, providerLabel } from "@/lib/
 export const dynamic = "force-dynamic";
 
 const pageSize = 60;
-const eventTypes = ["ALL", "PAGE_VIEW", "LOGIN_SUCCESS", "REGISTER_SUCCESS", "OAUTH_LOGIN", "OAUTH_REGISTER", "OAUTH_LINK", "LOGOUT"];
+const eventTypes = [
+  "ALL",
+  "PAGE_VIEW",
+  "LOGIN_SUCCESS",
+  "LOGIN_FAILED",
+  "REGISTER_SUCCESS",
+  "REGISTER_FAILED",
+  "OAUTH_LOGIN",
+  "OAUTH_REGISTER",
+  "OAUTH_LINK",
+  "OAUTH_FAILED",
+  "SUBMISSION_POSTED",
+  "SUBMISSION_FLAGGED",
+  "LOGOUT"
+];
 
 function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);

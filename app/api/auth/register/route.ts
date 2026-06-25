@@ -18,12 +18,17 @@ function redirectUrl(path: string, request: Request) {
   return url;
 }
 
+async function fail(request: Request, code: string) {
+  await trackEvent({ request, type: "REGISTER_FAILED", path: "/register", metadata: { reason: code } });
+  return NextResponse.redirect(redirectUrl(`/register?error=${code}`, request), 303);
+}
+
 export async function POST(request: Request) {
   if (!sameOrigin(request)) {
-    return NextResponse.redirect(redirectUrl("/register?error=invalid", request), 303);
+    return fail(request, "invalid");
   }
   if (!rateLimit(`register:${clientIp(request)}`, 5, 60_000)) {
-    return NextResponse.redirect(redirectUrl("/register?error=too_many", request), 303);
+    return fail(request, "too_many");
   }
   const formData = await request.formData();
   const parsed = schema.safeParse({
@@ -32,12 +37,12 @@ export async function POST(request: Request) {
     name: String(formData.get("name") || "").trim()
   });
   if (!parsed.success) {
-    return NextResponse.redirect(redirectUrl("/register?error=invalid", request), 303);
+    return fail(request, "invalid");
   }
   const input = parsed.data;
   const passwordError = validatePassword(input.password, input.email);
   if (passwordError) {
-    return NextResponse.redirect(redirectUrl("/register?error=weak_password", request), 303);
+    return fail(request, "weak_password");
   }
   const base = input.email.split("@")[0].replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 12) || "user";
   const handle = `${base}${Math.floor(Math.random() * 9000 + 1000)}`;
@@ -58,6 +63,6 @@ export async function POST(request: Request) {
     return NextResponse.redirect(redirectUrl("/feed", request), 303);
   } catch {
     // unique email/handle collision, etc.
-    return NextResponse.redirect(redirectUrl("/register?error=register_failed", request), 303);
+    return fail(request, "register_failed");
   }
 }

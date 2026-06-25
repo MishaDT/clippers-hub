@@ -11,25 +11,30 @@ function redirectUrl(path: string, request: Request) {
   return url;
 }
 
+async function fail(request: Request, code: string) {
+  await trackEvent({ request, type: "LOGIN_FAILED", path: "/login", metadata: { reason: code } });
+  return NextResponse.redirect(redirectUrl(`/login?error=${code}`, request), 303);
+}
+
 export async function POST(request: Request) {
   if (!sameOrigin(request)) {
-    return NextResponse.redirect(redirectUrl("/login?error=invalid", request), 303);
+    return fail(request, "invalid");
   }
   if (!rateLimit(`login:${clientIp(request)}`, 8, 60_000)) {
-    return NextResponse.redirect(redirectUrl("/login?error=too_many", request), 303);
+    return fail(request, "too_many");
   }
   const formData = await request.formData();
   const email = normalizeEmail(formData.get("email"));
   const password = String(formData.get("password") || "");
   if (!email || !password) {
     await verifyPasswordOrDummy(password);
-    return NextResponse.redirect(redirectUrl("/login?error=bad_credentials", request), 303);
+    return fail(request, "bad_credentials");
   }
 
   const user = await prisma.user.findUnique({ where: { email } });
   const passwordOk = await verifyPasswordOrDummy(password, user?.passwordHash);
   if (!user || !passwordOk) {
-    return NextResponse.redirect(redirectUrl("/login?error=bad_credentials", request), 303);
+    return fail(request, "bad_credentials");
   }
   await createSession(user.id);
   await trackEvent({ request, userId: user.id, type: "LOGIN_SUCCESS", path: "/login" });

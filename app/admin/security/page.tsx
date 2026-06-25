@@ -36,7 +36,7 @@ export default async function AdminSecurityPage() {
     }),
     prisma.analyticsEvent.count({ where: { type: { in: ["OAUTH_LOGIN", "OAUTH_REGISTER"] }, createdAt: { gte: week } } }),
     prisma.analyticsEvent.findMany({
-      where: { type: { in: ["LOGIN_SUCCESS", "OAUTH_LOGIN", "OAUTH_REGISTER", "OAUTH_LINK"] }, createdAt: { gte: week } },
+      where: { type: { in: ["LOGIN_SUCCESS", "LOGIN_FAILED", "OAUTH_LOGIN", "OAUTH_REGISTER", "OAUTH_LINK", "OAUTH_FAILED", "SUBMISSION_FLAGGED"] }, createdAt: { gte: week } },
       include: { user: { select: { email: true } } },
       orderBy: { createdAt: "desc" },
       take: 20

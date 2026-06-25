@@ -1,13 +1,14 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { trackEvent } from "@/lib/analytics";
 import { canManageClient, canWork, destroySession, getCurrentUser, requireUser } from "@/lib/auth";
+import { extractPlatformPostId, scoreSubmissionFraud } from "@/lib/fraud";
+import { stringify } from "@/lib/json";
 import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
-import { stringify } from "@/lib/json";
 import { syncMockViews } from "@/lib/social-sync";
 
 export async function logoutAction() {
@@ -30,9 +31,7 @@ export async function unlinkOAuthAccountAction(formData: FormData) {
 export async function deleteAccountAction(formData: FormData) {
   const user = await requireUser();
   const confirmation = String(formData.get("confirmation") || "").trim().toUpperCase();
-  if (confirmation !== "УДАЛИТЬ" && confirmation !== "DELETE") {
-    redirect("/profile?error=delete_confirm");
-  }
+  if (confirmation !== "УДАЛИТЬ" && confirmation !== "DELETE") redirect("/profile?error=delete_confirm");
 
   await prisma.auditLog.deleteMany({ where: { userId: user.id } });
   await prisma.user.delete({ where: { id: user.id } });
@@ -111,7 +110,6 @@ export async function joinCampaignAction(formData: FormData) {
   const campaignId = String(formData.get("campaignId"));
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
 
-  // Don't create a second submission for the same campaign.
   const existing = await prisma.submission.findFirst({ where: { campaignId, workerId: user.id } });
   if (existing) redirect("/upload");
 
@@ -136,31 +134,63 @@ export async function joinCampaignAction(formData: FormData) {
 export async function submitClipAction(formData: FormData) {
   const user = await requireUser();
   const submissionId = String(formData.get("submissionId"));
-  const postUrl = String(formData.get("postUrl") || "");
-  const platform = String(formData.get("platform") || "TIKTOK") as "TIKTOK";
+  const postUrl = String(formData.get("postUrl") || "").trim();
+  const platformInput = String(formData.get("platform") || "TIKTOK");
+  const platform = (["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"].includes(platformInput) ? platformInput : "TIKTOK") as "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "VK";
+
+  const [submission, duplicate, recentSubmissions] = await Promise.all([
+    prisma.submission.findFirstOrThrow({ where: { id: submissionId, workerId: user.id } }),
+    prisma.submission.findFirst({ where: { postUrl, NOT: { id: submissionId } }, select: { id: true } }),
+    prisma.submission.findMany({ where: { workerId: user.id }, orderBy: { createdAt: "desc" }, take: 20 })
+  ]);
+
+  const fraud = scoreSubmissionFraud({ postUrl, platform, user, duplicateUrl: Boolean(duplicate), recentSubmissions });
+  const status = fraud.score >= 75 ? "REJECTED" : "POSTED";
 
   await prisma.submission.update({
     where: { id: submissionId, workerId: user.id },
     data: {
       postUrl,
       platform,
-      platformPostId: postUrl.split("/").pop() || `post_${Date.now()}`,
-      status: "POSTED",
-      verifiedAt: new Date()
+      platformPostId: extractPlatformPostId(postUrl),
+      status,
+      fraudScore: fraud.score,
+      verifiedAt: status === "POSTED" ? new Date() : null,
+      viewVelocityJson: stringify([{ at: new Date().toISOString(), event: "submitted", fraudScore: fraud.score, reasons: fraud.reasons }])
     }
   });
+
   await prisma.notification.create({
     data: {
       userId: user.id,
-      title: "Работа отправлена",
-      body: "Ссылка отправлена на проверку и трекинг просмотров.",
+      title: status === "REJECTED" ? "Работа требует проверки" : "Работа отправлена",
+      body: status === "REJECTED" ? "Ссылка получила высокий fraud score и ушла на ручную проверку." : "Ссылка отправлена на проверку и трекинг просмотров.",
       channel: "in-app",
-      priority: "MED"
+      priority: status === "REJECTED" ? "HIGH" : "MED"
     }
   });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: status === "REJECTED" ? "SUBMISSION_FLAGGED" : "SUBMISSION_POSTED",
+      entity: "Submission",
+      entityId: submission.id,
+      metadata: stringify({ platform, postUrl, fraudScore: fraud.score, reasons: fraud.reasons })
+    }
+  });
+
+  await trackEvent({
+    userId: user.id,
+    type: status === "REJECTED" ? "SUBMISSION_FLAGGED" : "SUBMISSION_POSTED",
+    path: "/upload",
+    provider: platform.toLowerCase(),
+    metadata: { submissionId, fraudScore: fraud.score, reasons: fraud.reasons }
+  });
+
   revalidatePath("/upload");
   revalidatePath("/profile");
-  redirect("/upload?sent=1");
+  redirect(status === "REJECTED" ? "/upload?flagged=1" : "/upload?sent=1");
 }
 
 export async function toggleCampaignReactionAction(campaignId: string, kind: "LIKE" | "SAVE") {
@@ -214,7 +244,6 @@ export async function depositAction(formData: FormData) {
   }
   revalidatePath("/wallet");
   revalidatePath("/profile");
-  // Only follow safe relative checkout URLs; external provider URLs are opened explicitly elsewhere.
   redirect(intent.checkoutUrl && intent.checkoutUrl.startsWith("/") ? intent.checkoutUrl : "/wallet?deposit=ok");
 }
 
@@ -223,7 +252,6 @@ export async function withdrawAction(formData: FormData) {
   const amountCents = parseRubToCents(formData.get("amount"));
   if (amountCents <= 0) redirect("/wallet?error=amount");
 
-  // Atomic: only decrement if the balance is still sufficient (no double-withdraw race).
   const result = await prisma.user.updateMany({
     where: { id: user.id, balanceCents: { gte: amountCents } },
     data: { balanceCents: { decrement: amountCents } }

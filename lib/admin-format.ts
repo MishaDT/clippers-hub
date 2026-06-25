@@ -2,10 +2,15 @@ export function eventLabel(type: string) {
   const labels: Record<string, string> = {
     PAGE_VIEW: "Просмотр",
     LOGIN_SUCCESS: "Вход",
+    LOGIN_FAILED: "Неудачный вход",
     REGISTER_SUCCESS: "Регистрация",
+    REGISTER_FAILED: "Ошибка регистрации",
     OAUTH_LOGIN: "Вход через соцсеть",
     OAUTH_REGISTER: "Регистрация через соцсеть",
     OAUTH_LINK: "Привязка соцсети",
+    OAUTH_FAILED: "Ошибка OAuth",
+    SUBMISSION_POSTED: "Работа отправлена",
+    SUBMISSION_FLAGGED: "Работа с риском",
     LOGOUT: "Выход",
     CTA_CLICK: "Клик"
   };

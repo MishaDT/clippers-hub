@@ -5,7 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { expectedPayout, rub } from "@/lib/money";
 import { UploadForm } from "./upload-form";
 
-export default async function UploadPage() {
+export default async function UploadPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
   const user = await requireUser();
   const submissions = await prisma.submission.findMany({
     where: { workerId: user.id },
@@ -28,6 +33,20 @@ export default async function UploadPage() {
           <h1>Выложить работу</h1>
           <p className="lead">Вставь ссылку на опубликованный ролик — мы начнём считать просмотры. Оплата после проверки.</p>
         </div>
+
+        {params.sent ? (
+          <Card className="upload-status ok">
+            <strong>Работа отправлена</strong>
+            <span>Ссылка принята. Теперь она попала в трекинг просмотров и базовую проверку.</span>
+          </Card>
+        ) : null}
+
+        {params.flagged ? (
+          <Card className="upload-status warn">
+            <strong>Нужна ручная проверка</strong>
+            <span>Ссылка выглядит рискованно: возможен дубль, неверная платформа или подозрительная активность. Мы сохранили работу, но выплату проверит администратор.</span>
+          </Card>
+        ) : null}
 
         {orders.length ? (
           <UploadForm orders={orders} />

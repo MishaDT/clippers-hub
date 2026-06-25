@@ -9,6 +9,7 @@ import {
   randomState,
   redirectBase
 } from "@/lib/oauth";
+import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
@@ -18,12 +19,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   const intent = url.searchParams.get("mode") === "link" ? "link" : "login";
 
   if (!isProvider(provider)) {
+    await trackEvent({ request, type: "OAUTH_FAILED", path: "/login", metadata: { reason: "invalid_provider", provider } });
     return NextResponse.redirect(new URL("/login?error=oauth_failed", base));
   }
   if (!isConfigured(provider)) {
+    await trackEvent({ request, type: "OAUTH_FAILED", path: "/login", provider, metadata: { reason: "provider_unconfigured" } });
     return NextResponse.redirect(new URL("/login?error=provider_unconfigured", base));
   }
   if (!rateLimit(`oauth:${clientIp(request)}`, 12, 60_000)) {
+    await trackEvent({ request, type: "OAUTH_FAILED", path: "/login", provider, metadata: { reason: "too_many" } });
     return NextResponse.redirect(new URL("/login?error=too_many", base));
   }
 

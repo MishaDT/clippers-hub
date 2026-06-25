@@ -147,7 +147,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   };
 
   return (
-    <AppShell publicOnly>
+    <AppShell>
       <section className="section market-screen">
         <div className="market-head">
           <div>

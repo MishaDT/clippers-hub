@@ -9,7 +9,10 @@ import { callbackUri, exchangeAndFetchProfile, isConfigured, isProvider, redirec
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   const base = redirectBase(request.url);
-  const fail = (code: string) => NextResponse.redirect(new URL(`/login?error=${code}`, base), 303);
+  const fail = async (code: string) => {
+    await trackEvent({ request, type: "OAUTH_FAILED", path: "/login", provider, metadata: { reason: code } });
+    return NextResponse.redirect(new URL(`/login?error=${code}`, base), 303);
+  };
 
   if (!isProvider(provider) || !isConfigured(provider)) return fail("oauth_failed");
 
@@ -52,7 +55,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
     if (intent === "link") {
       const currentUser = await getCurrentUser();
       if (!currentUser) return fail("oauth_state");
-      if (linked && linked.userId !== currentUser.id) return NextResponse.redirect(new URL("/profile?error=oauth_taken", base), 303);
+      if (linked && linked.userId !== currentUser.id) return fail("oauth_taken");
       if (!linked) {
         await prisma.oAuthAccount.create({
           data: { userId: currentUser.id, provider, providerAccountId: profile.providerAccountId }
