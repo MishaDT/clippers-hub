@@ -37,8 +37,30 @@ export function verifyStripeSignature(body: string, signature: string | null) {
   const timestamp = parts.t;
   const expected = parts.v1;
   if (!timestamp || !expected) return false;
+  // Reject replays outside a 5-minute window.
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > 300) return false;
   const actual = createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
   return actual.length === expected.length && timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+}
+
+// YooKassa has no HMAC signature, so never trust the webhook body — re-fetch the
+// payment from the API and only credit if it is genuinely paid.
+async function yooKassaPaymentSucceeded(paymentId: string) {
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secret = process.env.YOOKASSA_SECRET_KEY;
+  if (!shopId || !secret) return false;
+  const auth = Buffer.from(`${shopId}:${secret}`).toString("base64");
+  try {
+    const res = await fetch(`https://api.yookassa.ru/v3/payments/${encodeURIComponent(paymentId)}`, {
+      headers: { Authorization: `Basic ${auth}` }
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data?.status === "succeeded" && data?.paid === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function handleStripeWebhook(body: string) {
@@ -53,5 +75,8 @@ export async function handleYooKassaWebhook(body: string) {
   const event = safeJson(body);
   const payment = event.object;
   if (!payment?.id || payment.status !== "succeeded") return { ignored: true, event: event.event };
+  if (!(await yooKassaPaymentSucceeded(String(payment.id)))) {
+    return { verified: false, reason: "yookassa_verify_failed" };
+  }
   return completeDepositByProviderId("yookassa", String(payment.id));
 }
