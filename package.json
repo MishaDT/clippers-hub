@@ -15,7 +15,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "test:providers": "node --experimental-strip-types --test tests/view-providers.test.mts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

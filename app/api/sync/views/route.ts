@@ -8,7 +8,8 @@ export const maxDuration = 60;
 // Vercel Cron automatically sends `Authorization: Bearer ${CRON_SECRET}`.
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET;
-  return !secret || request.headers.get("authorization") === `Bearer ${secret}`;
+  if (!secret) return process.env.NODE_ENV !== "production";
+  return request.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 async function run() {

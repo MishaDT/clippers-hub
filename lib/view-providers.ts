@@ -39,23 +39,85 @@ function requireEnv(name: string) {
   return value;
 }
 
+type YouTubeVideo = {
+  id?: string;
+  snippet?: {
+    title?: string;
+    description?: string;
+    channelId?: string;
+    channelTitle?: string;
+  };
+  statistics?: {
+    viewCount?: string;
+    likeCount?: string;
+    commentCount?: string;
+  };
+};
+
+const youtubeCache = new Map<string, { expiresAt: number; request: Promise<YouTubeVideo> }>();
+
+export function parseYouTubeVideoId(url: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+  let candidate: string | null = null;
+
+  if (host === "youtu.be") {
+    candidate = parsed.pathname.split("/").filter(Boolean)[0] || null;
+  } else if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
+    candidate =
+      parsed.searchParams.get("v") ||
+      parsed.pathname.match(/^\/(?:shorts|embed|live)\/([^/?#]+)/)?.[1] ||
+      null;
+  }
+
+  return candidate && /^[a-zA-Z0-9_-]{6,20}$/.test(candidate) ? candidate : null;
+}
+
+async function fetchYouTubeVideo(postId: string) {
+  const cached = youtubeCache.get(postId);
+  if (cached && cached.expiresAt > Date.now()) return cached.request;
+
+  const request = (async () => {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${encodeURIComponent(postId)}`,
+      {
+        headers: { "X-Goog-Api-Key": requireEnv("YOUTUBE_DATA_API_KEY") },
+        cache: "no-store"
+      }
+    );
+    if (!response.ok) throw new Error(`YouTube API failed: ${response.status}`);
+
+    const data = await response.json();
+    const video = data.items?.[0] as YouTubeVideo | undefined;
+    if (!video) throw new Error("YouTube video is unavailable or private");
+    return video;
+  })();
+
+  youtubeCache.set(postId, { expiresAt: Date.now() + 30_000, request });
+  try {
+    return await request;
+  } catch (error) {
+    youtubeCache.delete(postId);
+    throw error;
+  }
+}
+
 export const youtubeProvider: ViewProvider = {
   platform: "YOUTUBE",
   parsePostId(url) {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes("youtu.be")) return parsed.pathname.split("/").filter(Boolean)[0] || null;
-    if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
-    const shorts = parsed.pathname.match(/\/shorts\/([^/?#]+)/);
-    return shorts?.[1] || null;
+    return parseYouTubeVideoId(url);
   },
   async fetchSnapshot(postUrl) {
     const postId = this.parsePostId(postUrl);
     if (!postId) throw new Error("Cannot parse YouTube video id");
-    const key = requireEnv("YOUTUBE_DATA_API_KEY");
-    const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${postId}&key=${key}`);
-    if (!response.ok) throw new Error(`YouTube API failed: ${response.status}`);
-    const data = await response.json();
-    const stats = data.items?.[0]?.statistics || {};
+    const video = await fetchYouTubeVideo(postId);
+    const stats = video.statistics || {};
     return {
       platform: "YOUTUBE",
       postId,
@@ -63,17 +125,14 @@ export const youtubeProvider: ViewProvider = {
       likes: readNumber(stats.likeCount),
       comments: readNumber(stats.commentCount),
       fetchedAt: new Date(),
-      raw: data
+      raw: video
     };
   },
   async fetchMeta(postUrl) {
     const postId = this.parsePostId(postUrl);
     if (!postId) throw new Error("Cannot parse YouTube video id");
-    const key = requireEnv("YOUTUBE_DATA_API_KEY");
-    const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${postId}&key=${key}`);
-    if (!response.ok) throw new Error(`YouTube API failed: ${response.status}`);
-    const data = await response.json();
-    const snippet = data.items?.[0]?.snippet || {};
+    const video = await fetchYouTubeVideo(postId);
+    const snippet = video.snippet || {};
     return {
       platform: "YOUTUBE",
       postId,
@@ -81,7 +140,7 @@ export const youtubeProvider: ViewProvider = {
       description: String(snippet.description || ""),
       channelId: snippet.channelId ? String(snippet.channelId) : undefined,
       channelTitle: snippet.channelTitle ? String(snippet.channelTitle) : undefined,
-      raw: data
+      raw: video
     };
   }
 };

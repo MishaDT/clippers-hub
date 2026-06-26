@@ -131,7 +131,9 @@ export async function syncViews() {
     // code is present in the published video's description (proves the clipper
     // owns it). We re-verify on every cycle up to SETTLING, so removing the code
     // after the fact also freezes the money.
-    const lockedIn = submission.status === "SETTLING" || submission.status === "PAID";
+    // Keep checking during the 48-hour settlement window. Removing the code
+    // after reaching the threshold must freeze the pending payout.
+    const lockedIn = submission.status === "PAID";
     let ownershipOk = lockedIn;
     let ownershipNote = lockedIn ? "locked_in" : "unverified";
 
