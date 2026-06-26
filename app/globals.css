@@ -7993,3 +7993,121 @@ a.social-btn:hover {
     top: -90px;
   }
 }
+
+/* ============================================================
+   PASS 25 — Active-order hero (home / orders landing)
+   ============================================================ */
+.active-order {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  margin: 4px 0 18px;
+  padding: 20px 20px 18px;
+  border-radius: 22px;
+  overflow: hidden;
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid rgba(201, 243, 29, .28);
+  background:
+    linear-gradient(180deg, rgba(26, 32, 16, .92), rgba(10, 12, 7, .96));
+  box-shadow: 0 22px 50px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
+  transition: transform .16s ease, box-shadow .22s ease, border-color .22s ease;
+  isolation: isolate;
+}
+.active-order:hover {
+  transform: translateY(-2px);
+  border-color: rgba(201, 243, 29, .5);
+  box-shadow: 0 28px 64px rgba(201, 243, 29, .18), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+.ao-glow {
+  position: absolute;
+  inset: -40% -10% auto -10%;
+  height: 80%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(60% 80% at 22% 0%, rgba(201, 243, 29, .22), transparent 70%);
+}
+.ao-flicker {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 2px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(201, 243, 29, .9), transparent);
+  box-shadow: 0 0 16px rgba(201, 243, 29, .6);
+  background-size: 220% 100%;
+  animation: aoSeam 3.2s ease-in-out infinite;
+}
+@keyframes aoSeam { 0%, 100% { background-position: 0% 0; opacity: .65; } 50% { background-position: 100% 0; opacity: 1; } }
+
+.active-order > * { position: relative; z-index: 2; }
+.ao-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ao-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase;
+  color: #d9ff5e;
+}
+.ao-eyebrow svg { color: #c9f31d; }
+.ao-status {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 800;
+  color: #cfe88f;
+  background: rgba(201, 243, 29, .12);
+  border: 1px solid rgba(201, 243, 29, .3);
+  white-space: nowrap;
+}
+.ao-title { margin: 0; font-size: 22px; line-height: 1.15; letter-spacing: -.02em; }
+
+.ao-progress { display: grid; gap: 7px; }
+.ao-bar {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
+}
+.ao-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #a3e635, #d9ff45);
+  box-shadow: 0 0 14px rgba(201, 243, 29, .55);
+  transition: width .4s ease;
+}
+.ao-progress span { color: var(--muted); font-size: 12.5px; }
+
+.ao-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 2px; }
+.ao-payout { font-size: 13px; color: var(--muted); }
+.ao-payout b { color: #ffe27a; font-size: 18px; letter-spacing: -.01em; }
+.ao-cta {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 850; font-size: 14px;
+  color: #0a0a0b;
+  background: linear-gradient(180deg, #d9ff45, #c2eb12);
+  box-shadow: 0 12px 28px rgba(201, 243, 29, .32), inset 0 1px 0 rgba(255, 255, 255, .5);
+  transition: transform .15s ease, box-shadow .2s ease;
+}
+.active-order:hover .ao-cta { transform: translateY(-1px); box-shadow: 0 16px 36px rgba(201, 243, 29, .44); }
+
+/* status accents */
+.ao-accepted { border-color: rgba(74, 168, 255, .32); }
+.ao-accepted .ao-status { color: #bfe0ff; background: rgba(74, 168, 255, .12); border-color: rgba(74, 168, 255, .34); }
+.ao-accepted .ao-glow { background: radial-gradient(60% 80% at 22% 0%, rgba(74, 168, 255, .2), transparent 70%); }
+.ao-threshold_met .ao-status,
+.ao-settling .ao-status { color: #ffe27a; background: rgba(255, 210, 74, .12); border-color: rgba(255, 210, 74, .34); }
+.ao-threshold_met .ao-bar i,
+.ao-settling .ao-bar i { background: linear-gradient(90deg, #ffce3a, #ffe27a); box-shadow: 0 0 14px rgba(255, 210, 74, .55); }
+
+@media (max-width: 560px) {
+  .ao-title { font-size: 19px; }
+  .ao-foot { flex-direction: column; align-items: stretch; gap: 10px; }
+  .ao-cta { justify-content: center; }
+  .ao-head { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ao-flicker { animation: none; }
+}

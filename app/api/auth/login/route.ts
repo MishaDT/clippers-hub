@@ -38,5 +38,5 @@ export async function POST(request: Request) {
   }
   await createSession(user.id);
   await trackEvent({ request, userId: user.id, type: "LOGIN_SUCCESS", path: "/login" });
-  return NextResponse.redirect(redirectUrl("/feed", request), 303);
+  return NextResponse.redirect(redirectUrl("/campaigns", request), 303);
 }

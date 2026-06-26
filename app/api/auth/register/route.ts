@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     });
     await createSession(user.id);
     await trackEvent({ request, userId: user.id, type: "REGISTER_SUCCESS", path: "/register" });
-    return NextResponse.redirect(redirectUrl("/feed", request), 303);
+    return NextResponse.redirect(redirectUrl("/campaigns", request), 303);
   } catch {
     // unique email/handle collision, etc.
     return fail(request, "register_failed");

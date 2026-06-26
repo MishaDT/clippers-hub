@@ -5,25 +5,23 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { CirclePlus, Handshake, Home, MessageCircle, Search, Trophy, UserRound, WalletCards } from "lucide-react";
+import { CirclePlus, Handshake, Home, MessageCircle, Trophy, UserRound, WalletCards } from "lucide-react";
 
 const items = [
-  { href: "/feed", label: "Лента", icon: Home },
-  { href: "/campaigns", label: "Заказы", icon: Search },
+  { href: "/campaigns", label: "Главная", icon: Home },
+  { href: "/leaderboard", label: "Лидеры", icon: Trophy },
   { href: "/upload", label: "Выложить", icon: CirclePlus, primary: true },
   { href: "/chats", label: "Чаты", icon: MessageCircle },
   { href: "/wallet", label: "Кошелек", icon: WalletCards },
   { href: "/profile", label: "Профиль", icon: UserRound }
 ];
 
-// Desktop top-bar shows a couple of extra destinations that don't fit the
-// 6-slot mobile bottom nav.
+// Desktop top-bar adds Коллабы, which doesn't fit the 6-slot mobile bottom nav.
 const desktopItems = [
   items[0],
   items[1],
-  { href: "/leaderboard", label: "Лидеры", icon: Trophy },
   { href: "/collabs", label: "Коллабы", icon: Handshake },
-  ...items.slice(3)
+  ...items.slice(2)
 ];
 
 function isActive(pathname: string, href: string) {

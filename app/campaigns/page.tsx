@@ -2,6 +2,7 @@ import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import type { ComponentType } from "react";
 import {
+  ArrowRight,
   ArrowUpRight,
   BriefcaseBusiness,
   CheckCircle2,
@@ -19,7 +20,49 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { compactNumber, rub } from "@/lib/money";
+
+const ACTIVE_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
+
+const ACTIVE_META: Record<string, { label: string; cta: string; href: (id: string) => string }> = {
+  ACCEPTED: { label: "Заказ взят — выложи ролик", cta: "Выложить ролик", href: () => "/upload" },
+  POSTED: { label: "На проверке", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` },
+  VERIFIED: { label: "Подтверждён — набираем просмотры", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` },
+  THRESHOLD_MET: { label: "Цель достигнута — расчёт", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` },
+  SETTLING: { label: "Идёт расчёт выплаты", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` }
+};
+
+// The clipper's current in-progress order, pinned at the top of the home screen.
+async function loadActiveOrder() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const sub = await prisma.submission.findFirst({
+    where: { workerId: user.id, status: { in: [...ACTIVE_STATUSES] } },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      status: true,
+      currentViews: true,
+      campaign: { select: { id: true, title: true, viewThreshold: true, cpmRateCents: true, niche: true } }
+    }
+  });
+  if (!sub) return null;
+  const threshold = Math.max(1, sub.campaign.viewThreshold);
+  const meta = ACTIVE_META[sub.status] ?? ACTIVE_META.POSTED;
+  return {
+    status: sub.status,
+    statusKey: sub.status.toLowerCase(),
+    label: meta.label,
+    cta: meta.cta,
+    href: meta.href(sub.campaign.id),
+    title: sub.campaign.title,
+    niche: sub.campaign.niche || "Видео",
+    views: sub.currentViews,
+    threshold,
+    pct: Math.min(100, Math.round((sub.currentViews / threshold) * 100)),
+    payout: Math.round((threshold / 1000) * sub.campaign.cpmRateCents * 0.89)
+  };
+}
 
 export const revalidate = 30;
 
@@ -116,7 +159,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const page = Math.max(1, Number(params.page || 1));
   const pageSize = 10;
 
-  const baseCampaigns = await getCampaigns();
+  const [baseCampaigns, active] = await Promise.all([getCampaigns(), loadActiveOrder()]);
   const filtered = baseCampaigns
     .filter((campaign) => {
       const text = `${campaign.title} ${campaign.description} ${campaign.niche || ""} ${campaign.owner.name}`.toLowerCase();
@@ -150,6 +193,30 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   return (
     <AppShell>
       <section className="section market-screen">
+        {active ? (
+          <Link className={`active-order ao-${active.statusKey}`} href={active.href}>
+            <span className="ao-glow" aria-hidden="true" />
+            <span className="ao-flicker" aria-hidden="true" />
+            <div className="ao-head">
+              <span className="ao-eyebrow"><Sparkles size={14} /> Твой активный заказ</span>
+              <span className="ao-status">{active.label}</span>
+            </div>
+            <h2 className="ao-title">{active.title}</h2>
+            <div className="ao-progress">
+              <div className="ao-bar"><i style={{ width: `${active.pct}%` }} /></div>
+              <span>
+                {active.status === "ACCEPTED"
+                  ? "Выложи ролик, чтобы начать считать просмотры"
+                  : `${compactNumber(active.views)} / ${compactNumber(active.threshold)} просмотров`}
+              </span>
+            </div>
+            <div className="ao-foot">
+              <span className="ao-payout"><b>{rub(active.payout)}</b> к выплате</span>
+              <span className="ao-cta">{active.cta} <ArrowRight size={16} /></span>
+            </div>
+          </Link>
+        ) : null}
+
         <div className="market-head">
           <div>
             <span className="eyebrow">Биржа заказов</span>

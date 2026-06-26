@@ -103,7 +103,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
       path: "/login",
       provider
     });
-    return NextResponse.redirect(new URL("/feed", base), 303);
+    return NextResponse.redirect(new URL("/campaigns", base), 303);
   } catch {
     return fail("oauth_failed");
   }

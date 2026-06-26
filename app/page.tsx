@@ -5,7 +5,7 @@ import { AppShell, Card, RoleChoice } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function HomePage() {
-  if (await getCurrentUser()) redirect("/feed");
+  if (await getCurrentUser()) redirect("/campaigns");
   return (
     <AppShell>
       <section className="section lp-hero">
