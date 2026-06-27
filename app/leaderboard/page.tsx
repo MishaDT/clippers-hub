@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { compactNumber } from "@/lib/money";
 import { LEAGUES, leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 export const metadata: Metadata = {
   title: "Доска лидеров",
@@ -173,7 +174,12 @@ export default async function LeaderboardPage({
   const { period: rawPeriod, expand: rawExpand } = await searchParams;
   const period: Period = rawPeriod === "all" ? "all" : "week";
   const expand = rawExpand === "1";
-  const [rows, me] = await Promise.all([loadLeaders(period), loadMyProgress()]);
+  const currentUser = await getCurrentUser();
+  const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
+  const [rows, me] = await Promise.all([
+    loadLeaders(period),
+    mode === "worker" ? loadMyProgress() : Promise.resolve(null)
+  ]);
 
   const podium = rows.slice(0, 3);
   const rest = rows.slice(3);
@@ -221,7 +227,7 @@ export default async function LeaderboardPage({
                 <Trophy size={30} />
                 <b>Пока пусто</b>
                 <p>Как только клипперы начнут набирать просмотры, здесь появится топ недели.</p>
-                <Link className="btn btn-primary" href="/campaigns">Найти заказ</Link>
+                <Link className="btn btn-primary" href="/campaigns">{mode === "client" ? "Открыть кампании" : "Найти заказ"}</Link>
               </div>
             ) : (
               <>
@@ -273,7 +279,7 @@ export default async function LeaderboardPage({
                   </ol>
                 </div>
 
-                <section className="mobile-rank-overview" aria-label="Ранг и прогресс">
+                {me ? <section className="mobile-rank-overview" aria-label="Ранг и прогресс">
                   <article className="mobile-rank-card">
                     <span className="mobile-rank-icon" aria-hidden="true">{activeLeague.emoji}</span>
                     <div>
@@ -301,7 +307,7 @@ export default async function LeaderboardPage({
                         : "0%"}
                     </strong>
                   </article>
-                </section>
+                </section> : null}
 
                 {rest.length > 0 ? (
                   <ol className="leaderboard-table">
@@ -328,7 +334,7 @@ export default async function LeaderboardPage({
                         </Link>
                         <Link className="invite-btn" href={`/clippers/${row.handle}`} prefetch>
                           <Handshake size={14} />
-                          <span className="invite-full">Пригласить на коллаб</span>
+                          <span className="invite-full">{mode === "client" ? "Пригласить на коллаб" : "Открыть профиль"}</span>
                           <span className="invite-short">Открыть</span>
                         </Link>
                       </li>
@@ -346,20 +352,20 @@ export default async function LeaderboardPage({
           </div>
 
           <aside className="leaderboard-rail">
-            {me ? (
+            {me && mode === "worker" ? (
               <section className="rail-panel referral-panel">
                 <ReferralCard code={me.referralCode} invited={me.invited} />
               </section>
             ) : null}
 
-            {me ? (
+            {currentUser ? (
               <Link className="rail-link-panel" href="/collabs">
                 <span><Handshake size={16} /> Мои коллабы</span>
                 <ChevronRight size={16} />
               </Link>
             ) : null}
 
-            <section className="rail-panel">
+            {mode === "worker" ? <section className="rail-panel">
               <header className="rail-head">
                 <h3>Лиги</h3>
                 <span className="rail-link">Пороги</span>
@@ -384,7 +390,7 @@ export default async function LeaderboardPage({
                   );
                 })}
               </div>
-            </section>
+            </section> : null}
 
             {me ? (
               <section className="rail-panel">
@@ -442,7 +448,7 @@ export default async function LeaderboardPage({
                   )}
                 </div>
               </section>
-            ) : (
+            ) : !currentUser ? (
               <section className="rail-panel">
                 <div className="rail-cta">
                   <b>Хочешь в рейтинг?</b>
@@ -450,7 +456,7 @@ export default async function LeaderboardPage({
                   <Link className="btn btn-primary" href="/login">Войти</Link>
                 </div>
               </section>
-            )}
+            ) : null}
           </aside>
         </div>
       </section>

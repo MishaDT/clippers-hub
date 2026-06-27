@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Flame, Play } from "lucide-react";
 import { compactNumber, expectedPayout, rub } from "@/lib/money";
+type RoleMode = "worker" | "client";
 
 type FeedCampaign = {
   id: string;
@@ -24,7 +25,7 @@ type FeedCampaign = {
 const tabs = ["Для тебя", "Тренды"] as const;
 type Tab = (typeof tabs)[number];
 
-export function FeedClient({ campaigns }: { campaigns: FeedCampaign[] }) {
+export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mode: RoleMode }) {
   const [activeTab, setActiveTab] = useState<Tab>("Для тебя");
   const [playingId, setPlayingId] = useState<string | null>(null);
   const videoRefs = useRef(new Map<string, HTMLVideoElement>());
@@ -140,10 +141,21 @@ export function FeedClient({ campaigns }: { campaigns: FeedCampaign[] }) {
                 </div>
                 <h2><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></h2>
                 <div className="reel-pay-row">
-                  <b>до {rub(expected)}</b>
-                  <span>за выполнение · {days} дн.</span>
+                  {mode === "worker" ? (
+                    <>
+                      <b>до {rub(expected)}</b>
+                      <span>за выполнение · {days} дн.</span>
+                    </>
+                  ) : (
+                    <>
+                      <b>{compactNumber(campaign.views)}</b>
+                      <span>{campaign.submissions} роликов в кампании</span>
+                    </>
+                  )}
                 </div>
-                <Link className="btn btn-primary reel-cta" href={`/campaigns/${campaign.id}`}>Смотреть заказ →</Link>
+                <Link className="btn btn-primary reel-cta" href={`/campaigns/${campaign.id}`}>
+                  {mode === "worker" ? "Смотреть заказ →" : "Открыть кампанию →"}
+                </Link>
               </div>
             </article>
           );

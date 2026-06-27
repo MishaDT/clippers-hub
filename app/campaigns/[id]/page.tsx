@@ -9,6 +9,7 @@ import { buildSafePreview } from "@/lib/chat-safety";
 import { parseJson } from "@/lib/json";
 import { compactNumber, expectedPayout, rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 const covers = [
   "/assets/gaming-order.png",
@@ -54,6 +55,7 @@ function submissionStatus(status?: string) {
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const currentUser = await getCurrentUser();
+  const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
   const campaign = await prisma.campaign.findUnique({
     where: { id },
     select: {
@@ -80,12 +82,18 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const [submission, chatThread] = currentUser
     ? await Promise.all([
         prisma.submission.findFirst({
-          where: { campaignId: campaign.id, ...(isOwner ? {} : { workerId: currentUser.id }) },
+          where: {
+            campaignId: campaign.id,
+            ...(mode === "client" ? { campaign: { ownerId: currentUser.id } } : { workerId: currentUser.id })
+          },
           include: { worker: { select: { id: true, name: true, handle: true } }, videoChecks: { orderBy: { createdAt: "desc" }, take: 1 } },
           orderBy: { updatedAt: "desc" }
         }),
         prisma.chatThread.findFirst({
-          where: { campaignId: campaign.id, OR: [{ clientId: currentUser.id }, { workerId: currentUser.id }] },
+          where: {
+            campaignId: campaign.id,
+            ...(mode === "client" ? { clientId: currentUser.id } : { workerId: currentUser.id })
+          },
           include: {
             client: { select: { id: true, name: true } },
             worker: { select: { id: true, name: true, handle: true } },
@@ -168,8 +176,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                 <span><b>{campaign._count.submissions}</b><em>откликов</em></span>
               </div>
 
-              {isOwner ? (
-                <Link className="btn btn-primary" href="/profile">Смотреть мои заказы</Link>
+              {mode === "client" ? (
+                isOwner
+                  ? <Link className="btn btn-primary" href="/campaigns">Все мои кампании</Link>
+                  : <span className="muted">Кампания другого заказчика</span>
               ) : submission ? (
                 <Link className="btn btn-primary" href="/upload">Выложить работу</Link>
               ) : (
@@ -185,7 +195,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           </aside>
         </div>
 
-        {submission ? (
+        {submission && (mode === "worker" || isOwner) ? (
           <section className="workspace-card">
             <div className="workspace-head">
               <div>

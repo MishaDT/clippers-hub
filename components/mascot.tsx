@@ -11,7 +11,29 @@ const defaultTips = [
   "Оплата приходит после проверки просмотров и базового антифрода."
 ];
 
-function tipsForPath(pathname: string) {
+function tipsForPath(pathname: string, mode: "worker" | "client") {
+  if (mode === "client") {
+    if (pathname === "/campaigns") {
+      return [
+        "Здесь собраны только ваши кампании. Откройте нужную, чтобы проверить ролики и просмотры.",
+        "Новая кампания создаётся центральной кнопкой «Создать»."
+      ];
+    }
+    if (pathname === "/leaderboard") {
+      return [
+        "Откройте профиль исполнителя, чтобы посмотреть его работы и отправить приглашение."
+      ];
+    }
+    if (pathname === "/feed") {
+      return [
+        "В ленте можно посмотреть опубликованные ролики и понять, какой формат работает лучше."
+      ];
+    }
+    return [
+      "Режим заказчика: кампании, ролики, исполнители и бюджет находятся в отдельных разделах."
+    ];
+  }
+
   if (/^\/campaigns\/[^/]+$/.test(pathname)) {
     return [
       "На этой странице главное: выплата, цель по просмотрам и срок. Если все подходит, жми «Откликнуться».",
@@ -40,13 +62,18 @@ function tipsForPath(pathname: string) {
 
 export function Mascot() {
   const pathname = usePathname();
-  const tips = tipsForPath(pathname);
+  const [mode, setMode] = useState<"worker" | "client">("worker");
+  const tips = tipsForPath(pathname, mode);
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
   const [tip, setTip] = useState(0);
 
   const blocked = pathname === "/login" || pathname === "/register" || pathname === "/chats";
   const quietPage = /^\/campaigns\/[^/]+$/.test(pathname) || pathname === "/leaderboard";
+
+  useEffect(() => {
+    setMode(document.cookie.includes("rp_role_mode=client") ? "client" : "worker");
+  }, [pathname]);
 
   useEffect(() => {
     if (blocked) {

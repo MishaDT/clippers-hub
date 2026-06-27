@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
 import { SiteFooter } from "@/components/site-footer";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 const loadAdminAlerts = unstable_cache(
   (userId: string) => prisma.notification.count({
@@ -30,10 +31,11 @@ export async function AppShell({
 }) {
   const user = publicOnly ? null : await getCurrentUser();
   const isAdmin = canAccessAdmin(user);
+  const mode = user ? await getActiveRoleMode(user) : "worker";
   const adminAlerts = isAdmin && user
     ? await loadAdminAlerts(user.id)
     : 0;
-  const roleLabel = user?.role === "CLIENT" ? "Заказчик" : user?.role === "ADMIN" ? "Админ" : "Исполнитель";
+  const roleLabel = mode === "client" ? "Заказчик" : "Исполнитель";
 
   return (
     <>
@@ -41,7 +43,7 @@ export async function AppShell({
         <Link className="brand" href="/">
           <span className="brand-word">Reel<span>Pay</span></span>
         </Link>
-        <DesktopNav />
+        {user ? <DesktopNav mode={mode} /> : null}
         <div className="top-actions">
           {user ? (
             <>
@@ -69,7 +71,7 @@ export async function AppShell({
         {children}
         {!immersive ? <SiteFooter /> : null}
       </main>
-      {user && !hideBottomNav ? <BottomNav /> : null}
+      {user && !hideBottomNav ? <BottomNav mode={mode} /> : null}
     </>
   );
 }

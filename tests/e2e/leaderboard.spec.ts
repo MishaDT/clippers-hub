@@ -60,15 +60,17 @@ test.describe("leaderboard experience", () => {
       expect(layout.heroHeight).toBeLessThan(380);
       expect(layout.secondCenter).toBeLessThan(layout.firstCenter);
       expect(layout.firstCenter).toBeLessThan(layout.thirdCenter);
-      await expect(page.locator(".mobile-rank-overview")).toBeVisible();
-      await expect(page.locator(".mobile-xp-card")).toContainText("XP");
+      await expect(page.locator(".mobile-rank-overview")).toHaveCount(0);
     } else {
       expect(layout.heroHeight).toBeLessThan(500);
       await expect(page.locator(".mobile-rank-overview")).toBeHidden();
     }
 
     await expect(page.locator(".podium-flame-canvas")).toHaveCount(3);
-    await page.waitForTimeout(250);
+    await expect.poll(async () => {
+      const signatures = await canvasSignature(page);
+      return signatures.length === 3 && signatures.every((item) => item.alpha > 1000);
+    }).toBe(true);
     const before = await canvasSignature(page);
     await page.waitForTimeout(650);
     const after = await canvasSignature(page);

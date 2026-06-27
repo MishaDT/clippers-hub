@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, canManageClient } from "@/lib/auth";
 import { canEndorse } from "@/lib/leagues";
 import { compactNumber } from "@/lib/money";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 const COVERS = [
   "/assets/gaming-order.png",
@@ -62,7 +63,7 @@ export default async function ClipperPortfolioPage({
   ]);
 
   const best = subs[0]?.currentViews ?? 0;
-  const isClient = viewer ? canManageClient(viewer.role) : false;
+  const isClient = viewer ? canManageClient(viewer.role) && await getActiveRoleMode(viewer) === "client" : false;
   const isSelf = viewer?.id === user.id;
   const avatar = user.avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(user.handle)}&backgroundColor=transparent`;
 

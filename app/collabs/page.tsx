@@ -5,6 +5,7 @@ import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { respondCollabInviteAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 export const metadata: Metadata = { title: "Коллабы" };
 
@@ -21,19 +22,20 @@ function avatarFor(handle: string, avatar: string | null) {
 
 export default async function CollabsPage() {
   const user = await requireUser();
+  const mode = await getActiveRoleMode(user);
   const [incoming, sent] = await Promise.all([
-    prisma.collabInvite.findMany({
+    mode === "worker" ? prisma.collabInvite.findMany({
       where: { workerId: user.id },
       include: { client: { select: { name: true, handle: true, avatar: true } } },
       orderBy: { createdAt: "desc" },
       take: 50
-    }),
-    prisma.collabInvite.findMany({
+    }) : Promise.resolve([]),
+    mode === "client" ? prisma.collabInvite.findMany({
       where: { clientId: user.id },
       include: { worker: { select: { name: true, handle: true, avatar: true } } },
       orderBy: { createdAt: "desc" },
       take: 50
-    })
+    }) : Promise.resolve([])
   ]);
   const pendingCount = incoming.filter((i) => i.status === "PENDING").length;
 
@@ -43,10 +45,10 @@ export default async function CollabsPage() {
         <header className="collabs-head">
           <span className="eyebrow"><Handshake size={15} /> Коллабы</span>
           <h1>Совместные клипы</h1>
-          <p>Заказчики приглашают клипперов на совместные ролики. Принимай интересные — и работайте вместе.</p>
+          <p>{mode === "client" ? "Приглашения, которые вы отправили исполнителям." : "Предложения от заказчиков на совместную работу."}</p>
         </header>
 
-        <h2 className="collabs-section">
+        {mode === "worker" ? <><h2 className="collabs-section">
           <Inbox size={18} /> Входящие {pendingCount ? <span className="collabs-badge">{pendingCount}</span> : null}
         </h2>
         {incoming.length === 0 ? (
@@ -79,9 +81,9 @@ export default async function CollabsPage() {
               </li>
             ))}
           </ul>
-        )}
+        )}</> : null}
 
-        <h2 className="collabs-section"><Send size={18} /> Отправленные</h2>
+        {mode === "client" ? <><h2 className="collabs-section"><Send size={18} /> Отправленные</h2>
         {sent.length === 0 ? (
           <p className="muted">
             Ты ещё никого не приглашал. Найди клипперов на <Link href="/leaderboard">доске лидеров</Link>.
@@ -99,7 +101,7 @@ export default async function CollabsPage() {
               </li>
             ))}
           </ul>
-        )}
+        )}</> : null}
       </section>
     </AppShell>
   );

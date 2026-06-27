@@ -5,9 +5,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { CirclePlus, Handshake, Home, MessageCircle, Trophy, UserRound, WalletCards } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  CirclePlus,
+  Handshake,
+  Home,
+  MessageCircle,
+  PlaySquare,
+  Trophy,
+  UserRound,
+  WalletCards
+} from "lucide-react";
+type RoleMode = "worker" | "client";
 
-const items = [
+const workerItems = [
   { href: "/campaigns", label: "Главная", icon: Home },
   { href: "/leaderboard", label: "Лидеры", icon: Trophy },
   { href: "/upload", label: "Выложить", icon: CirclePlus, primary: true },
@@ -15,27 +26,45 @@ const items = [
   { href: "/profile", label: "Профиль", icon: UserRound }
 ];
 
-const desktopItems = [
-  items[0],
-  items[1],
-  { href: "/collabs", label: "Коллабы", icon: Handshake },
-  items[2],
-  items[3],
-  { href: "/wallet", label: "Кошелек", icon: WalletCards },
-  items[4]
+const clientItems = [
+  { href: "/campaigns", label: "Кампании", icon: BriefcaseBusiness },
+  { href: "/feed", label: "Ролики", icon: PlaySquare },
+  { href: "/campaigns/new", label: "Создать", icon: CirclePlus, primary: true },
+  { href: "/chats", label: "Чаты", icon: MessageCircle },
+  { href: "/profile", label: "Профиль", icon: UserRound }
 ];
 
+function desktopItems(mode: RoleMode) {
+  const items = mode === "client" ? clientItems : workerItems;
+  return [
+    items[0],
+    ...(mode === "client"
+      ? [
+          { href: "/feed", label: "Ролики", icon: PlaySquare },
+          { href: "/leaderboard", label: "Исполнители", icon: Trophy }
+        ]
+      : [
+          { href: "/leaderboard", label: "Лидеры", icon: Trophy },
+          { href: "/collabs", label: "Коллабы", icon: Handshake }
+        ]),
+    items[2],
+    items[3],
+    { href: "/wallet", label: "Кошелёк", icon: WalletCards },
+    items[4]
+  ];
+}
+
 function isActive(pathname: string, href: string) {
-  if (href === "/campaigns") return pathname === href || pathname.startsWith("/campaigns/");
+  if (href === "/campaigns") return pathname === href || (pathname.startsWith("/campaigns/") && pathname !== "/campaigns/new");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function DesktopNav() {
+export function DesktopNav({ mode }: { mode: RoleMode }) {
   const pathname = usePathname();
 
   return (
     <nav className="top-nav" aria-label="Навигация">
-      {desktopItems.map(({ href, label, icon: Icon }) => (
+      {desktopItems(mode).map(({ href, label, icon: Icon }) => (
         <Link className={clsx(isActive(pathname, href) && "active")} href={href} key={href}>
           <Icon size={16} />
           {label}
@@ -45,9 +74,10 @@ export function DesktopNav() {
   );
 }
 
-export function BottomNav() {
+export function BottomNav({ mode }: { mode: RoleMode }) {
   const pathname = usePathname();
   const [pending, setPending] = useState<string | null>(null);
+  const items = mode === "client" ? clientItems : workerItems;
 
   useEffect(() => {
     setPending(null);

@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { isConfigured, type ProviderId } from "@/lib/oauth";
 import { prisma } from "@/lib/prisma";
 import { compactNumber, rub } from "@/lib/money";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 const OAUTH_PROVIDERS: Array<{ id: ProviderId; label: string }> = [
   { id: "google", label: "Google" },
@@ -46,9 +47,9 @@ async function loadWorker(userId: string) {
   };
 }
 
-async function loadClient(userId: string, role: string) {
-  const campaignWhere = role === "ADMIN" ? {} : { ownerId: userId };
-  const submissionWhere = role === "ADMIN" ? {} : { campaign: { ownerId: userId } };
+async function loadClient(userId: string) {
+  const campaignWhere = { ownerId: userId };
+  const submissionWhere = { campaign: { ownerId: userId } };
   const [campaigns, campaignCount, viewStats, budgetStats, clipCount, topClips] = await Promise.all([
     prisma.campaign.findMany({
       where: campaignWhere,
@@ -96,10 +97,11 @@ async function loadClient(userId: string, role: string) {
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const view = user.role === "CLIENT" ? "client" : "worker";
+  const view = await getActiveRoleMode(user);
+  const canSwitchMode = user.role === "BOTH" || user.role === "ADMIN";
   const [worker, client, oauthAccounts] = await Promise.all([
     view === "worker" ? loadWorker(user.id) : Promise.resolve(null),
-    view === "client" ? loadClient(user.id, user.role) : Promise.resolve(null),
+    view === "client" ? loadClient(user.id) : Promise.resolve(null),
     prisma.oAuthAccount.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } })
   ]);
 
@@ -124,10 +126,12 @@ export default async function ProfilePage() {
           </Card>
         </div>
 
-        <form className="role-switch" action={switchRoleAction}>
-          <button className={view === "worker" ? "active" : ""} name="role" value="WORKER" type="submit"><Zap size={18} /> Клиппер</button>
-          <button className={view === "client" ? "active" : ""} name="role" value="CLIENT" type="submit"><BriefcaseBusiness size={18} /> Заказчик</button>
-        </form>
+        {canSwitchMode ? (
+          <form className="role-switch" action={switchRoleAction}>
+            <button className={view === "worker" ? "active" : ""} name="mode" value="worker" type="submit"><Zap size={18} /> Исполнитель</button>
+            <button className={view === "client" ? "active" : ""} name="mode" value="client" type="submit"><BriefcaseBusiness size={18} /> Заказчик</button>
+          </form>
+        ) : null}
 
         {view === "worker" && worker ? (
           <>

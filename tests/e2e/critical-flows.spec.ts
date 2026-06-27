@@ -76,11 +76,13 @@ test.describe("worker flow", () => {
 
     await page.goto("/campaigns");
     await page.locator(".market-order").first().click();
-    const joinButton = page.getByRole("button", { name: /Откликнуться/i });
-    if (await joinButton.count()) {
+    const campaignAction = page.locator(".campaign-action");
+    await campaignAction.locator('.join-main, a[href="/upload"]').waitFor({ state: "visible" });
+    const joinButton = campaignAction.getByRole("button", { name: /Откликнуться/i });
+    if (await joinButton.isVisible().catch(() => false)) {
       await joinButton.click();
     } else {
-      await page.getByRole("link", { name: /Выложить работу/i }).click();
+      await campaignAction.getByRole("link", { name: /Выложить работу/i }).click();
     }
     await expect(page).toHaveURL(/\/upload$/);
 

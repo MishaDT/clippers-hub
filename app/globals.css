@@ -9258,3 +9258,70 @@ a.social-btn:hover {
     font-size: 13px;
   }
 }
+.client-campaign-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.client-campaign-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) repeat(3, minmax(110px, auto)) 24px;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  color: inherit;
+  text-decoration: none;
+  background: #121216;
+  border: 1px solid #29292f;
+  border-radius: 8px;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.client-campaign-row:hover {
+  background: #17171c;
+  border-color: #4b4b55;
+}
+
+.client-campaign-row > div {
+  min-width: 0;
+}
+
+.client-campaign-row strong,
+.client-campaign-row span {
+  display: block;
+}
+
+.client-campaign-row > div strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-campaign-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.client-campaign-row span b {
+  color: var(--text);
+  font-size: 15px;
+}
+
+@media (max-width: 720px) {
+  .client-campaign-row {
+    grid-template-columns: 1fr 24px;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .client-campaign-row > span {
+    display: inline-block;
+    margin-right: 12px;
+  }
+
+  .client-campaign-row > svg {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}

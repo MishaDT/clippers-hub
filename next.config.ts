@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
+const scriptPolicy = process.env.NODE_ENV === "development"
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+  : "script-src 'self' 'unsafe-inline'";
+
 const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -16,7 +20,7 @@ const securityHeaders = [
       "frame-ancestors 'none'",
       "img-src 'self' data: blob: https:",
       "media-src 'self' https:",
-      "script-src 'self' 'unsafe-inline'",
+      scriptPolicy,
       "style-src 'self' 'unsafe-inline'",
       "connect-src 'self' https:",
       "font-src 'self' data:",

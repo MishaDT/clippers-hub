@@ -2,6 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { trackEvent } from "@/lib/analytics";
@@ -16,6 +17,7 @@ import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { syncMockViews } from "@/lib/social-sync";
 import { notifyModerators } from "@/lib/video-checks";
+import { canUseRoleMode, getActiveRoleMode, ROLE_MODE_COOKIE, type RoleMode } from "@/lib/role-mode";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -65,16 +67,21 @@ export async function deleteAccountAction(formData: FormData) {
 
 export async function switchRoleAction(formData: FormData) {
   const user = await requireUser();
-  const nextRole = String(formData.get("role"));
-  if (!["CLIENT", "WORKER", "BOTH"].includes(nextRole)) redirect("/profile");
-  await prisma.user.update({ where: { id: user.id }, data: { role: nextRole as "CLIENT" | "WORKER" | "BOTH" } });
+  const mode = String(formData.get("mode")) as RoleMode;
+  if (!["client", "worker"].includes(mode) || !canUseRoleMode(user.role, mode)) redirect("/profile");
+  (await cookies()).set(ROLE_MODE_COOKIE, mode, {
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365
+  });
   revalidatePath("/profile");
-  redirect("/profile");
+  redirect("/campaigns");
 }
 
 export async function createCampaignAction(formData: FormData) {
   const user = await requireUser();
-  if (!canManageClient(user.role)) redirect("/profile?error=role");
+  if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
 
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
@@ -143,7 +150,7 @@ export async function createCampaignAction(formData: FormData) {
 
 export async function joinCampaignAction(formData: FormData) {
   const user = await requireUser();
-  if (!canWork(user.role)) redirect("/profile?error=role");
+  if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const campaignId = String(formData.get("campaignId"));
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
 
@@ -228,6 +235,7 @@ export async function sendChatMessageAction(formData: FormData) {
 
 export async function submitClipAction(formData: FormData) {
   const user = await requireUser();
+  if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const submissionId = String(formData.get("submissionId"));
   const postUrl = String(formData.get("postUrl") || "").trim();
   const platformInput = String(formData.get("platform") || "TIKTOK");
@@ -397,6 +405,7 @@ export async function toggleCampaignReactionAction(campaignId: string, kind: "LI
 
 export async function depositAction(formData: FormData) {
   const user = await requireUser();
+  if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/wallet");
   const amountCents = parseRubToCents(formData.get("amount"));
   if (amountCents <= 0) redirect("/wallet?error=amount");
   const provider = String(formData.get("provider") || "yookassa") as "yookassa" | "stripe";
@@ -423,6 +432,7 @@ export async function depositAction(formData: FormData) {
 
 export async function withdrawAction(formData: FormData) {
   const user = await requireUser();
+  if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/wallet");
   const amountCents = parseRubToCents(formData.get("amount"));
   if (amountCents <= 0) redirect("/wallet?error=amount");
 
@@ -458,7 +468,7 @@ export async function syncViewsAction() {
 export async function sendCollabInviteAction(formData: FormData) {
   const user = await requireUser();
   const handle = String(formData.get("handle") || "");
-  if (!canManageClient(user.role)) redirect(`/clippers/${handle}?error=role`);
+  if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
   const workerId = String(formData.get("workerId") || "");
   const message = String(formData.get("message") || "").trim().slice(0, 600);
   if (!workerId || workerId === user.id || message.length < 3) redirect(`/clippers/${handle}?error=invite`);
@@ -488,6 +498,7 @@ export async function sendCollabInviteAction(formData: FormData) {
 
 export async function respondCollabInviteAction(formData: FormData) {
   const user = await requireUser();
+  if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const inviteId = String(formData.get("inviteId") || "");
   const accept = String(formData.get("decision") || "") === "accept";
 
@@ -517,7 +528,7 @@ export async function respondCollabInviteAction(formData: FormData) {
 export async function endorseClipperAction(formData: FormData) {
   const user = await requireUser();
   const handle = String(formData.get("handle") || "");
-  if (!canManageClient(user.role)) redirect(`/clippers/${handle}?error=role`);
+  if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
   const workerId = String(formData.get("workerId") || "");
   const note = String(formData.get("note") || "").trim().slice(0, 200) || null;
   if (!workerId || workerId === user.id) redirect(`/clippers/${handle}`);

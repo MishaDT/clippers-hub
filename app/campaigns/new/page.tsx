@@ -1,5 +1,7 @@
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
+import { getActiveRoleMode } from "@/lib/role-mode";
+import { redirect } from "next/navigation";
 import { CampaignForm } from "./campaign-form";
 
 export default async function NewCampaignPage({
@@ -8,7 +10,8 @@ export default async function NewCampaignPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  await requireUser();
+  const user = await requireUser();
+  if (await getActiveRoleMode(user) !== "client") redirect("/campaigns");
 
   return (
     <AppShell hideBottomNav>

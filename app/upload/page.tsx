@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expectedPayout, rub } from "@/lib/money";
+import { getActiveRoleMode } from "@/lib/role-mode";
 import { UploadForm } from "./upload-form";
 
 function parseRules(value: string) {
@@ -20,6 +22,7 @@ export default async function UploadPage({
 }) {
   const params = await searchParams;
   const user = await requireUser();
+  if (await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const submissions = await prisma.submission.findMany({
     where: { workerId: user.id },
     include: { campaign: true },

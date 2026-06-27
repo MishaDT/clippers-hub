@@ -16,6 +16,7 @@ import { buildSafePreview } from "@/lib/chat-safety";
 import { parseJson } from "@/lib/json";
 import { compactNumber } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,7 @@ export default async function ChatsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireUser();
+  const mode = await getActiveRoleMode(user);
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
   const status = params.status === "active" || params.status === "done" ? params.status : "all";
@@ -81,7 +83,7 @@ export default async function ChatsPage({
 
   const where: Prisma.ChatThreadWhereInput = {
     AND: [
-      { OR: [{ clientId: user.id }, { workerId: user.id }] },
+      mode === "client" ? { clientId: user.id } : { workerId: user.id },
       ...(query ? [{
         OR: [
           { campaign: { title: { contains: query, mode: "insensitive" as const } } },
@@ -114,7 +116,7 @@ export default async function ChatsPage({
     ? prisma.chatThread.findFirst({
         where: {
           id: requestedThreadId,
-          OR: [{ clientId: user.id }, { workerId: user.id }]
+          ...(mode === "client" ? { clientId: user.id } : { workerId: user.id })
         },
         include: {
           campaign: { select: { id: true, title: true, viewThreshold: true } },
@@ -139,7 +141,7 @@ export default async function ChatsPage({
   const selectedThreadId = requestedThreadId;
 
   const selectedPeer = selectedThread
-    ? selectedThread.clientId === user.id ? selectedThread.worker : selectedThread.client
+    ? mode === "client" ? selectedThread.worker : selectedThread.client
     : null;
   const selectedStatus = selectedThread?.submission?.status;
   const progressSteps = [
@@ -174,7 +176,7 @@ export default async function ChatsPage({
 
           <div className="chat-thread-list">
             {threads.map((thread) => {
-              const peer = thread.clientId === user.id ? thread.worker : thread.client;
+              const peer = mode === "client" ? thread.worker : thread.client;
               const last = thread.messages[0];
               const current = thread.id === selectedThreadId;
               const isSystem = last?.type === "SYSTEM";
@@ -219,8 +221,8 @@ export default async function ChatsPage({
             <div className="chat-empty-list">
               <MessageCircle size={28} />
               <h2>{query ? "Ничего не найдено" : "Чатов пока нет"}</h2>
-              <p>{query ? "Попробуйте другое имя или название заказа." : "Чат появится после отклика на заказ."}</p>
-              {query ? <Link href="/chats">Сбросить поиск</Link> : <Link href="/campaigns">Найти заказ</Link>}
+              <p>{query ? "Попробуйте другое имя или название заказа." : mode === "client" ? "Чат появится, когда исполнитель возьмёт вашу кампанию." : "Чат появится после отклика на заказ."}</p>
+              {query ? <Link href="/chats">Сбросить поиск</Link> : <Link href="/campaigns">{mode === "client" ? "Открыть кампании" : "Найти заказ"}</Link>}
             </div>
           ) : null}
         </aside>
@@ -266,7 +268,7 @@ export default async function ChatsPage({
             <div className="chat-empty-conversation">
               {totalThreads ? <CircleDashed size={34} /> : <BriefcaseBusiness size={34} />}
               <h2>{totalThreads ? "Выберите диалог" : "Здесь будут рабочие чаты"}</h2>
-              <p>{totalThreads ? "Откройте нужный чат слева." : "Возьмите заказ или дождитесь исполнителя, чтобы начать переписку."}</p>
+              <p>{totalThreads ? "Откройте нужный чат слева." : mode === "client" ? "После первого отклика здесь появится диалог с исполнителем." : "Возьмите заказ, чтобы начать переписку с заказчиком."}</p>
               <Link className="btn btn-primary" href="/campaigns"><ArrowLeft size={17} /> К заказам</Link>
             </div>
           )}

@@ -21,6 +21,7 @@ import {
 import { AppShell } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getActiveRoleMode } from "@/lib/role-mode";
 import { compactNumber, rub } from "@/lib/money";
 
 const ACTIVE_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
@@ -150,7 +151,88 @@ function shortText(text: string, limit = 128) {
   return text.length > limit ? `${text.slice(0, limit).trim()}…` : text;
 }
 
+async function ClientCampaignsView({ userId }: { userId: string }) {
+  const campaigns = await prisma.campaign.findMany({
+    where: { ownerId: userId },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      remainingBudgetCents: true
+    },
+    orderBy: { createdAt: "desc" },
+    take: 30
+  });
+  const submissionStats = campaigns.length ? await prisma.submission.groupBy({
+    by: ["campaignId"],
+    where: { campaignId: { in: campaigns.map((campaign) => campaign.id) } },
+    _sum: { currentViews: true },
+    _count: { _all: true }
+  }) : [];
+  const statsByCampaign = new Map(submissionStats.map((stats) => [stats.campaignId, stats]));
+  const totalViews = submissionStats.reduce((sum, stats) => sum + (stats._sum.currentViews || 0), 0);
+  const totalClips = submissionStats.reduce((sum, stats) => sum + stats._count._all, 0);
+  const activeCount = campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET"].includes(campaign.status)).length;
+
+  return (
+    <AppShell>
+      <section className="section market-screen client-campaigns">
+        <div className="market-head">
+          <div>
+            <span className="eyebrow">Работа заказчика</span>
+            <h1>Мои кампании</h1>
+            <p>Здесь только ваши заказы, полученные ролики и оставшийся бюджет.</p>
+          </div>
+          <Link className="market-create" href="/campaigns/new">
+            Создать кампанию <ArrowUpRight size={18} />
+          </Link>
+        </div>
+
+        <div className="market-stats">
+          <span><b>{activeCount}</b> активных</span>
+          <span><b>{compactNumber(totalViews)}</b> просмотров</span>
+          <span><b>{totalClips}</b> роликов</span>
+        </div>
+
+        {campaigns.length ? (
+          <div className="client-campaign-list">
+            {campaigns.map((campaign) => {
+              const stats = statsByCampaign.get(campaign.id);
+              const views = stats?._sum.currentViews || 0;
+              const clips = stats?._count._all || 0;
+              return (
+                <Link className="client-campaign-row" href={`/campaigns/${campaign.id}`} key={campaign.id}>
+                  <div>
+                    <strong>{campaign.title}</strong>
+                    <span>{campaign.status === "ACTIVE" ? "Активна" : campaign.status === "LOW_BUDGET" ? "Заканчивается бюджет" : "Не активна"}</span>
+                  </div>
+                  <span><b>{clips}</b> роликов</span>
+                  <span><b>{compactNumber(views)}</b> просмотров</span>
+                  <span><b>{rub(campaign.remainingBudgetCents)}</b> осталось</span>
+                  <ArrowRight size={18} />
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="lb-empty">
+            <BriefcaseBusiness size={30} />
+            <b>Кампаний пока нет</b>
+            <p>Создайте первый заказ, добавьте исходное видео и укажите оплату за результат.</p>
+            <Link className="btn btn-primary" href="/campaigns/new">Создать кампанию</Link>
+          </div>
+        )}
+      </section>
+    </AppShell>
+  );
+}
+
 export default async function CampaignsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const user = await getCurrentUser();
+  if (user && await getActiveRoleMode(user) === "client") {
+    return <ClientCampaignsView userId={user.id} />;
+  }
+
   const params = await searchParams;
   const query = normalize(params.q).toLowerCase();
   const category = normalize(params.category) || "all";
@@ -223,9 +305,6 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
             <h1>Найди ролик, который сможешь сделать сегодня</h1>
             <p>Заказчик ставит цель по просмотрам, ты делаешь короткое видео и получаешь оплату после проверки результата.</p>
           </div>
-          <Link className="market-create" href="/campaigns/new">
-            Создать заказ <ArrowUpRight size={18} />
-          </Link>
         </div>
 
         <div className="market-stats" aria-label="Статистика заказов">

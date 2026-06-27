@@ -2,6 +2,8 @@ import { unstable_cache } from "next/cache";
 import { AppShell } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { FeedClient } from "./feed-client";
+import { getCurrentUser } from "@/lib/auth";
+import { getActiveRoleMode } from "@/lib/role-mode";
 
 const images = [
   "/assets/gaming-order.png",
@@ -49,11 +51,12 @@ const getFeedCampaigns = unstable_cache(
 );
 
 export default async function FeedPage() {
-  const campaigns = await getFeedCampaigns();
+  const [campaigns, user] = await Promise.all([getFeedCampaigns(), getCurrentUser()]);
+  const mode = user ? await getActiveRoleMode(user) : "worker";
 
   return (
     <AppShell immersive>
-      <FeedClient campaigns={campaigns} />
+      <FeedClient campaigns={campaigns} mode={mode} />
     </AppShell>
   );
 }
