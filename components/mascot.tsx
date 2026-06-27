@@ -45,7 +45,7 @@ export function Mascot() {
   const [open, setOpen] = useState(false);
   const [tip, setTip] = useState(0);
 
-  const blocked = pathname === "/login" || pathname === "/register";
+  const blocked = pathname === "/login" || pathname === "/register" || pathname === "/chats";
   const quietPage = /^\/campaigns\/[^/]+$/.test(pathname);
 
   useEffect(() => {

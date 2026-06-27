@@ -192,7 +192,7 @@ export async function sendChatMessageAction(formData: FormData) {
     },
     select: { id: true, campaignId: true }
   });
-  if (!thread) return { ok: false, error: "forbidden" };
+  if (!thread) return { ok: false, error: "Чат не найден или у вас нет доступа" };
 
   await prisma.chatMessage.create({
     data: {
@@ -205,6 +205,7 @@ export async function sendChatMessageAction(formData: FormData) {
   });
   await prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: new Date() } });
   revalidatePath(`/campaigns/${thread.campaignId}`);
+  revalidatePath("/chats");
   return { ok: true };
 }
 
