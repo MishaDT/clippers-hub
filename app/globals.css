@@ -9056,3 +9056,100 @@ a.social-btn:hover {
     display: inline;
   }
 }
+
+/* PASS 31 - one-row mobile podium and particle flame */
+@media (max-width: 760px) {
+  .leaderboard-hero {
+    padding: 88px 7px 12px;
+  }
+  .podium {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    align-items: end;
+  }
+  .podium-card--first {
+    grid-column: auto;
+    order: initial;
+    --podium-h: 222px;
+    min-height: 222px;
+    padding: 78px 5px 11px;
+  }
+  .podium-card--second {
+    --podium-h: 180px;
+    min-height: 180px;
+    padding: 57px 4px 9px;
+  }
+  .podium-card--third {
+    --podium-h: 170px;
+    min-height: 170px;
+    padding: 54px 4px 9px;
+  }
+  .podium-card--first .podium-avatar {
+    top: -42px;
+  }
+  .podium-avatar {
+    top: -31px;
+  }
+  .podium-avatar img {
+    width: 56px;
+    height: 56px;
+    box-shadow: 0 0 0 3px rgba(4,6,4,.78), 0 9px 20px rgba(0,0,0,.42);
+  }
+  .podium-card--first .podium-avatar img {
+    width: 72px;
+    height: 72px;
+  }
+  .podium-flame-canvas {
+    width: 112px;
+    height: 132px;
+  }
+  .podium-card--first .podium-flame-canvas {
+    width: 146px;
+    height: 168px;
+  }
+  .podium-crown {
+    top: -76px;
+    width: 28px;
+    height: 28px;
+  }
+  .podium-crown svg {
+    width: 27px;
+    height: 27px;
+  }
+  .podium .league-badge {
+    display: none;
+  }
+  .podium-rank,
+  .podium-card--first .podium-rank {
+    width: 29px;
+    height: 29px;
+    border-radius: 9px;
+    font-size: 13px;
+  }
+  .podium-card--first .podium-rank {
+    width: 33px;
+    height: 33px;
+    font-size: 15px;
+  }
+  .podium-name strong {
+    max-width: 100%;
+    font-size: 11px;
+  }
+  .podium-views b,
+  .podium-card--first .podium-views b {
+    font-size: 18px;
+  }
+  .podium-card--first .podium-views b {
+    font-size: 22px;
+  }
+  .podium-views span {
+    font-size: 9px;
+  }
+  .podium-clips {
+    font-size: 9px;
+  }
+  .podium-card--second .podium-clips,
+  .podium-card--third .podium-clips {
+    display: none;
+  }
+}

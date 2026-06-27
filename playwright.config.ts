@@ -8,11 +8,11 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure"
   },
-  webServer: {
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: "powershell -NoProfile -ExecutionPolicy Bypass -File .\\node_modules\\.bin\\next.ps1 dev --hostname 127.0.0.1 --port 3000",
     url: "http://localhost:3000",
     reuseExistingServer: true,
