@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ClipboardList, DatabaseZap, ShieldAlert, SlidersHorizontal, UsersRound, WalletCards } from "lucide-react";
+import { BarChart3, ClipboardList, DatabaseZap, Headphones, ShieldAlert, SlidersHorizontal, UsersRound, WalletCards } from "lucide-react";
 import { clsx } from "clsx";
+import { formatBadgeCount } from "@/components/app-nav";
+import styles from "@/components/app-nav.module.css";
 
 const items = [
   { href: "/admin", label: "Обзор", hint: "Главные цифры", icon: BarChart3 },
@@ -12,6 +14,7 @@ const items = [
   { href: "/admin/content", label: "Контент", hint: "Заказы и работы", icon: DatabaseZap },
   { href: "/admin/finance", label: "Финансы", hint: "Платежи и выводы", icon: WalletCards },
   { href: "/admin/security", label: "Безопасность", hint: "Риски и контроль", icon: ShieldAlert },
+  { href: "/admin/support", label: "Поддержка", hint: "Обращения пользователей", icon: Headphones },
   { href: "/admin/settings", label: "Настройки", hint: "Интеграции", icon: SlidersHorizontal }
 ];
 
@@ -20,7 +23,7 @@ function active(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AdminNav() {
+export function AdminNav({ supportUnread = 0 }: { supportUnread?: number }) {
   const pathname = usePathname();
 
   return (
@@ -31,12 +34,13 @@ export function AdminNav() {
       </div>
       <nav className="admin-menu">
         {items.map(({ href, label, hint, icon: Icon }) => (
-          <Link className={clsx(active(pathname, href) && "active")} href={href} key={href}>
+          <Link className={clsx(styles.link, active(pathname, href) && "active")} href={href} key={href}>
             <Icon size={18} />
             <span>
               <b>{label}</b>
               <small>{hint}</small>
             </span>
+            {href === "/admin/support" && supportUnread ? <i className={styles.badge}>{formatBadgeCount(supportUnread)}</i> : null}
           </Link>
         ))}
       </nav>

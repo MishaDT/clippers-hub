@@ -1,0 +1,136 @@
+.page {
+  width: min(880px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0 20px;
+}
+
+.hero {
+  max-width: 760px;
+  margin-bottom: 36px;
+}
+
+.hero h1 {
+  max-width: 720px;
+  margin: 10px 0 14px;
+  font-size: clamp(34px, 6vw, 64px);
+  line-height: 1.02;
+}
+
+.hero p,
+.section p,
+.section li,
+.faq p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.hero p {
+  max-width: 680px;
+  font-size: 18px;
+}
+
+.section,
+.faq {
+  margin: 18px 0;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.section h2 {
+  margin: 0 0 14px;
+  font-size: 24px;
+}
+
+.section ul {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.steps > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 170px;
+  padding: 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+}
+
+.steps svg {
+  color: var(--primary-2);
+}
+
+.steps p {
+  margin: 0;
+}
+
+.faq {
+  display: grid;
+  gap: 8px;
+}
+
+.faq details {
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.faq details:last-child {
+  border-bottom: 0;
+}
+
+.faq summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.faq p {
+  margin: 12px 0 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+@media (max-width: 700px) {
+  .page {
+    width: min(100% - 24px, 880px);
+    padding-top: 28px;
+  }
+
+  .hero {
+    margin-bottom: 22px;
+  }
+
+  .hero h1 {
+    font-size: 38px;
+  }
+
+  .hero p {
+    font-size: 16px;
+  }
+
+  .section,
+  .faq {
+    padding: 18px;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+  }
+
+  .steps > div {
+    min-height: 0;
+  }
+}

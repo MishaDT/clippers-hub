@@ -11,11 +11,11 @@ import {
   Handshake,
   Home,
   MessageCircle,
-  PlaySquare,
   Trophy,
   UserRound,
   WalletCards
 } from "lucide-react";
+import styles from "@/components/app-nav.module.css";
 type RoleMode = "worker" | "client";
 
 const workerItems = [
@@ -28,7 +28,7 @@ const workerItems = [
 
 const clientItems = [
   { href: "/campaigns", label: "Кампании", icon: BriefcaseBusiness },
-  { href: "/feed", label: "Ролики", icon: PlaySquare },
+  { href: "/leaderboard", label: "Исполнители", icon: Trophy },
   { href: "/campaigns/new", label: "Создать", icon: CirclePlus, primary: true },
   { href: "/chats", label: "Чаты", icon: MessageCircle },
   { href: "/profile", label: "Профиль", icon: UserRound }
@@ -40,7 +40,6 @@ function desktopItems(mode: RoleMode) {
     items[0],
     ...(mode === "client"
       ? [
-          { href: "/feed", label: "Ролики", icon: PlaySquare },
           { href: "/leaderboard", label: "Исполнители", icon: Trophy }
         ]
       : [
@@ -59,22 +58,31 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function DesktopNav({ mode }: { mode: RoleMode }) {
+export function formatBadgeCount(value: number) {
+  if (value <= 0) return "";
+  if (value <= 99) return String(value);
+  if (value < 1000) return "99+";
+  if (value < 10_000) return `${(value / 1000).toFixed(1).replace(".0", "")}K`;
+  return "9.9K+";
+}
+
+export function DesktopNav({ mode, unreadChats = 0 }: { mode: RoleMode; unreadChats?: number }) {
   const pathname = usePathname();
 
   return (
     <nav className="top-nav" aria-label="Навигация">
       {desktopItems(mode).map(({ href, label, icon: Icon }) => (
-        <Link className={clsx(isActive(pathname, href) && "active")} href={href} key={href}>
+        <Link className={clsx(styles.link, isActive(pathname, href) && "active")} href={href} key={href}>
           <Icon size={16} />
           {label}
+          {href === "/chats" && unreadChats ? <span className={styles.badge}>{formatBadgeCount(unreadChats)}</span> : null}
         </Link>
       ))}
     </nav>
   );
 }
 
-export function BottomNav({ mode }: { mode: RoleMode }) {
+export function BottomNav({ mode, unreadChats = 0 }: { mode: RoleMode; unreadChats?: number }) {
   const pathname = usePathname();
   const [pending, setPending] = useState<string | null>(null);
   const items = mode === "client" ? clientItems : workerItems;
@@ -95,7 +103,7 @@ export function BottomNav({ mode }: { mode: RoleMode }) {
       <span className="bottom-nav-indicator" aria-hidden="true" />
       {items.map(({ href, label, icon: Icon, primary }) => (
         <Link
-          className={clsx(primary && "primary", currentHref === href && "active")}
+          className={clsx(styles.link, primary && "primary", currentHref === href && "active")}
           href={href}
           key={href}
           aria-label={label}
@@ -104,6 +112,7 @@ export function BottomNav({ mode }: { mode: RoleMode }) {
         >
           <Icon size={primary ? 27 : 24} strokeWidth={2} />
           <span className="nav-label">{label}</span>
+          {href === "/chats" && unreadChats ? <span className={styles.badge}>{formatBadgeCount(unreadChats)}</span> : null}
         </Link>
       ))}
     </nav>

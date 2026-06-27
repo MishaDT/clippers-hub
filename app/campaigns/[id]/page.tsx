@@ -52,6 +52,16 @@ function submissionStatus(status?: string) {
   return labels[status || ""] || "Работа еще не начата";
 }
 
+function videoCheckStatus(status?: string) {
+  const labels: Record<string, string> = {
+    PENDING: "Ожидает",
+    NEEDS_REVIEW: "Проверяется",
+    PASSED: "Пройдено",
+    FAILED: "Не пройдено"
+  };
+  return labels[status || ""] || "Не запускалась";
+}
+
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const currentUser = await getCurrentUser();
@@ -189,8 +199,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                 </form>
               )}
 
-              <small><ShieldCheck size={14} /> Выплата после проверки цели и fraud-score.</small>
-              <small><Clock3 size={14} /> Просмотры обновляются синхронизацией.</small>
+              <small><ShieldCheck size={14} /> {mode === "client" ? "Оплата списывается только после проверки просмотров." : "Выплата начисляется после проверки просмотров."}</small>
+              <small><Clock3 size={14} /> Статистика обновляется автоматически.</small>
             </div>
           </aside>
         </div>
@@ -212,8 +222,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
             <div className="workspace-stats">
               <span><b>{compactNumber(submission.currentViews)}</b><em>просмотры</em></span>
               <span><b>{compactNumber(submission.currentLikes)}</b><em>лайки</em></span>
-              <span><b>{submission.fraudScore}%</b><em>риск</em></span>
-              <span><b>{videoCheck ? videoCheck.status : "нет"}</b><em>watermark</em></span>
+              <span><b>{submission.fraudScore}%</b><em>риск проверки</em></span>
+              <span><b>{videoCheckStatus(videoCheck?.status)}</b><em>watermark</em></span>
             </div>
           </section>
         ) : null}

@@ -214,20 +214,40 @@ export async function sendChatMessageAction(formData: FormData) {
       id: threadId,
       OR: [{ clientId: user.id }, { workerId: user.id }]
     },
-    select: { id: true, campaignId: true }
+    select: { id: true, campaignId: true, clientId: true, workerId: true }
   });
   if (!thread) return { ok: false, error: "Чат не найден или у вас нет доступа" };
 
-  await prisma.chatMessage.create({
-    data: {
-      threadId,
-      senderId: user.id,
-      type: "TEXT",
-      body: checked.body,
-      metadataJson: stringify({ urls: checked.urls })
-    }
-  });
-  await prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: new Date() } });
+  const recipientId = thread.clientId === user.id ? thread.workerId : thread.clientId;
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.chatMessage.create({
+      data: {
+        threadId,
+        senderId: user.id,
+        type: "TEXT",
+        body: checked.body,
+        metadataJson: stringify({ urls: checked.urls })
+      }
+    }),
+    prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: now } }),
+    prisma.chatReadState.upsert({
+      where: { threadId_userId: { threadId, userId: user.id } },
+      create: { threadId, userId: user.id, lastReadAt: now },
+      update: { lastReadAt: now }
+    }),
+    prisma.notification.create({
+      data: {
+        userId: recipientId,
+        title: "Новое сообщение",
+        body: checked.body.slice(0, 120),
+        channel: "IN_APP",
+        priority: "NORMAL",
+        kind: "CHAT",
+        href: `/chats?thread=${threadId}`
+      }
+    })
+  ]);
   revalidatePath(`/campaigns/${thread.campaignId}`);
   revalidatePath("/chats");
   return { ok: true };

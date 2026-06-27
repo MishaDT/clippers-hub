@@ -42,7 +42,7 @@ export function UploadForm({ orders }: { orders: Order[] }) {
             <option key={order.id} value={order.id}>{order.title}</option>
           ))}
         </select>
-        {selected ? <small className="uf-hint">Оплата до {selected.payout} · код {selected.trackingCode}</small> : null}
+        {selected ? <small className="uf-hint">Оплата до {selected.payout} · код заказа {selected.trackingCode}</small> : null}
       </div>
 
       <div className="uf-field">
@@ -67,7 +67,7 @@ export function UploadForm({ orders }: { orders: Order[] }) {
 
       <div className="uf-note">
         <ShieldCheck size={18} />
-        <span>Добавь код <b>{selected?.trackingCode}</b> в описание ролика. Мы проверяем его через API площадки — без кода в описании выплата не начисляется (так подтверждается, что клип твой).</span>
+        <span>Добавь код <b>{selected?.trackingCode}</b> в описание ролика. По нему система подтвердит, что публикация принадлежит тебе.</span>
       </div>
 
       {selected?.requiredTags.length ? (
@@ -83,7 +83,7 @@ export function UploadForm({ orders }: { orders: Order[] }) {
             <img src="/watermark/reelpay-watermark.svg" alt="ReelPay watermark" />
           </div>
           <div>
-            <strong>Watermark ReelPay</strong>
+            <strong>Логотип ReelPay</strong>
             <span>Скачай SVG, добавь в CapCut поверх видео: нижний правый угол, 12-18% ширины, прозрачность 80-90%.</span>
             <a className="btn" href="/watermark/reelpay-watermark.svg" download><Download size={16} /> Скачать watermark</a>
           </div>
@@ -92,7 +92,7 @@ export function UploadForm({ orders }: { orders: Order[] }) {
 
       <label className="uf-checkbox">
         <input type="checkbox" name="watermarkConfirmed" required={Boolean(selected?.watermarkRequired)} />
-        <span>{selected?.watermarkRequired ? "Я добавил watermark ReelPay и tracking-code в описание" : "Я добавил tracking-code в описание ролика"}</span>
+        <span>{selected?.watermarkRequired ? "Я добавил логотип ReelPay и код заказа в описание" : "Я добавил код заказа в описание ролика"}</span>
       </label>
 
       <button className="btn btn-primary uf-submit" type="submit">

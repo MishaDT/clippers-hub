@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import type { ComponentType } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -9,16 +8,13 @@ import {
   Clock3,
   Eye,
   Flame,
-  Gamepad2,
-  Laugh,
-  Search,
-  SlidersHorizontal,
   Sparkles,
   Trophy,
-  Tv,
   Users
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
+import { CampaignFilters } from "./campaign-filters";
+import { CampaignGuide } from "./campaign-guide";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
@@ -66,21 +62,6 @@ async function loadActiveOrder() {
 }
 
 export const revalidate = 30;
-
-const categories: Array<[string, string, ComponentType<{ size?: number }>]> = [
-  ["all", "Все", Sparkles],
-  ["streams", "Стримы", Tv],
-  ["humor", "Юмор", Laugh],
-  ["games", "Игры", Gamepad2],
-  ["business", "Бизнес", BriefcaseBusiness]
-];
-
-const difficulties = ["Любая", "Лёгкая", "Средняя", "Сложная"] as const;
-const sorts: Array<[string, string]> = [
-  ["featured", "Новые"],
-  ["pay", "Оплата"],
-  ["deadline", "Срок"]
-];
 
 const getCampaigns = unstable_cache(
   async () =>
@@ -299,6 +280,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           </Link>
         ) : null}
 
+        <CampaignGuide />
+
         <div className="market-head">
           <div>
             <span className="eyebrow">Биржа заказов</span>
@@ -317,43 +300,13 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           <Link href="/leaderboard"><Trophy size={16} /> Доска лидеров недели</Link>
         </nav>
 
-        <form className="market-search" action="/campaigns">
-          <label>
-            <Search size={20} />
-            <input name="q" defaultValue={query} placeholder="Поиск по заказам, авторам, нишам" />
-          </label>
-          <button type="submit"><SlidersHorizontal size={18} /> Найти</button>
-          {category !== "all" ? <input type="hidden" name="category" value={category} /> : null}
-          {sort !== "featured" ? <input type="hidden" name="sort" value={sort} /> : null}
-          {difficulty !== "Любая" ? <input type="hidden" name="difficulty" value={difficulty} /> : null}
-        </form>
-
-        <nav className="market-tabs" aria-label="Категории заказов">
-          {categories.map(([key, label, Icon]) => (
-            <Link className={category === key ? "active" : ""} href={makeHref({ category: key === "all" ? "" : key, page: "" })} key={key}>
-              <Icon size={16} /> {label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="market-tools">
-          <div>
-            <span>Сложность</span>
-            {difficulties.map((item) => (
-              <Link className={difficulty === item ? "active" : ""} href={makeHref({ difficulty: item === "Любая" ? "" : item, page: "" })} key={item}>
-                {item}
-              </Link>
-            ))}
-          </div>
-          <div>
-            <span>Сортировка</span>
-            {sorts.map(([key, label]) => (
-              <Link className={sort === key ? "active" : ""} href={makeHref({ sort: key === "featured" ? "" : key, page: "" })} key={key}>
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
+        <CampaignFilters
+          query={query}
+          category={category}
+          difficulty={difficulty}
+          sort={sort}
+          resultCount={filtered.length}
+        />
 
         <div className="market-list">
           {campaigns.map((campaign) => {
@@ -368,7 +321,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                     <h2>{campaign.title}</h2>
                     {campaign.visibility === "FEATURED" ? <span><Flame size={14} /> Топ</span> : null}
                   </div>
-                  <p>{shortText(campaign.description)}</p>
+                  <p>{shortText(campaign.description, 112)}</p>
                   <div className="order-tags">
                     <span>{campaign.niche || "Видео"}</span>
                     <span>{campaign.owner.name}</span>
@@ -376,11 +329,11 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                   </div>
                 </div>
                 <div className="order-side">
-                  <strong>{rub(payout)}</strong>
-                  <span><Eye size={15} /> {compactNumber(campaign.viewThreshold)}</span>
-                  <span><Clock3 size={15} /> {daysLeft} дн.</span>
-                  <span><Users size={15} /> {campaign._count.submissions}</span>
-                  <em>Открыть</em>
+                  <strong>{rub(payout)} <small>за результат</small></strong>
+                  <span><Eye size={15} /> <b>{compactNumber(campaign.viewThreshold)}</b> просмотров</span>
+                  <span><Clock3 size={15} /> <b>{daysLeft}</b> дн.</span>
+                  <span><Users size={15} /> <b>{campaign._count.submissions}</b> работ</span>
+                  <em>Подробнее <ArrowRight size={15} /></em>
                 </div>
               </Link>
             );

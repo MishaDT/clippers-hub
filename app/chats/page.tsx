@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   CircleDashed,
   MessageCircle,
+  Headphones,
 } from "lucide-react";
 import type { Prisma, SubmissionStatus } from "@prisma/client";
 import { CampaignChat } from "@/components/campaign-chat";
@@ -162,6 +163,10 @@ export default async function ChatsPage({
             </div>
             <b>{totalThreads}</b>
           </div>
+
+          <Link className="btn btn-ghost btn-small" href="/support">
+            <Headphones size={16} /> Поддержка ReelPay
+          </Link>
 
           <ChatSearchForm initialValue={query} status={status} />
 

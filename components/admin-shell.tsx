@@ -1,14 +1,16 @@
 import { AppShell } from "@/components/ui";
 import { AdminNav } from "@/components/admin-nav";
 import { requireAdmin } from "@/lib/admin";
+import { getAdminSupportUnread } from "@/lib/unread";
 
 export async function AdminShell({ children }: { children: React.ReactNode }) {
   await requireAdmin();
+  const supportUnread = await getAdminSupportUnread();
 
   return (
     <AppShell hideBottomNav>
       <section className="section admin-console">
-        <AdminNav />
+        <AdminNav supportUnread={supportUnread} />
         <div className="admin-workspace">{children}</div>
       </section>
     </AppShell>

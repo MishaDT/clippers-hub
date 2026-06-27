@@ -136,7 +136,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
                   <img src={campaign.ownerAvatar} alt="" />
                   <div className="reel-creator-meta">
                     <strong>{campaign.ownerName}</strong>
-                    <span>{compactNumber(campaign.views || 128000)} подписчиков</span>
+                    <span>{compactNumber(campaign.views)} просмотров в кампании</span>
                   </div>
                 </div>
                 <h2><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></h2>

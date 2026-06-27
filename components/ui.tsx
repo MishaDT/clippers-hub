@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import { clsx } from "clsx";
-import { Bell, BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
+import { BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
@@ -9,6 +10,9 @@ import { prisma } from "@/lib/prisma";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { getUnreadSummary } from "@/lib/unread";
+import { NotificationBell } from "@/components/notification-bell";
+import { ReadStateTracker } from "@/components/read-state-tracker";
 
 const loadAdminAlerts = unstable_cache(
   (userId: string) => prisma.notification.count({
@@ -32,9 +36,18 @@ export async function AppShell({
   const user = publicOnly ? null : await getCurrentUser();
   const isAdmin = canAccessAdmin(user);
   const mode = user ? await getActiveRoleMode(user) : "worker";
-  const adminAlerts = isAdmin && user
-    ? await loadAdminAlerts(user.id)
-    : 0;
+  const [adminAlerts, unread, notifications] = user
+    ? await Promise.all([
+        isAdmin ? loadAdminAlerts(user.id) : Promise.resolve(0),
+        getUnreadSummary(user.id),
+        prisma.notification.findMany({
+          where: { userId: user.id },
+          orderBy: { createdAt: "desc" },
+          take: 8,
+          select: { id: true, title: true, body: true, href: true, readAt: true, createdAt: true }
+        })
+      ])
+    : [0, { chats: 0, support: 0, chatBadge: 0, notifications: 0 }, []];
   const roleLabel = mode === "client" ? "Заказчик" : "Исполнитель";
 
   return (
@@ -43,17 +56,23 @@ export async function AppShell({
         <Link className="brand" href="/">
           <span className="brand-word">Reel<span>Pay</span></span>
         </Link>
-        {user ? <DesktopNav mode={mode} /> : null}
+        {user ? <DesktopNav mode={mode} unreadChats={unread.chatBadge} /> : null}
         <div className="top-actions">
           {user ? (
             <>
               {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span></Link> : null}
-              {isAdmin ? (
-                <Link className="role-pill admin-bell" href="/admin/security" aria-label="Модерация">
-                  <Bell size={16} />
-                  <span>{adminAlerts}</span>
-                </Link>
-              ) : null}
+              <NotificationBell
+                unread={unread.notifications}
+                items={notifications.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  body: item.body,
+                  href: item.href,
+                  read: Boolean(item.readAt),
+                  createdAt: item.createdAt.toLocaleString("ru-RU", { day: "2-digit", month: "short" })
+                }))}
+              />
+              {isAdmin && adminAlerts ? <Link className="role-pill admin-bell" href="/admin/security" aria-label="Важные события">{adminAlerts}</Link> : null}
               <Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>
               <form action={logoutAction}>
                 <button className="btn btn-small btn-ghost" type="submit">Выйти</button>
@@ -71,7 +90,8 @@ export async function AppShell({
         {children}
         {!immersive ? <SiteFooter /> : null}
       </main>
-      {user && !hideBottomNav ? <BottomNav mode={mode} /> : null}
+      {user ? <Suspense fallback={null}><ReadStateTracker /></Suspense> : null}
+      {user && !hideBottomNav ? <BottomNav mode={mode} unreadChats={unread.chatBadge} /> : null}
     </>
   );
 }
