@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowUpRight, CheckCircle2, ChevronDown, ChevronUp, Link2, Mic, RefreshCw, Send } from "lucide-react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { ArrowUpRight, CheckCircle2, ChevronDown, ChevronUp, Link2, RefreshCw, Send } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { sendChatMessageAction } from "@/app/actions";
 
@@ -29,19 +30,6 @@ type Progress = {
   steps: ProgressStep[];
 };
 
-declare global {
-  interface Window {
-    webkitSpeechRecognition?: new () => {
-      lang: string;
-      interimResults: boolean;
-      start: () => void;
-      stop: () => void;
-      onresult: ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
-      onend: (() => void) | null;
-    };
-  }
-}
-
 export function CampaignChat({
   threadId,
   currentUserId,
@@ -68,44 +56,27 @@ export function CampaignChat({
   const textRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
-  const [listening, setListening] = useState(false);
-  const [messageType, setMessageType] = useState<"TEXT" | "VOICE_TRANSCRIPT">("TEXT");
   const [body, setBody] = useState("");
   const [progressOpen, setProgressOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [visibleMessages, addOptimisticMessage] = useOptimistic(
+    messages,
+    (current, next: Message) => [...current, next]
+  );
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") router.refresh();
-    }, 15000);
+    }, 30000);
     return () => window.clearInterval(timer);
   }, [router]);
 
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    list.scrollTo({ top: list.scrollHeight, behavior: messages.length > 1 ? "smooth" : "auto" });
-  }, [messages.length]);
-
-  function startVoiceInput() {
-    const Recognition = window.webkitSpeechRecognition;
-    if (!Recognition) {
-      setError("Голосовой ввод не поддерживается этим браузером");
-      return;
-    }
-    const recognition = new Recognition();
-    recognition.lang = "ru-RU";
-    recognition.interimResults = false;
-    recognition.onresult = (event) => {
-      const text = event.results[0]?.[0]?.transcript || "";
-      setBody((value) => `${value} ${text}`.trim());
-      setMessageType("VOICE_TRANSCRIPT");
-    };
-    recognition.onend = () => setListening(false);
-    setListening(true);
-    recognition.start();
-  }
+    list.scrollTo({ top: list.scrollHeight, behavior: visibleMessages.length > 1 ? "smooth" : "auto" });
+  }, [visibleMessages.length]);
 
   return (
     <section className="chat-card-v2" id="chat">
@@ -132,10 +103,10 @@ export function CampaignChat({
       </div>
 
       {campaignTitle && campaignHref ? (
-        <a className="chat-order-link" href={campaignHref}>
+        <Link className="chat-order-link" href={campaignHref} prefetch>
           <span><small>Заказ</small><b>{campaignTitle}</b></span>
           <ArrowUpRight size={18} />
-        </a>
+        </Link>
       ) : null}
 
       {progress ? (
@@ -165,12 +136,12 @@ export function CampaignChat({
       ) : null}
 
       <div className="chat-list" ref={listRef} aria-live="polite">
-        {messages.map((message) => {
+        {visibleMessages.map((message) => {
           const mine = message.senderId === currentUserId;
           const system = message.type === "SYSTEM";
           return (
             <article className={`chat-bubble ${mine ? "mine" : ""} ${system ? "system" : ""}`} key={message.id}>
-              {!system ? <small>{message.type === "VOICE_TRANSCRIPT" ? "Голос в текст" : message.senderName} · {message.createdAt}</small> : null}
+              {!system ? <small>{message.senderName} · {message.createdAt}</small> : null}
               <p>{message.body}</p>
               {message.previews.map((preview) => (
                 <a className="safe-preview" href={preview.url} target="_blank" rel="noreferrer" key={preview.url}>
@@ -182,7 +153,7 @@ export function CampaignChat({
             </article>
           );
         })}
-        {!messages.length ? <p className="muted">Сообщений пока нет. Напиши уточнение по ролику или заказу.</p> : null}
+        {!visibleMessages.length ? <p className="muted">Сообщений пока нет. Напиши уточнение по ролику или заказу.</p> : null}
       </div>
 
       <form
@@ -191,6 +162,16 @@ export function CampaignChat({
         action={(formData) => {
           setError("");
           startTransition(async () => {
+            const optimisticBody = String(formData.get("body") || "").trim();
+            addOptimisticMessage({
+              id: `pending-${Date.now()}`,
+              senderId: currentUserId,
+              senderName: "Вы",
+              body: optimisticBody,
+              type: "TEXT",
+              createdAt: "сейчас",
+              previews: []
+            });
             const result = await sendChatMessageAction(formData);
             if (!result?.ok) {
               setError(result?.error || "Сообщение не отправлено");
@@ -198,22 +179,16 @@ export function CampaignChat({
             }
             formRef.current?.reset();
             setBody("");
-            setMessageType("TEXT");
-            router.refresh();
           });
         }}
       >
         <input type="hidden" name="threadId" value={threadId} />
-        <input type="hidden" name="messageType" value={messageType} />
         <textarea
           ref={textRef}
           name="body"
           rows={1}
           value={body}
-          onChange={(event) => {
-            setBody(event.target.value);
-            if (!event.target.value) setMessageType("TEXT");
-          }}
+          onChange={(event) => setBody(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
@@ -225,9 +200,6 @@ export function CampaignChat({
           required
         />
         <div className="chat-actions">
-          <button className={`chat-voice ${listening ? "active" : ""}`} type="button" onClick={startVoiceInput} aria-label="Голосовой ввод" title="Голосовой ввод">
-            <Mic size={19} />
-          </button>
           <button className="chat-send" type="submit" disabled={isPending || !body.trim()} aria-label="Отправить сообщение">
             {isPending ? <RefreshCw className="spin" size={19} /> : <Send size={19} />}
           </button>

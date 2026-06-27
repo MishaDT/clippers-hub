@@ -3711,8 +3711,6 @@ body::before {
 .chat-form { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
 .chat-form textarea { width: 100%; resize: vertical; min-height: 56px; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; background: rgba(255,255,255,.045); color: var(--text); padding: 12px; }
 .chat-actions { display: flex; justify-content: space-between; gap: 8px; }
-.chat-voice { min-height: 42px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(255,255,255,.055); color: var(--text); font-weight: 850; }
-.chat-voice.active { background: rgba(251,113,133,.18); color: #fecdd3; }
 .chat-error { margin: 0; color: #fecdd3; font-size: 13px; }
 
 @media (max-width: 760px) {
@@ -5247,6 +5245,10 @@ h1, .brand-word { font-weight: 850; }
   border-color: rgba(201,243,29,.45);
   background: rgba(255,255,255,.065);
 }
+.chat-search.pending svg {
+  animation: chat-spin .65s linear infinite;
+  color: #c9f31d;
+}
 .chat-search input {
   min-width: 0;
   width: 100%;
@@ -5276,6 +5278,22 @@ h1, .brand-word { font-weight: 850; }
 .chat-filters a.active {
   background: rgba(255,255,255,.09);
   color: var(--text);
+}
+.chat-filters a {
+  position: relative;
+}
+.chat-filters a i {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c9f31d;
+  animation: chat-pending-dot .7s ease-in-out infinite alternate;
+}
+@keyframes chat-pending-dot {
+  to { opacity: .25; transform: scale(.7); }
 }
 .chat-conversation {
   min-width: 0;
@@ -5659,7 +5677,6 @@ h1, .brand-word { font-weight: 850; }
   align-items: center;
   gap: 6px;
 }
-.chat-voice,
 .chat-send {
   width: 44px;
   height: 44px;
@@ -5679,11 +5696,6 @@ h1, .brand-word { font-weight: 850; }
 .chat-send:disabled {
   opacity: .35;
   cursor: default;
-}
-.chat-voice.active {
-  border-color: rgba(251,113,133,.35);
-  background: rgba(251,113,133,.16);
-  color: #fecdd3;
 }
 .chat-error {
   grid-column: 1 / -1;
@@ -5960,7 +5972,6 @@ h1, .brand-word { font-weight: 850; }
     min-height: 44px;
     padding: 11px 12px;
   }
-  .chat-voice,
   .chat-send {
     width: 42px;
     height: 42px;
@@ -8707,7 +8718,6 @@ a.social-btn:hover {
   min-height: 50px;
   padding: 14px 16px;
 }
-.chat-voice,
 .chat-send {
   width: 48px;
   height: 48px;
@@ -8774,7 +8784,6 @@ a.social-btn:hover {
     min-height: 46px;
     padding: 12px 14px;
   }
-  .chat-voice,
   .chat-send {
     width: 44px;
     height: 44px;

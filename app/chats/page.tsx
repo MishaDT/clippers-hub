@@ -5,10 +5,11 @@ import {
   ChevronLeft,
   CircleDashed,
   MessageCircle,
-  Search
 } from "lucide-react";
 import type { Prisma, SubmissionStatus } from "@prisma/client";
 import { CampaignChat } from "@/components/campaign-chat";
+import { ChatFilterNav } from "@/components/chat-filter-nav";
+import { ChatSearchForm } from "@/components/chat-search-form";
 import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -94,10 +95,8 @@ export default async function ChatsPage({
       ...(status === "done" ? [{ submission: { status: { in: finishedStatuses } } }] : [])
     ]
   };
-  const totalThreads = await prisma.chatThread.count({ where });
-  const totalPages = Math.max(1, Math.ceil(totalThreads / threadsPerPage));
-  const currentPage = Math.min(requestedPage, totalPages);
-  const threads = await prisma.chatThread.findMany({
+  const currentPage = requestedPage;
+  const threadsQuery = prisma.chatThread.findMany({
     where,
     include: {
       campaign: { select: { id: true, title: true, viewThreshold: true } },
@@ -111,11 +110,10 @@ export default async function ChatsPage({
     take: threadsPerPage
   });
 
-  const selectedThreadId = requestedThreadId || threads[0]?.id || "";
-  const selectedThread = selectedThreadId
-    ? await prisma.chatThread.findFirst({
+  const selectedThreadQuery = requestedThreadId
+    ? prisma.chatThread.findFirst({
         where: {
-          id: selectedThreadId,
+          id: requestedThreadId,
           OR: [{ clientId: user.id }, { workerId: user.id }]
         },
         include: {
@@ -126,11 +124,19 @@ export default async function ChatsPage({
           messages: {
             include: { sender: { select: { id: true, name: true } } },
             orderBy: { createdAt: "asc" },
-            take: 100
+            take: 60
           }
         }
       })
-    : null;
+    : Promise.resolve(null);
+
+  const [totalThreads, threads, selectedThread] = await Promise.all([
+    prisma.chatThread.count({ where }),
+    threadsQuery,
+    selectedThreadQuery
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalThreads / threadsPerPage));
+  const selectedThreadId = requestedThreadId;
 
   const selectedPeer = selectedThread
     ? selectedThread.clientId === user.id ? selectedThread.worker : selectedThread.client
@@ -155,17 +161,16 @@ export default async function ChatsPage({
             <b>{totalThreads}</b>
           </div>
 
-          <form className="chat-search" action="/chats">
-            <Search size={17} />
-            <input name="q" defaultValue={query} placeholder="Человек или заказ" aria-label="Поиск чатов" />
-            {status !== "all" ? <input type="hidden" name="status" value={status} /> : null}
-          </form>
+          <ChatSearchForm initialValue={query} status={status} />
 
-          <nav className="chat-filters" aria-label="Фильтр чатов">
-            <Link className={status === "all" ? "active" : ""} href={hrefWith({ q: query })}>Все</Link>
-            <Link className={status === "active" ? "active" : ""} href={hrefWith({ q: query, status: "active" })}>В работе</Link>
-            <Link className={status === "done" ? "active" : ""} href={hrefWith({ q: query, status: "done" })}>Завершены</Link>
-          </nav>
+          <ChatFilterNav
+            current={status}
+            links={{
+              all: hrefWith({ q: query }),
+              active: hrefWith({ q: query, status: "active" }),
+              done: hrefWith({ q: query, status: "done" })
+            }}
+          />
 
           <div className="chat-thread-list">
             {threads.map((thread) => {
@@ -179,6 +184,7 @@ export default async function ChatsPage({
                   href={hrefWith({ thread: thread.id, q: query, status, page: currentPage })}
                   key={thread.id}
                   aria-current={current ? "page" : undefined}
+                  prefetch
                 >
                   <img className="thread-avatar" src={avatarFor(peer.handle, peer.avatar)} alt="" loading="lazy" />
                   <span className="thread-main">
@@ -200,11 +206,11 @@ export default async function ChatsPage({
           {totalPages > 1 ? (
             <nav className="chat-pagination" aria-label="Страницы чатов">
               {currentPage > 1
-                ? <Link href={hrefWith({ q: query, status, page: currentPage - 1 })}>Назад</Link>
+                ? <Link prefetch href={hrefWith({ q: query, status, page: currentPage - 1 })}>Назад</Link>
                 : <span>Назад</span>}
               <b>{currentPage} / {totalPages}</b>
               {currentPage < totalPages
-                ? <Link href={hrefWith({ q: query, status, page: currentPage + 1 })}>Дальше</Link>
+                ? <Link prefetch href={hrefWith({ q: query, status, page: currentPage + 1 })}>Дальше</Link>
                 : <span>Дальше</span>}
             </nav>
           ) : null}

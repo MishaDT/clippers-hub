@@ -181,7 +181,6 @@ export async function joinCampaignAction(formData: FormData) {
 export async function sendChatMessageAction(formData: FormData) {
   const user = await requireUser();
   const threadId = String(formData.get("threadId") || "");
-  const messageType = String(formData.get("messageType") || "TEXT") === "VOICE_TRANSCRIPT" ? "VOICE_TRANSCRIPT" : "TEXT";
   const checked = validateChatMessage(String(formData.get("body") || ""));
   if (!threadId || !checked.ok) return { ok: false, error: checked.reasons[0] || "bad_message" };
 
@@ -198,7 +197,7 @@ export async function sendChatMessageAction(formData: FormData) {
     data: {
       threadId,
       senderId: user.id,
-      type: messageType,
+      type: "TEXT",
       body: checked.body,
       metadataJson: stringify({ urls: checked.urls })
     }
