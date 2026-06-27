@@ -2,19 +2,19 @@
 
 import { useEffect, useRef } from "react";
 
-type Flame = {
+type FlameTongue = {
   angle: number;
-  radius: number;
-  length: number;
+  height: number;
   width: number;
-  speed: number;
   phase: number;
+  speed: number;
+  lean: number;
 };
 
 const palettes = {
-  gold: { hot: "255, 247, 194", mid: "255, 216, 77", cold: "200, 255, 31" },
-  lime: { hot: "242, 255, 208", mid: "200, 255, 31", cold: "124, 255, 37" },
-  bronze: { hot: "255, 229, 173", mid: "231, 161, 70", cold: "200, 255, 31" }
+  gold: { core: "255, 250, 205", body: "255, 197, 46", edge: "255, 112, 20" },
+  lime: { core: "245, 255, 214", body: "190, 255, 38", edge: "75, 190, 35" },
+  bronze: { core: "255, 239, 197", body: "238, 152, 52", edge: "174, 72, 25" }
 };
 
 function rgba(rgb: string, alpha: number) {
@@ -29,101 +29,133 @@ export function PodiumFlameCanvas({ tone = "lime", jet = false }: { tone?: keyof
     if (!canvas) return;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
-    const canvasEl = canvas;
-    const context = ctx;
     const palette = palettes[tone];
-    const flameCount = jet ? 54 : 42;
-    const flames: Flame[] = Array.from({ length: flameCount }, (_, index) => ({
-      angle: (Math.PI * 2 * index) / flameCount + (Math.random() - 0.5) * 0.08,
-      radius: 36 + Math.random() * 7,
-      length: 8 + Math.random() * (jet ? 18 : 14),
-      width: 1.8 + Math.random() * 3.8,
-      speed: 0.012 + Math.random() * 0.018,
-      phase: Math.random() * Math.PI * 2
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const count = jet ? 22 : 17;
+    const tongues: FlameTongue[] = Array.from({ length: count }, (_, index) => ({
+      angle: (index + 0.5) / count + (Math.random() - 0.5) * 0.025,
+      height: 24 + Math.random() * (jet ? 36 : 26),
+      width: 5 + Math.random() * 7,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.00035 + Math.random() * 0.00028,
+      lean: (Math.random() - 0.5) * 10
     }));
     let raf = 0;
+    let lastFrame = 0;
+    let visible = true;
 
     function resize() {
-      const rect = canvasEl.getBoundingClientRect();
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvasEl.width = Math.max(1, Math.floor(rect.width * dpr));
-      canvasEl.height = Math.max(1, Math.floor(rect.height * dpr));
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(1.6, window.devicePixelRatio || 1);
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function tonguePath(
+      baseX: number,
+      baseY: number,
+      tipX: number,
+      tipY: number,
+      width: number,
+      bend: number
+    ) {
+      if (!ctx) return;
+      ctx.beginPath();
+      ctx.moveTo(baseX - width, baseY);
+      ctx.bezierCurveTo(
+        baseX - width * 1.2 + bend,
+        baseY - (baseY - tipY) * 0.38,
+        tipX - width * 0.35,
+        tipY + (baseY - tipY) * 0.2,
+        tipX,
+        tipY
+      );
+      ctx.bezierCurveTo(
+        tipX + width * 0.45,
+        tipY + (baseY - tipY) * 0.22,
+        baseX + width * 1.1 + bend,
+        baseY - (baseY - tipY) * 0.34,
+        baseX + width,
+        baseY
+      );
+      ctx.closePath();
     }
 
     function draw(time: number) {
-      const w = canvasEl.clientWidth;
-      const h = canvasEl.clientHeight;
-      const cx = w / 2;
-      const cy = h * (jet ? 0.58 : 0.55);
-      context.clearRect(0, 0, w, h);
-      context.save();
-      context.globalCompositeOperation = "lighter";
+      raf = requestAnimationFrame(draw);
+      if (!canvas || !ctx) return;
+      if (!visible || time - lastFrame < 33) return;
+      lastFrame = time;
 
-      const base = context.createRadialGradient(cx, cy, 0, cx, cy, w * 0.55);
-      base.addColorStop(0, rgba(palette.hot, 0.95));
-      base.addColorStop(0.22, rgba(palette.mid, 0.58));
-      base.addColorStop(0.5, rgba(palette.cold, 0.28));
-      base.addColorStop(1, "transparent");
-      context.fillStyle = base;
-      context.beginPath();
-      context.arc(cx, cy, w * 0.46, 0, Math.PI * 2);
-      context.fill();
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const cx = width / 2;
+      const cy = height * 0.59;
+      const ring = Math.min(width, height) * 0.255;
+      const scale = Math.min(width, height) / 160;
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
 
-      const ringRadius = Math.min(w, h) * (jet ? 0.27 : 0.29);
-      const flameScale = Math.min(w, h) / 180;
-      for (const flame of flames) {
-        const pulse = Math.sin(time * flame.speed + flame.phase);
-        const a = flame.angle + Math.sin(time * 0.0008 + flame.phase) * 0.08;
-        const inner = ringRadius + pulse * 4 * flameScale;
-        const outer = inner + flame.length * flameScale * (0.9 + Math.max(0, pulse) * 0.62);
-        const sx = cx + Math.cos(a) * inner;
-        const sy = cy + Math.sin(a) * inner;
-        const ex = cx + Math.cos(a) * outer;
-        const ey = cy + Math.sin(a) * outer;
-        const nx = Math.cos(a + Math.PI / 2);
-        const ny = Math.sin(a + Math.PI / 2);
-        const width = flame.width * flameScale * (0.62 + Math.max(0, pulse) * 0.42);
-        const grad = context.createRadialGradient(ex, ey, 0, ex, ey, flame.length * 1.5);
-        grad.addColorStop(0, rgba(palette.hot, 1));
-        grad.addColorStop(0.24, rgba(palette.mid, 0.9));
-        grad.addColorStop(0.72, rgba(palette.cold, 0.55));
-        grad.addColorStop(1, "transparent");
-        context.fillStyle = grad;
-        context.beginPath();
-        context.moveTo(sx + nx * width, sy + ny * width);
-        context.quadraticCurveTo(cx + Math.cos(a) * (inner + outer) * 0.5 + nx * width * 1.05, cy + Math.sin(a) * (inner + outer) * 0.5 + ny * width * 1.05, ex, ey);
-        context.quadraticCurveTo(cx + Math.cos(a) * (inner + outer) * 0.5 - nx * width * 1.05, cy + Math.sin(a) * (inner + outer) * 0.5 - ny * width * 1.05, sx - nx * width, sy - ny * width);
-        context.closePath();
-        context.fill();
+      const glow = ctx.createRadialGradient(cx, cy, ring * 0.2, cx, cy, ring * 1.9);
+      glow.addColorStop(0, rgba(palette.core, 0.48));
+      glow.addColorStop(0.38, rgba(palette.body, 0.22));
+      glow.addColorStop(1, "transparent");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ring * 1.85, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (const tongue of tongues) {
+        const wave = reduced ? 0 : Math.sin(time * tongue.speed + tongue.phase);
+        const position = tongue.angle * 2 - 1;
+        const baseX = cx + position * ring * 1.22;
+        const baseY = cy + ring * (0.72 + Math.abs(position) * 0.12);
+        const upwardBias = 0.82 + (1 - Math.abs(position)) * 0.38;
+        const flameHeight = tongue.height * scale * upwardBias * (0.9 + wave * 0.12);
+        const sway = reduced ? 0 : Math.sin(time * tongue.speed * 0.72 + tongue.phase) * 4.2 + tongue.lean;
+        const tipX = baseX + sway * scale;
+        const tipY = baseY - flameHeight;
+        const flameWidth = tongue.width * scale * (0.96 + wave * 0.08);
+        const gradient = ctx.createLinearGradient(baseX, baseY, tipX, tipY);
+        gradient.addColorStop(0, rgba(palette.core, 0.82));
+        gradient.addColorStop(0.34, rgba(palette.body, 0.88));
+        gradient.addColorStop(0.78, rgba(palette.edge, 0.54));
+        gradient.addColorStop(1, "transparent");
+        ctx.fillStyle = gradient;
+        tonguePath(baseX, baseY, tipX, tipY, flameWidth, sway * 0.34);
+        ctx.fill();
+
+        ctx.fillStyle = rgba(palette.core, 0.34);
+        tonguePath(baseX, baseY, (baseX + tipX) / 2, tipY + flameHeight * 0.32, flameWidth * 0.38, sway * 0.12);
+        ctx.fill();
       }
 
       if (jet) {
-        for (let i = 0; i < 7; i += 1) {
-          const sway = Math.sin(time * 0.003 + i) * 9;
-          const top = cy - 90 - i * 7 + Math.sin(time * 0.004 + i) * 8;
-          const grad = context.createLinearGradient(cx, cy - 15, cx + sway, top);
-          grad.addColorStop(0, rgba(palette.hot, 0.95));
-          grad.addColorStop(0.45, rgba(palette.mid, 0.82));
-          grad.addColorStop(1, "transparent");
-          context.fillStyle = grad;
-          context.beginPath();
-          context.moveTo(cx - 18 + i * 2, cy - 12);
-          context.quadraticCurveTo(cx - 28 + sway, cy - 60, cx + sway, top);
-          context.quadraticCurveTo(cx + 28 + sway, cy - 58, cx + 18 - i * 2, cy - 12);
-          context.closePath();
-          context.fill();
-        }
+        const wave = reduced ? 0 : Math.sin(time * 0.00042) * 5;
+        const gradient = ctx.createLinearGradient(cx, cy - ring * 0.2, cx + wave, cy - ring * 2.2);
+        gradient.addColorStop(0, rgba(palette.core, 0.72));
+        gradient.addColorStop(0.42, rgba(palette.body, 0.55));
+        gradient.addColorStop(1, "transparent");
+        ctx.fillStyle = gradient;
+        tonguePath(cx, cy - ring * 0.1, cx + wave, cy - ring * 2.05, ring * 0.34, wave * 0.2);
+        ctx.fill();
       }
 
-      context.restore();
-      raf = requestAnimationFrame(draw);
+      ctx.restore();
     }
 
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+    }, { rootMargin: "100px" });
+    observer.observe(canvas);
     resize();
     window.addEventListener("resize", resize);
     raf = requestAnimationFrame(draw);
     return () => {
+      observer.disconnect();
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(raf);
     };

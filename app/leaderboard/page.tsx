@@ -6,6 +6,7 @@ import { BadgeCheck, ChevronDown, ChevronRight, Crown, Flame, Handshake, Play, S
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
 import { LeaderboardFireCanvas } from "@/components/leaderboard-fire-canvas";
+import { LeaderboardPeriodTabs } from "@/components/leaderboard-period-tabs";
 import { ReferralCard } from "@/components/referral-card";
 import { PodiumFlameCanvas } from "@/components/podium-flame-canvas";
 import { prisma } from "@/lib/prisma";
@@ -101,20 +102,24 @@ async function loadMyProgress() {
   const user = await getCurrentUser();
   if (!user) return null;
   const since = new Date(Date.now() - SINCE_MS);
-  const subs = await prisma.submission.findMany({
-    where: { workerId: user.id },
-    select: { currentViews: true, createdAt: true }
-  });
-  const clips = subs.length;
-  const maxViews = subs.reduce((max, s) => Math.max(max, s.currentViews), 0);
-  const weekViews = subs.filter((s) => s.createdAt >= since).reduce((sum, s) => sum + s.currentViews, 0);
-  const invited = await prisma.user.count({ where: { referredBy: user.referralCode } });
+  const [allStats, weekStats, invited] = await Promise.all([
+    prisma.submission.aggregate({
+      where: { workerId: user.id },
+      _count: { _all: true },
+      _max: { currentViews: true }
+    }),
+    prisma.submission.aggregate({
+      where: { workerId: user.id, createdAt: { gte: since } },
+      _sum: { currentViews: true }
+    }),
+    prisma.user.count({ where: { referredBy: user.referralCode } })
+  ]);
   return {
     name: user.name,
     lifetimeViews: user.lifetimeViews,
-    clips,
-    maxViews,
-    weekViews,
+    clips: allStats._count._all,
+    maxViews: allStats._max.currentViews || 0,
+    weekViews: weekStats._sum.currentViews || 0,
     referralCode: user.referralCode,
     invited
   };
@@ -192,14 +197,7 @@ export default async function LeaderboardPage({
               <span className="leaderboard-refresh">Обновляется каждую неделю</span>
             </header>
 
-            <nav className="leaderboard-tabs" aria-label="Период">
-              <Link className={period === "week" ? "active" : ""} href="/leaderboard?period=week">
-                <Flame size={15} /> За неделю
-              </Link>
-              <Link className={period === "all" ? "active" : ""} href="/leaderboard?period=all">
-                За всё время
-              </Link>
-            </nav>
+            <LeaderboardPeriodTabs period={period} />
 
             {rows.length === 0 ? (
               <div className="lb-empty">
@@ -239,7 +237,7 @@ export default async function LeaderboardPage({
                       return (
                         <li className={`podium-card podium-card--${pos}`} key={row.id}>
                           <span className="podium-top-light" aria-hidden="true" />
-                          {row.rank === 1 ? <div className="podium-crown" aria-hidden="true">👑</div> : null}
+                          {row.rank === 1 ? <div className="podium-crown" aria-hidden="true"><Crown /></div> : null}
                           <Avatar row={row} podium />
                           <div className="podium-rank">{row.rank}</div>
                           <div className="podium-name">
@@ -277,18 +275,22 @@ export default async function LeaderboardPage({
                           <b>{row.clips}</b>
                           <em>клипов</em>
                         </div>
-                        <Link className="lr-clip" href={`/clippers/${row.handle}`} aria-label="Лучший клип">
+                        <Link className="lr-clip" href={`/clippers/${row.handle}`} aria-label="Лучший клип" prefetch>
                           <img src={row.cover} alt="" loading="lazy" />
                           <span className="lr-clip-play"><Play size={12} fill="#fff" /></span>
                         </Link>
-                        <Link className="invite-btn" href={`/clippers/${row.handle}`}>Пригласить на коллаб</Link>
+                        <Link className="invite-btn" href={`/clippers/${row.handle}`} prefetch>
+                          <Handshake size={14} />
+                          <span className="invite-full">Пригласить на коллаб</span>
+                          <span className="invite-short">Открыть</span>
+                        </Link>
                       </li>
                     ))}
                   </ol>
                 ) : null}
 
                 {!expand && rest.length > 7 ? (
-                  <Link className="lb-more" href={`/leaderboard?period=${period}&expand=1`}>
+                  <Link className="lb-more" href={`/leaderboard?period=${period}&expand=1`} prefetch>
                     Показать больше <ChevronDown size={16} />
                   </Link>
                 ) : null}

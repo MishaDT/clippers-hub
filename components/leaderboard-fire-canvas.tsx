@@ -20,7 +20,7 @@ function spawn(width: number, height: number, crown = false): Particle {
     x: center + (Math.random() - 0.5) * (crown ? 64 : 120),
     y: base,
     vx: (Math.random() - 0.5) * (crown ? 0.45 : 0.8),
-    vy: -(0.45 + Math.random() * (crown ? 1.65 : 1.1)),
+    vy: -(0.24 + Math.random() * (crown ? 0.72 : 0.52)),
     life: 0,
     max: 52 + Math.random() * 54,
     size: crown ? 3 + Math.random() * 8 : 2 + Math.random() * 6,
@@ -43,6 +43,8 @@ export function LeaderboardFireCanvas() {
     const particles: Particle[] = [];
     let raf = 0;
     let frame = 0;
+    let lastFrame = 0;
+    let visible = true;
 
     function resize() {
       const rect = canvasEl.getBoundingClientRect();
@@ -79,6 +81,9 @@ export function LeaderboardFireCanvas() {
     }
 
     function loop(time: number) {
+      raf = requestAnimationFrame(loop);
+      if (!visible || time - lastFrame < 33) return;
+      lastFrame = time;
       const width = canvasEl.clientWidth;
       const height = canvasEl.clientHeight;
       context.clearRect(0, 0, width, height);
@@ -86,9 +91,9 @@ export function LeaderboardFireCanvas() {
 
       if (!reduced) {
         frame += 1;
-        const count = width < 620 ? 3 : 6;
-        for (let i = 0; i < count; i += 1) particles.push(spawn(width, height, frame % 3 === 0));
-        if (particles.length > 180) particles.splice(0, particles.length - 180);
+        const count = frame % 2 === 0 ? (width < 620 ? 1 : 2) : 0;
+        for (let i = 0; i < count; i += 1) particles.push(spawn(width, height, frame % 6 === 0));
+        if (particles.length > 100) particles.splice(0, particles.length - 100);
       }
 
       context.save();
@@ -98,7 +103,7 @@ export function LeaderboardFireCanvas() {
         p.life += 1;
         p.x += p.vx + Math.sin((p.life + p.y) * 0.07) * 0.35;
         p.y += p.vy;
-        p.vy -= 0.002;
+        p.vy -= 0.0008;
         const k = 1 - p.life / p.max;
         if (k <= 0) {
           particles.splice(i, 1);
@@ -115,13 +120,17 @@ export function LeaderboardFireCanvas() {
         context.fill();
       }
       context.restore();
-      raf = requestAnimationFrame(loop);
     }
 
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+    }, { rootMargin: "120px" });
+    observer.observe(canvasEl);
     resize();
     window.addEventListener("resize", resize);
     raf = requestAnimationFrame(loop);
     return () => {
+      observer.disconnect();
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(raf);
     };
