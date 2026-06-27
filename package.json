@@ -11,6 +11,7 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:init": "node scripts/init-db.js",
+    "db:founders": "node scripts/seed-founder-showcase.js",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",

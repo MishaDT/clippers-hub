@@ -14,30 +14,84 @@ const OAUTH_PROVIDERS: Array<{ id: ProviderId; label: string }> = [
 ];
 
 async function loadWorker(userId: string) {
-  const [submissions, earnings, transactions] = await Promise.all([
-    prisma.submission.findMany({ where: { workerId: userId }, include: { campaign: true }, orderBy: { currentViews: "desc" }, take: 6 }),
+  const activeStatuses = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
+  const [submissions, earnings, transactions, stats, activeCount] = await Promise.all([
+    prisma.submission.findMany({
+      where: { workerId: userId },
+      select: {
+        id: true,
+        currentViews: true,
+        status: true,
+        campaign: { select: { title: true, cpmRateCents: true, viewThreshold: true } }
+      },
+      orderBy: { currentViews: "desc" },
+      take: 6
+    }),
     prisma.transaction.aggregate({ where: { userId, type: "EARNING" }, _sum: { netCents: true } }),
-    prisma.transaction.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 5 })
+    prisma.transaction.findMany({
+      where: { userId },
+      select: { id: true, type: true, netCents: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 5
+    }),
+    prisma.submission.aggregate({ where: { workerId: userId }, _sum: { currentViews: true } }),
+    prisma.submission.count({ where: { workerId: userId, status: { in: [...activeStatuses] } } })
   ]);
-  const active = submissions.filter((s) => ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"].includes(s.status));
-  const views = submissions.reduce((sum, s) => sum + s.currentViews, 0);
-  return { submissions, transactions, earningsCents: earnings._sum.netCents || 0, activeCount: active.length, views };
+  return {
+    submissions,
+    transactions,
+    earningsCents: earnings._sum.netCents || 0,
+    activeCount,
+    views: stats._sum.currentViews || 0
+  };
 }
 
 async function loadClient(userId: string, role: string) {
-  const campaigns = await prisma.campaign.findMany({
-    where: role === "ADMIN" ? {} : { ownerId: userId },
-    include: { submissions: { include: { worker: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 8
-  });
-  const totalViews = campaigns.reduce((sum, c) => sum + c.submissions.reduce((i, s) => i + s.currentViews, 0), 0);
-  const remaining = campaigns.reduce((sum, c) => sum + c.remainingBudgetCents, 0);
-  const clips = campaigns
-    .flatMap((c) => c.submissions.map((s) => ({ id: s.id, handle: s.worker.handle, title: c.title, views: s.currentViews })))
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 6);
-  return { campaigns, totalViews, remaining, clips, clipCount: clips.length };
+  const campaignWhere = role === "ADMIN" ? {} : { ownerId: userId };
+  const submissionWhere = role === "ADMIN" ? {} : { campaign: { ownerId: userId } };
+  const [campaigns, campaignCount, viewStats, budgetStats, clipCount, topClips] = await Promise.all([
+    prisma.campaign.findMany({
+      where: campaignWhere,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        remainingBudgetCents: true,
+        _count: { select: { submissions: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 8
+    }),
+    prisma.campaign.count({ where: campaignWhere }),
+    prisma.submission.aggregate({ where: submissionWhere, _sum: { currentViews: true } }),
+    prisma.campaign.aggregate({ where: campaignWhere, _sum: { remainingBudgetCents: true } }),
+    prisma.submission.count({ where: submissionWhere }),
+    prisma.submission.findMany({
+      where: submissionWhere,
+      select: {
+        id: true,
+        currentViews: true,
+        worker: { select: { handle: true } },
+        campaign: { select: { title: true } }
+      },
+      orderBy: { currentViews: "desc" },
+      take: 6
+    })
+  ]);
+  const clips = topClips.map((clip) => ({
+    id: clip.id,
+    handle: clip.worker.handle,
+    title: clip.campaign.title,
+    views: clip.currentViews
+  }));
+  return {
+    campaigns,
+    campaignCount,
+    totalViews: viewStats._sum.currentViews || 0,
+    remaining: budgetStats._sum.remainingBudgetCents || 0,
+    clips,
+    clipCount
+  };
 }
 
 export default async function ProfilePage() {
@@ -54,7 +108,7 @@ export default async function ProfilePage() {
       <section className="section profile-screen">
         <div className="profile-main">
           <div className="profile-person">
-            <img className="pf-avatar" src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(user.handle)}`} alt="" />
+            <img className="pf-avatar" src={user.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(user.handle)}`} alt="" />
             <div>
               <h2>{user.name}</h2>
               <p className="muted">@{user.handle}</p>
@@ -139,7 +193,7 @@ export default async function ProfilePage() {
             </div>
 
             <section className="profile-metrics">
-              <Card><BriefcaseBusiness color="#38bdf8" /><span>Моих заказов</span><strong>{client.campaigns.length}</strong></Card>
+              <Card><BriefcaseBusiness color="#38bdf8" /><span>Моих заказов</span><strong>{client.campaignCount}</strong></Card>
               <Card><Eye color="#f472b6" /><span>Просмотров</span><strong>{compactNumber(client.totalViews)}</strong></Card>
               <Card><WalletCards color="#22c55e" /><span>Бюджет остался</span><strong>{rub(client.remaining)}</strong></Card>
               <Card><WalletCards color="#c084fc" /><span>Клипов сделали</span><strong>{client.clipCount}</strong></Card>
@@ -151,7 +205,7 @@ export default async function ProfilePage() {
                 {client.campaigns.length ? client.campaigns.map((campaign) => (
                   <div className="campaign-mini" key={campaign.id}>
                     <strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong>
-                    <span>{campaign.submissions.length} клипов · {rub(campaign.remainingBudgetCents)} осталось</span>
+                    <span>{campaign._count.submissions} клипов · {rub(campaign.remainingBudgetCents)} осталось</span>
                     <Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : "good"}>{campaign.status}</Tag>
                   </div>
                 )) : <p className="muted">Пока нет заказов. Нажми «Создать заказ».</p>}

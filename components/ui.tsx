@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { clsx } from "clsx";
 import { Bell, BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
@@ -7,6 +8,14 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
 import { SiteFooter } from "@/components/site-footer";
+
+const loadAdminAlerts = unstable_cache(
+  (userId: string) => prisma.notification.count({
+    where: { userId, readAt: null, priority: "HIGH" }
+  }),
+  ["admin-alert-count-v1"],
+  { revalidate: 15, tags: ["admin-alerts"] }
+);
 
 export async function AppShell({
   children,
@@ -22,7 +31,7 @@ export async function AppShell({
   const user = publicOnly ? null : await getCurrentUser();
   const isAdmin = canAccessAdmin(user);
   const adminAlerts = isAdmin && user
-    ? await prisma.notification.count({ where: { userId: user.id, readAt: null, priority: "HIGH" } })
+    ? await loadAdminAlerts(user.id)
     : 0;
   const roleLabel = user?.role === "CLIENT" ? "Заказчик" : user?.role === "ADMIN" ? "Админ" : "Исполнитель";
 

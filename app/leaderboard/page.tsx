@@ -107,7 +107,7 @@ const loadLeaders = unstable_cache(
       })
       .filter((row) => row.views > 0);
   },
-  ["leaderboard-v4"],
+  ["leaderboard-v5"],
   { revalidate: 600, tags: ["leaderboard"] }
 );
 

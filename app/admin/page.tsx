@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { AlertTriangle, ArrowRight, BarChart3, Eye, LockKeyhole, ShieldCheck, Users } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
@@ -18,7 +19,7 @@ function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-async function loadAdminStats() {
+const loadAdminStats = unstable_cache(async () => {
   const today = startOfDay();
   const week = daysAgo(7);
   const day = daysAgo(1);
@@ -96,7 +97,7 @@ async function loadAdminStats() {
     topPages,
     recentEvents
   };
-}
+}, ["admin-dashboard-v2"], { revalidate: 30, tags: ["admin-dashboard"] });
 
 export default async function AdminPage() {
   const stats = await loadAdminStats();
