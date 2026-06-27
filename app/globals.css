@@ -9153,3 +9153,108 @@ a.social-btn:hover {
     display: none;
   }
 }
+
+.mobile-rank-overview {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .mobile-rank-overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0 0 12px;
+  }
+  .mobile-rank-overview article {
+    min-width: 0;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    background: rgba(255,255,255,.035);
+  }
+  .mobile-rank-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    padding: 11px;
+  }
+  .mobile-rank-icon {
+    width: 35px;
+    height: 35px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: rgba(201,243,29,.1);
+    box-shadow: inset 0 0 0 1px rgba(201,243,29,.18);
+    font-size: 20px;
+  }
+  .mobile-rank-card > div,
+  .mobile-achievement-card > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .mobile-rank-overview small,
+  .mobile-rank-overview em {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 9px;
+    font-style: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-rank-overview b {
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-xp-card {
+    display: grid;
+    gap: 5px;
+    padding: 11px;
+  }
+  .mobile-xp-card > span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #d9ff5e;
+    font-size: 10px;
+    font-weight: 850;
+  }
+  .mobile-xp-card > b {
+    font-size: 15px;
+  }
+  .mobile-xp-card > b small {
+    font-weight: 700;
+  }
+  .mobile-progress-bar {
+    height: 5px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+  }
+  .mobile-progress-bar i {
+    display: block;
+    height: 100%;
+    min-width: 3px;
+    border-radius: inherit;
+    background: #c9f31d;
+    box-shadow: 0 0 10px rgba(201,243,29,.45);
+  }
+  .mobile-achievement-card {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  .mobile-achievement-card > svg {
+    color: #ffd84f;
+  }
+  .mobile-achievement-card > strong {
+    color: #d9ff5e;
+    font-size: 13px;
+  }
+}

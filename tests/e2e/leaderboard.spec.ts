@@ -57,8 +57,11 @@ test.describe("leaderboard experience", () => {
       expect(layout.heroHeight).toBeLessThan(380);
       expect(layout.secondCenter).toBeLessThan(layout.firstCenter);
       expect(layout.firstCenter).toBeLessThan(layout.thirdCenter);
+      await expect(page.locator(".mobile-rank-overview")).toBeVisible();
+      await expect(page.locator(".mobile-xp-card")).toContainText("XP");
     } else {
       expect(layout.heroHeight).toBeLessThan(500);
+      await expect(page.locator(".mobile-rank-overview")).toBeHidden();
     }
 
     await expect(page.locator(".podium-flame-canvas")).toHaveCount(3);
@@ -77,6 +80,7 @@ test.describe("leaderboard experience", () => {
     await week.click();
     await expect(page).toHaveURL(/period=week/);
     await expect(week).toHaveClass(/active/);
+    await expect(page.locator(".podium-card")).toHaveCount(3);
 
     const allTime = page.locator('.leaderboard-tabs a[href*="period=all"]');
     await allTime.click();
