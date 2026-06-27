@@ -95,7 +95,7 @@ export function UploadForm({ orders }: { orders: Order[] }) {
         <span>{selected?.watermarkRequired ? "Я добавил watermark ReelPay и tracking-code в описание" : "Я добавил tracking-code в описание ролика"}</span>
       </label>
 
-      <button className="btn btn-primary uf-submit" type="submit" disabled={!valid}>
+      <button className="btn btn-primary uf-submit" type="submit">
         <Send size={20} /> Отправить на проверку
       </button>
     </form>

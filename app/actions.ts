@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -84,7 +85,11 @@ export async function createCampaignAction(formData: FormData) {
   const cleanSourcePlatform = (["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK", "TWITCH"].includes(sourcePlatform) ? sourcePlatform : "TWITCH") as "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "VK" | "TWITCH";
   const sourceUrlCheck = validatePublicMediaUrl(String(formData.get("sourceUrl") || ""), cleanSourcePlatform);
   if (!sourceUrlCheck.ok) redirect(`/campaigns/new?error=source_url&reason=${encodeURIComponent(sourceUrlCheck.reasons[0] || "bad_url")}`);
-  const trackingPrefix = `ch_${String(formData.get("trackingPrefix") || "CPV").replace(/[^a-z0-9_]/gi, "").toUpperCase().slice(0, 8)}_${Math.floor(Math.random() * 90 + 10)}`;
+  const trackingBase = String(formData.get("trackingPrefix") || "CPV")
+    .replace(/[^a-z0-9_]/gi, "")
+    .toUpperCase()
+    .slice(0, 8) || "CPV";
+  const trackingPrefix = `ch_${trackingBase}_${randomBytes(5).toString("hex").toUpperCase()}`;
 
   const campaign = await prisma.campaign.create({
     data: {
@@ -145,33 +150,46 @@ export async function joinCampaignAction(formData: FormData) {
   const existing = await prisma.submission.findFirst({ where: { campaignId, workerId: user.id } });
   if (existing) redirect("/upload");
 
-  const trackingCode = `${campaign.trackingPrefix}_${user.handle.toUpperCase().slice(0, 4)}_${Math.floor(Math.random() * 900 + 100)}`;
-  const submission = await prisma.submission.create({
-    data: {
-      campaignId,
-      workerId: user.id,
-      postUrl: "https://example.com/post-link-waiting",
-      platform: "TIKTOK",
-      platformPostId: `draft_${Date.now()}`,
-      trackingCode,
-      status: "ACCEPTED",
-      fraudScore: 0
-    }
-  });
-  await prisma.chatThread.create({
-    data: {
-      campaignId,
-      submissionId: submission.id,
-      clientId: campaign.ownerId,
-      workerId: user.id,
-      messages: {
-        create: {
-          senderId: user.id,
-          type: "SYSTEM",
-          body: "Исполнитель взял заказ. Здесь можно уточнить детали и прислать вопросы по ролику."
+  const trackingCode = `${campaign.trackingPrefix}_${user.handle.toUpperCase().slice(0, 4)}_${randomBytes(5).toString("hex").toUpperCase()}`;
+  await prisma.$transaction(async (tx) => {
+    const submission = await tx.submission.create({
+      data: {
+        campaignId,
+        workerId: user.id,
+        postUrl: "https://example.com/post-link-waiting",
+        platform: "TIKTOK",
+        platformPostId: `draft_${Date.now()}`,
+        trackingCode,
+        status: "ACCEPTED",
+        fraudScore: 0
+      }
+    });
+    await tx.chatThread.upsert({
+      where: { campaignId_workerId: { campaignId, workerId: user.id } },
+      update: {
+        submissionId: submission.id,
+        messages: {
+          create: {
+            senderId: user.id,
+            type: "SYSTEM",
+            body: "Исполнитель снова открыл заказ. Можно продолжить обсуждение здесь."
+          }
+        }
+      },
+      create: {
+        campaignId,
+        submissionId: submission.id,
+        clientId: campaign.ownerId,
+        workerId: user.id,
+        messages: {
+          create: {
+            senderId: user.id,
+            type: "SYSTEM",
+            body: "Исполнитель взял заказ. Здесь можно уточнить детали и прислать вопросы по ролику."
+          }
         }
       }
-    }
+    });
   });
   revalidatePath("/upload");
   revalidatePath("/profile");

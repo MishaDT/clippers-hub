@@ -35,7 +35,7 @@ test.describe("public experience", () => {
     await expect(page.getByRole("heading", { name: /Видео, которые/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Я заказчик/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Я клиппер/i })).toBeVisible();
-    await expect(page.getByRole("main").getByRole("link", { name: /Начать/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /С чего начнёшь/i })).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Рџ");
     await expect(page.locator("body")).not.toContainText("вЂ");
     await expectNoHorizontalScroll(page);
@@ -57,8 +57,8 @@ test.describe("public experience", () => {
     await expectNoHorizontalScroll(page);
 
     await page.goto("/campaigns");
-    await expect(page.getByRole("heading", { name: /Заказы/i })).toBeVisible();
-    await expect(page.locator(".job-list-card").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Найди ролик/i })).toBeVisible();
+    await expect(page.locator(".market-order").first()).toBeVisible();
     await expectNoHorizontalScroll(page);
   });
 });
@@ -66,7 +66,7 @@ test.describe("public experience", () => {
 test.describe("worker flow", () => {
   test("clipper can log in, join a campaign and submit a clip link", async ({ page, isMobile }) => {
     await login(page, "anya@clippers.local");
-    await expect(page).toHaveURL(/\/feed$/);
+    await expect(page).toHaveURL(/\/campaigns$/);
     if (isMobile) {
       await expect(page.locator(".bottom-nav")).toBeVisible();
     } else {
@@ -75,13 +75,19 @@ test.describe("worker flow", () => {
     }
 
     await page.goto("/campaigns");
-    await page.getByRole("link", { name: /Подробнее/i }).first().click();
-    await page.getByRole("button", { name: /Откликнуться/i }).click();
+    await page.locator(".market-order").first().click();
+    const joinButton = page.getByRole("button", { name: /Откликнуться/i });
+    if (await joinButton.count()) {
+      await joinButton.click();
+    } else {
+      await page.getByRole("link", { name: /Выложить работу/i }).click();
+    }
     await expect(page).toHaveURL(/\/upload$/);
 
     await page.goto("/upload");
     await expect(page.getByRole("heading", { name: /Выложить работу/i })).toBeVisible();
     await page.locator('input[name="postUrl"]').fill(`https://tiktok.com/@anya_clips/video/e2e-${Date.now()}`);
+    await page.locator('input[name="watermarkConfirmed"]').check();
     await page.getByRole("button", { name: /Отправить/i }).click();
     await expect(page.locator("body")).toContainText("Выложить работу");
     await expectNoHorizontalScroll(page);
@@ -91,15 +97,15 @@ test.describe("worker flow", () => {
 test.describe("client flow", () => {
   test("client can create a campaign from the simple order form", async ({ page }) => {
     await login(page, "nikita@clippers.local");
-    await expect(page).toHaveURL(/\/feed$/);
+    await expect(page).toHaveURL(/\/campaigns$/);
 
     await page.goto("/campaigns/new");
-    await expect(page.getByRole("heading", { name: /Создать заказ/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Опиши задачу/i })).toBeVisible();
     await page.locator('input[name="title"]').fill(`E2E заказ ${Date.now()}`);
     await page.locator('input[name="sourceUrl"]').fill("https://twitch.tv/videos/e2e-demo");
     await page.locator('input[name="budget"]').fill("50000");
     await page.locator('input[name="cpm"]').fill("45");
-    await page.getByRole("button", { name: /Опубликовать кампанию/i }).click();
+    await page.getByRole("button", { name: /Опубликовать заказ/i }).click();
 
     await expect(page).toHaveURL(/\/campaigns\/(?!new$)[^/]+$/);
     await expect(page.getByRole("heading", { name: /E2E заказ/ })).toBeVisible();
