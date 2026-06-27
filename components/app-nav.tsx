@@ -12,16 +12,17 @@ const items = [
   { href: "/leaderboard", label: "Лидеры", icon: Trophy },
   { href: "/upload", label: "Выложить", icon: CirclePlus, primary: true },
   { href: "/chats", label: "Чаты", icon: MessageCircle },
-  { href: "/wallet", label: "Кошелек", icon: WalletCards },
   { href: "/profile", label: "Профиль", icon: UserRound }
 ];
 
-// Desktop top-bar adds Коллабы, which doesn't fit the 6-slot mobile bottom nav.
 const desktopItems = [
   items[0],
   items[1],
   { href: "/collabs", label: "Коллабы", icon: Handshake },
-  ...items.slice(2)
+  items[2],
+  items[3],
+  { href: "/wallet", label: "Кошелек", icon: WalletCards },
+  items[4]
 ];
 
 function isActive(pathname: string, href: string) {
