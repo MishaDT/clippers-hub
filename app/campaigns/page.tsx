@@ -118,18 +118,12 @@ function expectedPayout(campaign: CampaignItem) {
   return Math.round((campaign.viewThreshold / 1000) * campaign.cpmRateCents * 0.89);
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
-
 function shortText(text: string, limit = 128) {
   return text.length > limit ? `${text.slice(0, limit).trim()}…` : text;
+}
+
+function clientAvatar(handle: string, avatar: string | null) {
+  return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "client")}&backgroundColor=transparent`;
 }
 
 async function ClientCampaignsView({ userId }: { userId: string }) {
@@ -282,23 +276,20 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
         <CampaignGuide />
 
-        <div className="market-head">
+        <header className="mk-head">
           <div>
-            <span className="eyebrow">Биржа заказов</span>
-            <h1>Найди ролик, который сможешь сделать сегодня</h1>
-            <p>Заказчик ставит цель по просмотрам, ты делаешь короткое видео и получаешь оплату после проверки результата.</p>
+            <span className="mk-eyebrow"><Flame size={14} /> Биржа заказов</span>
+            <h1>Найди заказ, который сделаешь сегодня</h1>
+            <p>Заказчик ставит цель по просмотрам — ты делаешь короткий ролик и получаешь оплату за результат.</p>
           </div>
-        </div>
+          <Link className="mk-leaders" href="/leaderboard"><Trophy size={16} /> Доска лидеров</Link>
+        </header>
 
-        <div className="market-stats" aria-label="Статистика заказов">
-          <span><b>{filtered.length}</b> активных</span>
-          <span><b>{rub(topPayout)}</b> максимум</span>
-          <span><b>{quickCount}</b> срочных</span>
+        <div className="mk-stats" aria-label="Статистика заказов">
+          <span className="mk-stat"><b>{filtered.length}</b> заказов</span>
+          <span className="mk-stat"><b>{rub(topPayout)}</b> макс. оплата</span>
+          <span className="mk-stat mk-stat--urgent"><b>{quickCount}</b> срочных</span>
         </div>
-
-        <nav className="market-discovery" aria-label="Рейтинги">
-          <Link href="/leaderboard"><Trophy size={16} /> Доска лидеров недели</Link>
-        </nav>
 
         <CampaignFilters
           query={query}
@@ -308,56 +299,71 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           resultCount={filtered.length}
         />
 
-        <div className="market-list">
-          {campaigns.map((campaign) => {
-            const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
-            const difficulty = difficultyOf(campaign);
-            const payout = expectedPayout(campaign);
-            return (
-              <Link className="market-order" href={`/campaigns/${campaign.id}`} key={campaign.id}>
-                <div className="order-avatar">{initials(campaign.owner.name)}</div>
-                <div className="order-main">
-                  <div className="order-title">
-                    <h2>{campaign.title}</h2>
-                    {campaign.visibility === "FEATURED" ? <span><Flame size={14} /> Топ</span> : null}
+        {campaigns.length ? (
+          <div className="mk-grid">
+            {campaigns.map((campaign) => {
+              const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
+              const diff = difficultyOf(campaign);
+              const payout = expectedPayout(campaign);
+              const cpm = Math.round(campaign.cpmRateCents / 100);
+              const urgent = daysLeft <= 2;
+              const signal = campaign.visibility === "FEATURED"
+                ? { cls: "hot", icon: Flame, text: "Топ заказ" }
+                : urgent
+                  ? { cls: "urgent", icon: Clock3, text: "Срочно" }
+                  : topPayout > 0 && payout >= topPayout * 0.7
+                    ? { cls: "pay", icon: Sparkles, text: "Выгодный" }
+                    : null;
+              const SignalIcon = signal?.icon;
+              return (
+                <Link className="mk-card" href={`/campaigns/${campaign.id}`} key={campaign.id}>
+                  <div className="mk-card-top">
+                    <div className="mk-client">
+                      <img src={clientAvatar(campaign.owner.handle, campaign.owner.avatar)} alt="" loading="lazy" />
+                      <div>
+                        <strong>{campaign.owner.name}</strong>
+                        <span>{campaign.niche || "Видео"}</span>
+                      </div>
+                    </div>
+                    {signal && SignalIcon ? (
+                      <span className={`mk-signal mk-signal--${signal.cls}`}><SignalIcon size={12} /> {signal.text}</span>
+                    ) : null}
                   </div>
-                  <p>{shortText(campaign.description, 112)}</p>
-                  <div className="order-tags">
-                    <span>{campaign.niche || "Видео"}</span>
-                    <span>{campaign.owner.name}</span>
-                    <span className={difficulty === "Сложная" ? "warn" : difficulty === "Лёгкая" ? "good" : ""}>{difficulty}</span>
+                  <h2 className="mk-title">{campaign.title}</h2>
+                  <p className="mk-desc">{shortText(campaign.description, 120)}</p>
+                  <div className="mk-payline">
+                    <div className="mk-pay">
+                      <b>{rub(payout)}</b>
+                      <em>за результат · {cpm} ₽ / 1000</em>
+                    </div>
+                    <span className="mk-go">Открыть <ArrowRight size={15} /></span>
                   </div>
-                </div>
-                <div className="order-side">
-                  <strong>{rub(payout)} <small>за результат</small></strong>
-                  <span><Eye size={15} /> <b>{compactNumber(campaign.viewThreshold)}</b> просмотров</span>
-                  <span><Clock3 size={15} /> <b>{daysLeft}</b> дн.</span>
-                  <span><Users size={15} /> <b>{campaign._count.submissions}</b> работ</span>
-                  <em>Подробнее <ArrowRight size={15} /></em>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-
-        {!campaigns.length ? (
-          <div className="market-empty">
+                  <div className="mk-meta">
+                    <span><Eye size={14} /> {compactNumber(campaign.viewThreshold)}</span>
+                    <span className={urgent ? "warn" : ""}><Clock3 size={14} /> {daysLeft} дн</span>
+                    <span><Users size={14} /> {campaign._count.submissions}</span>
+                    <span className={`mk-diff mk-diff--${diff === "Сложная" ? "hard" : diff === "Лёгкая" ? "easy" : "mid"}`}>{diff}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mk-empty">
             <CheckCircle2 size={28} />
-            <h2>Подходящих заказов нет</h2>
+            <b>Подходящих заказов нет</b>
             <p>Попробуй убрать фильтр или написать запрос проще.</p>
-            <Link className="btn" href="/campaigns">Сбросить</Link>
+            <Link className="btn btn-primary" href="/campaigns">Сбросить фильтры</Link>
+          </div>
+        )}
+
+        {totalPages > 1 ? (
+          <div className="mk-pages">
+            <Link className={currentPage <= 1 ? "disabled" : ""} href={makeHref({ page: String(Math.max(1, currentPage - 1)) })}>Назад</Link>
+            <span>{currentPage} / {totalPages}</span>
+            <Link className={currentPage >= totalPages ? "disabled" : ""} href={makeHref({ page: String(Math.min(totalPages, currentPage + 1)) })}>Дальше</Link>
           </div>
         ) : null}
-
-        <div className="market-pages">
-          <Link className={currentPage <= 1 ? "disabled" : ""} href={makeHref({ page: String(Math.max(1, currentPage - 1)) })}>
-            Назад
-          </Link>
-          <span>{currentPage} / {totalPages}</span>
-          <Link className={currentPage >= totalPages ? "disabled" : ""} href={makeHref({ page: String(Math.min(totalPages, currentPage + 1)) })}>
-            Дальше
-          </Link>
-        </div>
       </section>
     </AppShell>
   );
