@@ -8,13 +8,13 @@ import {
   MessageCircle,
   Headphones,
   Archive,
-  SlidersHorizontal,
 } from "lucide-react";
-import type { Prisma, SubmissionStatus } from "@prisma/client";
+import { Prisma, type SubmissionStatus } from "@prisma/client";
 import { CampaignChat } from "@/components/campaign-chat";
 import { ChatFilterNav } from "@/components/chat-filter-nav";
 import { ChatSearchForm } from "@/components/chat-search-form";
-import { ChatThreadMenu } from "@/components/chat-thread-menu";
+import { ChatMobileFilter } from "@/components/chat-mobile-filter";
+import { SwipeChatRow } from "@/components/swipe-chat-row";
 import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -63,13 +63,14 @@ function avatarFor(handle: string, avatar: string | null) {
   return avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(handle || "user")}`;
 }
 
-function hrefWith(params: { thread?: string; q?: string; status?: string; page?: number; role?: string; view?: string }) {
+function hrefWith(params: { thread?: string; q?: string; status?: string; page?: number; role?: string; view?: string; type?: string }) {
   const search = new URLSearchParams();
   if (params.thread) search.set("thread", params.thread);
   if (params.q) search.set("q", params.q);
   if (params.status && params.status !== "all") search.set("status", params.status);
   if (params.role && params.role !== "all") search.set("role", params.role);
   if (params.view && params.view !== "all") search.set("view", params.view);
+  if (params.type && params.type !== "all") search.set("type", params.type);
   if (params.page && params.page > 1) search.set("page", String(params.page));
   const value = search.toString();
   return value ? `/chats?${value}` : "/chats";
@@ -89,6 +90,7 @@ export default async function ChatsPage({
     : canSeeBoth ? "all" : mode;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
   const status = params.status === "active" || params.status === "done" ? params.status : "all";
+  const typeFilter = params.type === "orders" || params.type === "collabs" ? params.type : "all";
   const view = params.view === "archived" ? "archived" : "all";
   const archivedView = view === "archived";
   const requestedThreadId = typeof params.thread === "string" ? params.thread : "";
@@ -108,6 +110,8 @@ export default async function ChatsPage({
   const where: Prisma.ChatThreadWhereInput = {
     AND: [
       participant,
+      ...(typeFilter === "orders" ? [{ kind: "CAMPAIGN" }] : []),
+      ...(typeFilter === "collabs" ? [{ kind: "COLLAB" }] : []),
       ...(query ? [{
         OR: [
           { campaign: { title: { contains: query, mode: "insensitive" as const } } },
@@ -156,13 +160,26 @@ export default async function ChatsPage({
       })
     : Promise.resolve(null);
 
-  const [totalThreads, threads, selectedThread, clientCount, workerCount] = await Promise.all([
+  const [totalThreads, threads, selectedThread, clientCount, workerCount, orderCount, collabCount] = await Promise.all([
     prisma.chatThread.count({ where }),
     threadsQuery,
     selectedThreadQuery,
     prisma.chatThread.count({ where: { clientId: user.id } }),
-    prisma.chatThread.count({ where: { workerId: user.id } })
+    prisma.chatThread.count({ where: { workerId: user.id } }),
+    prisma.chatThread.count({ where: { AND: [participant, { kind: "CAMPAIGN" }] } }),
+    prisma.chatThread.count({ where: { AND: [participant, { kind: "COLLAB" }] } })
   ]);
+  const unreadRows = threads.length ? await prisma.$queryRaw<Array<{ threadId: string; count: bigint }>>(Prisma.sql`
+    SELECT message."threadId" AS "threadId", COUNT(*)::bigint AS count
+    FROM "ChatMessage" message
+    LEFT JOIN "ChatReadState" state
+      ON state."threadId" = message."threadId" AND state."userId" = ${user.id}
+    WHERE message."threadId" IN (${Prisma.join(threads.map((thread) => thread.id))})
+      AND message."senderId" <> ${user.id}
+      AND message."createdAt" > COALESCE(state."lastReadAt", TIMESTAMP '1970-01-01')
+    GROUP BY message."threadId"
+  `) : [];
+  const unreadByThread = new Map(unreadRows.map((row) => [row.threadId, Number(row.count)]));
   const totalPages = Math.max(1, Math.ceil(totalThreads / threadsPerPage));
   const selectedThreadId = requestedThreadId;
 
@@ -175,6 +192,7 @@ export default async function ChatsPage({
     ? selectedAsClient ? selectedThread.clientClearedAt : selectedThread.workerClearedAt
     : null;
   const selectedStatus = selectedThread?.submission?.status;
+  const selectedIsCollab = selectedThread?.kind === "COLLAB";
   const progressSteps = [
     { title: "Заказ взят", done: Boolean(selectedThread?.submission), active: selectedStatus === "ACCEPTED" },
     { title: "Работа", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(selectedStatus || ""), active: selectedStatus === "POSTED" },
@@ -194,51 +212,60 @@ export default async function ChatsPage({
             <div className="chat-sidebar-tools">
               <b>{totalThreads}</b>
               <Link href="/support" aria-label="Поддержка"><Headphones size={18} /></Link>
-              <Link href={hrefWith({ q: query, status, role: roleFilter, view: archivedView ? "all" : "archived" })} aria-label={archivedView ? "Активные чаты" : "Архив"}>
+              <Link href={hrefWith({ q: query, status, role: roleFilter, type: typeFilter, view: archivedView ? "all" : "archived" })} aria-label={archivedView ? "Активные чаты" : "Архив"}>
                 <Archive size={18} />
               </Link>
-              <details className="chat-mobile-filter">
-                <summary aria-label="Фильтры"><SlidersHorizontal size={18} /></summary>
-                <div className="chat-mobile-filter-sheet">
-                  <strong>Показывать</strong>
-                  {canSeeBoth ? <nav>
-                    <Link className={roleFilter === "all" ? "active" : ""} href={hrefWith({ q: query, status, view })}>Все роли <b>{clientCount + workerCount}</b></Link>
-                    <Link className={roleFilter === "client" ? "active" : ""} href={hrefWith({ q: query, status, role: "client", view })}>Я заказчик <b>{clientCount}</b></Link>
-                    <Link className={roleFilter === "worker" ? "active" : ""} href={hrefWith({ q: query, status, role: "worker", view })}>Я исполнитель <b>{workerCount}</b></Link>
-                  </nav> : null}
-                  <strong>Статус</strong>
-                  <nav>
-                    <Link className={status === "all" ? "active" : ""} href={hrefWith({ q: query, role: roleFilter, view })}>Все</Link>
-                    <Link className={status === "active" ? "active" : ""} href={hrefWith({ q: query, status: "active", role: roleFilter, view })}>В работе</Link>
-                    <Link className={status === "done" ? "active" : ""} href={hrefWith({ q: query, status: "done", role: roleFilter, view })}>Завершены</Link>
-                  </nav>
-                </div>
-              </details>
+              <ChatMobileFilter
+                typeItems={[
+                  { label: "Все", href: hrefWith({ q: query, status, role: roleFilter, view }), active: typeFilter === "all", count: orderCount + collabCount },
+                  { label: "Заказы", href: hrefWith({ q: query, status, role: roleFilter, view, type: "orders" }), active: typeFilter === "orders", count: orderCount },
+                  { label: "Коллабы", href: hrefWith({ q: query, status, role: roleFilter, view, type: "collabs" }), active: typeFilter === "collabs", count: collabCount }
+                ]}
+                roleItems={canSeeBoth ? [
+                  { label: "Все роли", href: hrefWith({ q: query, status, view, type: typeFilter }), active: roleFilter === "all", count: clientCount + workerCount },
+                  { label: "Заказчик", href: hrefWith({ q: query, status, role: "client", view, type: typeFilter }), active: roleFilter === "client", count: clientCount },
+                  { label: "Исполнитель", href: hrefWith({ q: query, status, role: "worker", view, type: typeFilter }), active: roleFilter === "worker", count: workerCount }
+                ] : []}
+                statusItems={[
+                  { label: "Все", href: hrefWith({ q: query, role: roleFilter, view, type: typeFilter }), active: status === "all" },
+                  { label: "В работе", href: hrefWith({ q: query, status: "active", role: roleFilter, view, type: typeFilter }), active: status === "active" },
+                  { label: "Завершены", href: hrefWith({ q: query, status: "done", role: roleFilter, view, type: typeFilter }), active: status === "done" }
+                ]}
+              />
             </div>
           </div>
 
+          <div className="chat-mobile-search">
+            <ChatSearchForm initialValue={query} status={status} role={roleFilter} view={view} type={typeFilter} />
+          </div>
+
           <div className="chat-desktop-filters">
+          <nav className="chat-type-tabs" aria-label="Тип чата">
+            <Link className={typeFilter === "all" ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter, view })}>Все</Link>
+            <Link className={typeFilter === "orders" ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter, view, type: "orders" })}>Заказы</Link>
+            <Link className={typeFilter === "collabs" ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter, view, type: "collabs" })}>Коллабы</Link>
+          </nav>
           <nav className="chat-view-tabs" aria-label="Архив чатов">
-            <Link className={!archivedView ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter })}>Активные</Link>
-            <Link className={archivedView ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter, view: "archived" })}>Архив</Link>
+            <Link className={!archivedView ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter, type: typeFilter })}>Активные</Link>
+            <Link className={archivedView ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter, type: typeFilter, view: "archived" })}>Архив</Link>
           </nav>
 
           {canSeeBoth ? (
             <nav className="chat-role-tabs" aria-label="Роль в диалоге">
-              <Link className={roleFilter === "all" ? "active" : ""} href={hrefWith({ q: query, status, view })}>Все <b>{clientCount + workerCount}</b></Link>
-              <Link className={roleFilter === "client" ? "active" : ""} href={hrefWith({ q: query, status, role: "client", view })}>Как заказчик <b>{clientCount}</b></Link>
-              <Link className={roleFilter === "worker" ? "active" : ""} href={hrefWith({ q: query, status, role: "worker", view })}>Как исполнитель <b>{workerCount}</b></Link>
+              <Link className={roleFilter === "all" ? "active" : ""} href={hrefWith({ q: query, status, view, type: typeFilter })}>Все <b>{clientCount + workerCount}</b></Link>
+              <Link className={roleFilter === "client" ? "active" : ""} href={hrefWith({ q: query, status, role: "client", view, type: typeFilter })}>Как заказчик <b>{clientCount}</b></Link>
+              <Link className={roleFilter === "worker" ? "active" : ""} href={hrefWith({ q: query, status, role: "worker", view, type: typeFilter })}>Как исполнитель <b>{workerCount}</b></Link>
             </nav>
           ) : null}
 
-          <ChatSearchForm initialValue={query} status={status} />
+          <ChatSearchForm initialValue={query} status={status} role={roleFilter} view={view} type={typeFilter} />
 
           <ChatFilterNav
             current={status}
             links={{
-              all: hrefWith({ q: query, role: roleFilter, view }),
-              active: hrefWith({ q: query, status: "active", role: roleFilter, view }),
-              done: hrefWith({ q: query, status: "done", role: roleFilter, view })
+              all: hrefWith({ q: query, role: roleFilter, view, type: typeFilter }),
+              active: hrefWith({ q: query, status: "active", role: roleFilter, view, type: typeFilter }),
+              done: hrefWith({ q: query, status: "done", role: roleFilter, view, type: typeFilter })
             }}
           />
           </div>
@@ -264,46 +291,33 @@ export default async function ChatsPage({
               const preview = isDeleted
                 ? "Сообщение удалено"
                 : isSystem
-                  ? "Заказ создан. Можно обсудить детали."
-                  : last?.body || "Начните обсуждение заказа";
-              return (
-                <div
-                  className={`chat-thread-row ${current ? "active" : ""}`}
-                  key={thread.id}
-                  aria-current={current ? "page" : undefined}
-                >
-                  <Link
-                    className="thread-rowlink"
-                    href={hrefWith({ thread: thread.id, q: query, status, page: currentPage, role: roleFilter, view })}
-                    aria-label={`Открыть чат с ${peer.name}`}
-                    prefetch
-                  />
-                  <img className="thread-avatar" src={avatarFor(peer.handle, peer.avatar)} alt="" loading="lazy" />
-                  <span className="thread-main">
-                    <span className="thread-name-line">
-                      <b>{peer.name}</b>
-                      <time>{shortDate(thread.updatedAt)}</time>
-                    </span>
-                    <em>{thread.campaign.title}</em>
-                    <small className={isDeleted ? "is-deleted" : ""}>{preview}</small>
-                  </span>
-                  <span className={`thread-status ${thread.submission?.status && activeStatuses.includes(thread.submission.status) ? "active" : ""}`}>
-                    {statusLabel(thread.submission?.status)}
-                  </span>
-                  <ChatThreadMenu threadId={thread.id} archived={archived} />
-                </div>
-              );
+                  ? thread.kind === "COLLAB" ? "Коллаб принят. Можно обсудить идею." : "Заказ создан. Можно обсудить детали."
+                  : last?.body || (thread.kind === "COLLAB" ? "Начните обсуждение коллаба" : "Начните обсуждение заказа");
+              return <SwipeChatRow
+                threadId={thread.id}
+                href={hrefWith({ thread: thread.id, q: query, status, page: currentPage, role: roleFilter, view, type: typeFilter })}
+                avatar={avatarFor(peer.handle, peer.avatar)}
+                name={peer.name}
+                time={shortDate(thread.updatedAt)}
+                context={thread.campaign?.title || `Совместный проект с ${peer.name}`}
+                preview={preview}
+                unread={unreadByThread.get(thread.id) || 0}
+                kind={thread.kind === "COLLAB" ? "COLLAB" : "CAMPAIGN"}
+                current={current}
+                archived={archived}
+                key={thread.id}
+              />;
             })}
           </div>
 
           {totalPages > 1 ? (
             <nav className="chat-pagination" aria-label="Страницы чатов">
               {currentPage > 1
-                ? <Link prefetch href={hrefWith({ q: query, status, page: currentPage - 1, role: roleFilter, view })}>Назад</Link>
+                ? <Link prefetch href={hrefWith({ q: query, status, page: currentPage - 1, role: roleFilter, view, type: typeFilter })}>Назад</Link>
                 : <span>Назад</span>}
               <b>{currentPage} / {totalPages}</b>
               {currentPage < totalPages
-                ? <Link prefetch href={hrefWith({ q: query, status, page: currentPage + 1, role: roleFilter, view })}>Дальше</Link>
+                ? <Link prefetch href={hrefWith({ q: query, status, page: currentPage + 1, role: roleFilter, view, type: typeFilter })}>Дальше</Link>
                 : <span>Дальше</span>}
             </nav>
           ) : null}
@@ -322,7 +336,7 @@ export default async function ChatsPage({
           {selectedThread && selectedPeer ? (
             <>
               <div className="chat-mobile-back">
-                <Link href={hrefWith({ q: query, status, page: currentPage, role: roleFilter, view })}><ChevronLeft size={20} /> Все чаты</Link>
+                <Link href={hrefWith({ q: query, status, page: currentPage, role: roleFilter, view, type: typeFilter })}><ChevronLeft size={20} /> Все чаты</Link>
               </div>
               <CampaignChat
                 threadId={selectedThread.id}
@@ -331,15 +345,24 @@ export default async function ChatsPage({
                 peerRole={selectedAsClient ? "Исполнитель" : "Заказчик"}
                 peerHandle={`@${selectedPeer.handle}`}
                 peerAvatar={avatarFor(selectedPeer.handle, selectedPeer.avatar)}
-                campaignTitle={selectedThread.campaign.title}
-                campaignHref={`/campaigns/${selectedThread.campaign.id}`}
-                progress={{
+                campaignTitle={selectedThread.campaign?.title || (selectedIsCollab ? "Совместный проект" : undefined)}
+                campaignHref={selectedThread.campaign ? `/campaigns/${selectedThread.campaign.id}` : undefined}
+                progress={selectedThread.campaign ? {
                   statusLabel: statusLabel(selectedStatus),
                   views: compactNumber(selectedThread.submission?.currentViews || 0),
                   target: compactNumber(selectedThread.campaign.viewThreshold),
                   fraudScore: selectedThread.submission?.fraudScore || 0,
                   steps: progressSteps
-                }}
+                } : selectedIsCollab ? {
+                  statusLabel: "Коллаб принят",
+                  views: "—",
+                  target: "—",
+                  fraudScore: 0,
+                  steps: [
+                    { title: "Приглашение принято", done: true, active: false },
+                    { title: "Обсуждение", done: false, active: true }
+                  ]
+                } : undefined}
                 messages={selectedThread.messages
                   .filter((message) => !selectedClearedAt || message.createdAt > selectedClearedAt)
                   .map((message) => {

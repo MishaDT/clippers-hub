@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "db:backfill-collabs": "node scripts/backfill-collab-chats.js",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "test:providers": "node --experimental-strip-types --test tests/view-providers.test.mts",

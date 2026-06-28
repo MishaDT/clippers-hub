@@ -166,6 +166,7 @@ async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: nu
   return (
     <AppShell hideFooter>
       <section className={`section market-screen client-campaigns ${styles.marketplace}`}>
+        <CampaignGuide variant="client" />
         <div className="market-head">
           <div>
             <span className="eyebrow">Работа заказчика</span>
@@ -304,7 +305,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           </Link>
         ) : null}
 
-        <CampaignGuide />
+        <CampaignGuide variant="worker" />
 
         <header className="mk-head">
           <div>

@@ -26,13 +26,19 @@ export default async function CollabsPage() {
   const [incoming, sent] = await Promise.all([
     mode === "worker" ? prisma.collabInvite.findMany({
       where: { workerId: user.id },
-      include: { client: { select: { name: true, handle: true, avatar: true } } },
+      include: {
+        client: { select: { name: true, handle: true, avatar: true } },
+        chatThread: { select: { id: true } }
+      },
       orderBy: { createdAt: "desc" },
       take: 50
     }) : Promise.resolve([]),
     mode === "client" ? prisma.collabInvite.findMany({
       where: { clientId: user.id },
-      include: { worker: { select: { name: true, handle: true, avatar: true } } },
+      include: {
+        worker: { select: { name: true, handle: true, avatar: true } },
+        chatThread: { select: { id: true } }
+      },
       orderBy: { createdAt: "desc" },
       take: 50
     }) : Promise.resolve([])
@@ -76,7 +82,12 @@ export default async function CollabsPage() {
                     </form>
                   </div>
                 ) : (
-                  <span className={`collab-status st-${invite.status.toLowerCase()}`}>{STATUS[invite.status]}</span>
+                  <span className="collab-result">
+                    <span className={`collab-status st-${invite.status.toLowerCase()}`}>{STATUS[invite.status]}</span>
+                    {invite.status === "ACCEPTED" && invite.chatThread
+                      ? <Link className="collab-chat-link" href={`/chats?thread=${invite.chatThread.id}&type=collabs`}>Открыть обсуждение</Link>
+                      : null}
+                  </span>
                 )}
               </li>
             ))}
@@ -97,7 +108,12 @@ export default async function CollabsPage() {
                   <Link href={`/clippers/${invite.worker.handle}`}><strong>{invite.worker.name}</strong></Link>
                   <p>{invite.message}</p>
                 </div>
-                <span className={`collab-status st-${invite.status.toLowerCase()}`}>{STATUS[invite.status]}</span>
+                <span className="collab-result">
+                  <span className={`collab-status st-${invite.status.toLowerCase()}`}>{STATUS[invite.status]}</span>
+                  {invite.status === "ACCEPTED" && invite.chatThread
+                    ? <Link className="collab-chat-link" href={`/chats?thread=${invite.chatThread.id}&type=collabs`}>Открыть обсуждение</Link>
+                    : null}
+                </span>
               </li>
             ))}
           </ul>

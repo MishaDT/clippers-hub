@@ -6,10 +6,16 @@ import { useRouter } from "next/navigation";
 
 export function ChatSearchForm({
   initialValue,
-  status
+  status,
+  role,
+  view,
+  type
 }: {
   initialValue: string;
   status: "all" | "active" | "done";
+  role?: string;
+  view?: string;
+  type?: string;
 }) {
   const router = useRouter();
   const [value, setValue] = useState(initialValue);
@@ -23,6 +29,9 @@ export function ChatSearchForm({
     const query = value.trim();
     if (query) params.set("q", query);
     if (status !== "all") params.set("status", status);
+    if (role && role !== "all") params.set("role", role);
+    if (view && view !== "all") params.set("view", view);
+    if (type && type !== "all") params.set("type", type);
     startTransition(() => router.push(params.size ? `/chats?${params}` : "/chats"));
   }
 

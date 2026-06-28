@@ -43,9 +43,9 @@ export async function AppShell({
         isAdmin ? loadAdminAlerts(user.id) : Promise.resolve(0),
         getUnreadSummary(user.id),
         prisma.notification.findMany({
-          where: { userId: user.id },
+          where: { userId: user.id, archivedAt: null },
           orderBy: { createdAt: "desc" },
-          take: 8,
+          take: 6,
           select: { id: true, title: true, body: true, href: true, readAt: true, createdAt: true }
         })
       ])

@@ -18,6 +18,7 @@ test.afterAll(async () => {
 
 async function login(page: Page, email: string, password = "password123") {
   await page.goto("/login");
+  await page.context().addCookies([{ name: "rp_consent", value: "necessary", url: page.url() }]);
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
@@ -32,7 +33,7 @@ test.describe("public experience", () => {
   test("guest understands the product and can choose a role", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: /Видео, которые/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Видео, которые приносят деньги" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Я заказчик/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Я клиппер/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /С чего начнёшь/i })).toBeVisible();
@@ -57,8 +58,8 @@ test.describe("public experience", () => {
     await expectNoHorizontalScroll(page);
 
     await page.goto("/campaigns");
-    await expect(page.getByRole("heading", { name: /Найди ролик/i })).toBeVisible();
-    await expect(page.locator(".market-order").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Найди заказ/i })).toBeVisible();
+    await expect(page.locator(".mk-card").first()).toBeVisible();
     await expectNoHorizontalScroll(page);
   });
 });
@@ -75,9 +76,9 @@ test.describe("worker flow", () => {
     }
 
     await page.goto("/campaigns");
-    await page.locator(".market-order").first().click();
-    const campaignAction = page.locator(".campaign-action");
-    await campaignAction.locator('.join-main, a[href="/upload"]').waitFor({ state: "visible" });
+    await page.locator(".mk-card").first().click();
+    const campaignAction = page.locator(".od-apply");
+    await campaignAction.locator('.od-apply-btn').waitFor({ state: "visible" });
     const joinButton = campaignAction.getByRole("button", { name: /Откликнуться/i });
     if (await joinButton.isVisible().catch(() => false)) {
       await joinButton.click();

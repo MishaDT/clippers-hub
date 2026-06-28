@@ -27,7 +27,7 @@ export async function getUnreadSummary(userId: string) {
         AND message."senderId" <> ${userId}
         AND message."createdAt" > thread."requesterReadAt"
     `),
-    prisma.notification.count({ where: { userId, readAt: null } })
+    prisma.notification.count({ where: { userId, readAt: null, archivedAt: null } })
   ]);
 
   const chats = numberFromCount(chatRows);
@@ -46,4 +46,3 @@ export async function getAdminSupportUnread() {
   `);
   return numberFromCount(rows);
 }
-

@@ -260,7 +260,7 @@ export async function sendChatMessageAction(formData: FormData) {
       id: threadId,
       OR: [{ clientId: user.id }, { workerId: user.id }]
     },
-    select: { id: true, campaignId: true, clientId: true, workerId: true }
+    select: { id: true, kind: true, campaignId: true, clientId: true, workerId: true }
   });
   if (!thread) return { ok: false, error: "Чат не найден или у вас нет доступа" };
 
@@ -300,11 +300,11 @@ export async function sendChatMessageAction(formData: FormData) {
         channel: "IN_APP",
         priority: "NORMAL",
         kind: "CHAT",
-        href: `/chats?thread=${threadId}`
+        href: `/chats?thread=${threadId}${thread.kind === "COLLAB" ? "&type=collabs" : ""}`
       }
     })
   ]);
-  revalidatePath(`/campaigns/${thread.campaignId}`);
+  if (thread.campaignId) revalidatePath(`/campaigns/${thread.campaignId}`);
   revalidatePath("/chats");
   return { ok: true };
 }
@@ -349,7 +349,7 @@ export async function editChatMessageAction(formData: FormData) {
       data: { body: checked.body, editedAt: new Date(), metadataJson: stringify({ urls: checked.urls }) }
     })
   ]);
-  revalidatePath(`/campaigns/${message.thread.campaignId}`);
+  if (message.thread.campaignId) revalidatePath(`/campaigns/${message.thread.campaignId}`);
   revalidatePath("/chats");
   return { ok: true };
 }
@@ -382,7 +382,7 @@ export async function deleteChatMessageAction(formData: FormData) {
       data: { deletedAt: new Date(), body: "", metadataJson: "{}" }
     })
   ]);
-  revalidatePath(`/campaigns/${message.thread.campaignId}`);
+  if (message.thread.campaignId) revalidatePath(`/campaigns/${message.thread.campaignId}`);
   revalidatePath("/chats");
   return { ok: true };
 }
@@ -790,14 +790,16 @@ export async function sendCollabInviteAction(formData: FormData) {
     select: { id: true }
   });
   if (!existing) {
-    await prisma.collabInvite.create({ data: { clientId: user.id, workerId, message } });
+    const invite = await prisma.collabInvite.create({ data: { clientId: user.id, workerId, message } });
     await prisma.notification.create({
       data: {
         userId: workerId,
         title: "Приглашение на коллаб",
         body: `${user.name} зовёт на совместный клип`,
         channel: "IN_APP",
-        priority: "NORMAL"
+        priority: "NORMAL",
+        kind: "COLLAB",
+        href: `/collabs?invite=${invite.id}`
       }
     });
   }
@@ -813,24 +815,75 @@ export async function respondCollabInviteAction(formData: FormData) {
   const accept = String(formData.get("decision") || "") === "accept";
 
   const invite = await prisma.collabInvite.findFirst({
-    where: { id: inviteId, workerId: user.id, status: "PENDING" },
-    select: { id: true, clientId: true }
+    where: { id: inviteId, workerId: user.id },
+    select: { id: true, clientId: true, workerId: true, status: true, chatThread: { select: { id: true } } }
   });
-  if (invite) {
-    await prisma.collabInvite.update({
-      where: { id: invite.id },
-      data: { status: accept ? "ACCEPTED" : "DECLINED", respondedAt: new Date() }
+  if (!invite) redirect("/collabs");
+
+  if (accept && invite.status === "ACCEPTED" && invite.chatThread) {
+    redirect(`/chats?thread=${invite.chatThread.id}&type=collabs`);
+  }
+  if (invite.status !== "PENDING") redirect("/collabs");
+
+  if (accept) {
+    const thread = await prisma.$transaction(async (tx) => {
+      const updated = await tx.collabInvite.updateMany({
+        where: { id: invite.id, workerId: user.id, status: "PENDING" },
+        data: { status: "ACCEPTED", respondedAt: new Date() }
+      });
+      if (!updated.count) {
+        return tx.chatThread.findUnique({ where: { collabInviteId: invite.id } });
+      }
+      const created = await tx.chatThread.create({
+        data: {
+          kind: "COLLAB",
+          collabInviteId: invite.id,
+          clientId: invite.clientId,
+          workerId: invite.workerId,
+          messages: {
+            create: {
+              senderId: user.id,
+              type: "SYSTEM",
+              body: "Коллаб принят. Обсудите идею, формат и сроки."
+            }
+          }
+        }
+      });
+      await tx.notification.create({
+        data: {
+          userId: invite.clientId,
+          title: "Коллаб принят",
+          body: `${user.name} принял приглашение. Обсуждение уже открыто.`,
+          channel: "IN_APP",
+          priority: "NORMAL",
+          kind: "COLLAB",
+          href: `/chats?thread=${created.id}&type=collabs`
+        }
+      });
+      return created;
     });
-    await prisma.notification.create({
+    revalidatePath("/collabs");
+    revalidatePath("/chats");
+    redirect(`/chats?thread=${thread?.id}&type=collabs`);
+  }
+
+  await prisma.$transaction([
+    prisma.collabInvite.update({
+      where: { id: invite.id },
+      data: { status: "DECLINED", respondedAt: new Date() }
+    }),
+    prisma.notification.create({
       data: {
         userId: invite.clientId,
-        title: accept ? "Коллаб принят" : "Коллаб отклонён",
-        body: `${user.name} ${accept ? "принял приглашение" : "отклонил приглашение"}`,
+        title: "Коллаб отклонён",
+        body: `${user.name} отклонил приглашение`,
         channel: "IN_APP",
-        priority: "NORMAL"
+        priority: "NORMAL",
+        kind: "COLLAB",
+        href: "/collabs"
       }
-    });
-  }
+    })
+  ]);
   revalidatePath("/collabs");
   redirect("/collabs");
 }

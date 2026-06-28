@@ -27,13 +27,13 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const STORAGE_KEY = "reelpay:campaign-guide-v2-collapsed";
+type GuideVariant = "general" | "client" | "worker";
 
-const scenes = [
+const generalScenes = [
   {
     label: "ReelPay",
     kicker: "Контент начинает работать",
-    title: "Видео, которые приносят результат",
+    title: "Контент превращается в результат",
     text: "Заказчики получают охват. Исполнители зарабатывают на монтаже.",
     duration: 3500
   },
@@ -87,6 +87,47 @@ const scenes = [
     duration: 3500
   }
 ] as const;
+
+const clientScenes = [
+  { label: "Старт", kicker: "Ваш контент работает дальше", title: "Получайте короткие ролики без команды монтажёров", text: "Один заказ объединяет исходник, правила, бюджет, исполнителей и аналитику.", duration: 3200 },
+  { label: "Исходник", kicker: "Первый шаг", title: "Добавьте стрим, подкаст или длинное видео", text: "ReelPay проверит ссылку и соберёт требования в одном месте.", duration: 3400 },
+  { label: "Заказ", kicker: "Прозрачные условия", title: "Укажите формат, цель и бюджет", text: "Исполнитель заранее видит задачу, срок, площадки и оплату за результат.", duration: 3600 },
+  { label: "Исполнители", kicker: "Работа начинается", title: "Получайте отклики и обсуждайте детали", text: "Чаты, статусы и файлы привязаны к конкретной работе.", duration: 3600 },
+  { label: "Ролики", kicker: "Всё перед глазами", title: "Смотрите опубликованные работы", text: "Ссылки, превью и показатели не теряются в переписках.", duration: 3400 },
+  { label: "Проверка", kicker: "Защита бюджета", title: "Платите только после проверки", text: "Платформа сверяет публикацию, watermark, просмотры и подозрительную активность.", duration: 3800 },
+  { label: "Аналитика", kicker: "Результат в цифрах", title: "Контролируйте просмотры и расходы", text: "Видно, какие ролики работают и сколько бюджета осталось.", duration: 3600 },
+  { label: "Готово", kicker: "Запуск за несколько минут", title: "Создайте первую кампанию", text: "Добавьте исходник и получите первые короткие ролики от исполнителей.", duration: 3200 }
+] as const;
+
+const workerScenes = [
+  { label: "Старт", kicker: "Монтаж превращается в доход", title: "Выбирайте понятные заказы без долгих переговоров", text: "Сразу видны требования, срок, цель по просмотрам и ожидаемая выплата.", duration: 3200 },
+  { label: "Витрина", kicker: "Найдите подходящую задачу", title: "Фильтруйте заказы по теме и оплате", text: "Сравнивайте условия и берите только те ролики, которые сможете сделать.", duration: 3400 },
+  { label: "Условия", kicker: "До начала работы", title: "Проверьте исходник и правила", text: "Формат, теги, запреты и площадки собраны на одной странице.", duration: 3600 },
+  { label: "Монтаж", kicker: "Создайте сильный клип", title: "Смонтируйте и опубликуйте ролик", text: "Добавьте tracking-код и watermark, если он требуется заказчиком.", duration: 3600 },
+  { label: "Сдача", kicker: "Одна ссылка", title: "Отправьте опубликованную работу", text: "ReelPay распознает площадку, покажет превью и запустит проверку.", duration: 3400 },
+  { label: "Трекинг", kicker: "Просмотры считаются автоматически", title: "Следите за ростом результата", text: "Статус и показатели обновляются без ручных отчётов.", duration: 3800 },
+  { label: "Выплата", kicker: "Защищённый расчёт", title: "Получите деньги после подтверждения", text: "После settlement-периода выплата поступает в кошелёк.", duration: 3600 },
+  { label: "Рост", kicker: "Репутация остаётся с вами", title: "Развивайте профиль, ранг и портфолио", text: "Лучшие работы повышают доверие заказчиков и открывают новые возможности.", duration: 3200 }
+] as const;
+
+const sceneSets = { general: generalScenes, client: clientScenes, worker: workerScenes };
+const guideCopy = {
+  general: {
+    badge: "ReelPay за 30 секунд",
+    title: "Как контент превращается в охват и доход",
+    text: "Общий путь заказчика и исполнителя — от исходного видео до проверенного результата."
+  },
+  client: {
+    badge: "Инструкция заказчику",
+    title: "Как получить ролики и реальные просмотры",
+    text: "От создания кампании до аналитики и безопасной оплаты результата."
+  },
+  worker: {
+    badge: "Инструкция исполнителю",
+    title: "Как взять заказ и получить выплату",
+    text: "От выбора задачи до публикации, проверки просмотров и выплаты."
+  }
+} as const;
 
 function PromoVisual({ scene }: { scene: number }) {
   if (scene === 0) {
@@ -233,7 +274,10 @@ function PromoVisual({ scene }: { scene: number }) {
   );
 }
 
-export function CampaignGuide() {
+export function CampaignGuide({ variant = "general" }: { variant?: GuideVariant }) {
+  const scenes = sceneSets[variant];
+  const copy = guideCopy[variant];
+  const storageKey = `reelpay:campaign-guide-v3-${variant}-collapsed`;
   const frameRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -243,10 +287,12 @@ export function CampaignGuide() {
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
   const [playbackRun, setPlaybackRun] = useState(0);
+  const [orientationPrompt, setOrientationPrompt] = useState(false);
+  const [orientationChosen, setOrientationChosen] = useState(false);
 
   useEffect(() => {
-    setCollapsed(localStorage.getItem(STORAGE_KEY) === "1");
-  }, []);
+    setCollapsed(localStorage.getItem(storageKey) === "1");
+  }, [storageKey]);
 
   useEffect(() => {
     if (!playing) return;
@@ -286,10 +332,10 @@ export function CampaignGuide() {
     setCollapsed(next);
     setPlaying(false);
     audioRef.current?.pause();
-    localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+    localStorage.setItem(storageKey, next ? "1" : "0");
   }
 
-  function startGuide() {
+  function beginGuide() {
     if (active === scenes.length - 1 && progress >= 1) {
       setActive(0);
       setProgress(0);
@@ -302,6 +348,30 @@ export function CampaignGuide() {
       audio.volume = 0.32;
       void audio.play().catch(() => undefined);
     }
+  }
+
+  function startGuide() {
+    const portraitPhone = window.matchMedia("(max-width: 760px) and (orientation: portrait)").matches;
+    if (portraitPhone && !orientationChosen) {
+      setOrientationPrompt(true);
+      return;
+    }
+    beginGuide();
+  }
+
+  async function chooseOrientation(fullscreen: boolean) {
+    setOrientationChosen(true);
+    setOrientationPrompt(false);
+    if (fullscreen) {
+      try {
+        await frameRef.current?.requestFullscreen?.();
+        const orientation = screen.orientation as ScreenOrientation & { lock?: (value: "landscape") => Promise<void> };
+        await orientation.lock?.("landscape");
+      } catch {
+        // iOS and some browsers do not expose orientation locking.
+      }
+    }
+    beginGuide();
   }
 
   function goTo(index: number) {
@@ -351,9 +421,9 @@ export function CampaignGuide() {
       </button>
 
       <div className="campaign-guide-copy">
-        <span><CircleDollarSign size={15} /> ReelPay за 32 секунды</span>
-        <h2>Как контент превращается в охват и доход</h2>
-        <p>Полный путь заказчика и исполнителя — от исходного видео до проверенной выплаты.</p>
+        <span><CircleDollarSign size={15} /> {copy.badge}</span>
+        <h2>{copy.title}</h2>
+        <p>{copy.text}</p>
         <div className="campaign-guide-audience">
           <span><BriefcaseBusiness size={16} /><b>Заказчику</b> ролики и охват</span>
           <span><Scissors size={16} /><b>Исполнителю</b> заказы и оплата</span>
@@ -412,6 +482,15 @@ export function CampaignGuide() {
             <Maximize2 size={17} />
           </button>
         </div>
+        {orientationPrompt ? (
+          <div className="campaign-orientation" role="dialog" aria-modal="true" aria-label="Режим просмотра">
+            <Smartphone size={30} />
+            <b>Поверните телефон</b>
+            <p>В горизонтальном режиме детали инструкции видны лучше.</p>
+            <button type="button" onClick={() => void chooseOrientation(true)}>На весь экран</button>
+            <button type="button" className="secondary" onClick={() => void chooseOrientation(false)}>Смотреть вертикально</button>
+          </div>
+        ) : null}
       </div>
     </section>
   );

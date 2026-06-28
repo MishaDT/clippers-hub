@@ -83,7 +83,10 @@ export function NotificationBell({
             ))}
             {!items.length ? <p className={styles.empty}>Новых событий пока нет</p> : null}
           </div>
-          <Link className={styles.support} href="/support" onClick={() => setOpen(false)}>Поддержка ReelPay</Link>
+          <div className={styles.footer}>
+            <Link href="/notifications" onClick={() => setOpen(false)}>Все уведомления</Link>
+            <Link href="/support" onClick={() => setOpen(false)}>Поддержка</Link>
+          </div>
         </div>
       ) : null}
     </div>

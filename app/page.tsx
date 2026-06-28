@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowRight, Megaphone, Scissors, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
+import { CampaignGuide } from "@/app/campaigns/campaign-guide";
 
 export default async function HomePage() {
   if (await getCurrentUser()) redirect("/campaigns");
@@ -31,6 +32,8 @@ export default async function HomePage() {
           <div><b>1 800+</b><span>активных клипперов</span></div>
           <div><b>320</b><span>заданий в ленте сейчас</span></div>
         </div>
+
+        <CampaignGuide variant="general" />
 
         {/* Steps */}
         <div className="lpa-steps" id="how">
