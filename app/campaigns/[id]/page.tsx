@@ -11,20 +11,6 @@ import { compactNumber, expectedPayout, rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
 
-const covers = [
-  "/assets/gaming-order.png",
-  "/assets/podcast-order.png",
-  "/assets/marketplace-thumb.png",
-  "/assets/hero-studio.png",
-  "/assets/creator-nika.png"
-];
-
-function coverFor(id: string) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  return covers[hash % covers.length];
-}
-
 function clientAvatar(handle: string, avatar: string | null) {
   return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "client")}&backgroundColor=transparent`;
 }
@@ -120,7 +106,6 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
   const daysLeft = Math.max(1, Math.ceil((campaign.deadline.getTime() - Date.now()) / 86400000));
   const safeSource = buildSafePreview(campaign.sourceUrl);
-  const cover = coverFor(campaign.id);
   const tasks = taskList(campaign.description);
   const urgent = daysLeft <= 2;
   const difficulty = campaign.viewThreshold >= 15000 || urgent ? "Сложная" : campaign.viewThreshold >= 9000 ? "Средняя" : "Лёгкая";
@@ -146,11 +131,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
         <div className="od-grid">
           <div className="od-hero">
-            <div className="od-cover" style={{ backgroundImage: `linear-gradient(180deg, rgba(7,7,9,.05), rgba(7,7,9,.8)), url('${cover}')` }}>
-              <span className="od-cover-chip"><Sparkles size={13} /> {campaign.niche || "Видео"}</span>
-              <span className="od-cover-pay">до {rub(expected)}</span>
-            </div>
-            <div className="od-headline">
+            <div className="od-brief">
+              <span className="od-niche"><Sparkles size={13} /> {campaign.niche || "Видео"}</span>
               <h1>{campaign.title}</h1>
               <p>{campaign.description}</p>
               <div className="od-chips">
