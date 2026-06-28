@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
-import { ArrowUpRight, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Link2, RefreshCw, Send, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, Ban, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Link2, Pencil, RefreshCw, Send, ShieldAlert, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { sendChatMessageAction } from "@/app/actions";
+import { deleteChatMessageAction, editChatMessageAction, sendChatMessageAction } from "@/app/actions";
 
 type Message = {
   id: string;
@@ -13,6 +13,8 @@ type Message = {
   body: string;
   type: string;
   createdAt: string;
+  deleted?: boolean;
+  edited?: boolean;
   previews: Array<{ url: string; host: string; platform: string; title: string }>;
 };
 
@@ -69,7 +71,44 @@ export function CampaignChat({
   const [progressOpen, setProgressOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [warnUrl, setWarnUrl] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const [editError, setEditError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [actionPending, startActionTransition] = useTransition();
+
+  const startEdit = (message: Message) => {
+    setEditingId(message.id);
+    setEditBody(message.body);
+    setEditError("");
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditBody("");
+    setEditError("");
+  };
+  const saveEdit = (id: string) => {
+    const value = editBody.trim();
+    if (!value) { setEditError("Сообщение не может быть пустым"); return; }
+    startActionTransition(async () => {
+      const data = new FormData();
+      data.set("messageId", id);
+      data.set("body", value);
+      const result = await editChatMessageAction(data);
+      if (!result?.ok) { setEditError(result?.error || "Не удалось изменить"); return; }
+      cancelEdit();
+      router.refresh();
+    });
+  };
+  const removeMessage = (id: string) => {
+    if (!window.confirm("Удалить сообщение? Оно исчезнет у обоих участников.")) return;
+    startActionTransition(async () => {
+      const data = new FormData();
+      data.set("messageId", id);
+      const result = await deleteChatMessageAction(data);
+      if (result?.ok) router.refresh();
+    });
+  };
   const [visibleMessages, addOptimisticMessage] = useOptimistic(
     compactSystemMessages(messages),
     (current, next: Message) => [...current, next]
@@ -162,17 +201,51 @@ export function CampaignChat({
         {visibleMessages.map((message) => {
           const mine = message.senderId === currentUserId;
           const system = message.type === "SYSTEM";
+          const editing = editingId === message.id;
+          const canManage = mine && !system && !message.deleted && !message.id.startsWith("pending-");
           return (
-            <article className={`chat-bubble ${mine ? "mine" : ""} ${system ? "system" : ""}`} key={message.id}>
-              {!system ? <small>{message.senderName} · {message.createdAt}</small> : null}
-              <p>{message.body}</p>
-              {message.previews.map((preview) => (
-                <a className="safe-preview" href={preview.url} target="_blank" rel="noreferrer" key={preview.url}>
-                  <Link2 size={16} />
-                  <span><b>{preview.platform === "LINK" ? "Ссылка ReelPay" : preview.platform}</b><em>{preview.host}</em></span>
-                  <ArrowUpRight size={16} />
-                </a>
-              ))}
+            <article className={`chat-bubble ${mine ? "mine" : ""} ${system ? "system" : ""} ${message.deleted ? "deleted" : ""}`} key={message.id}>
+              {!system && !message.deleted ? (
+                <small>{message.senderName} · {message.createdAt}{message.edited ? " · изменено" : ""}</small>
+              ) : null}
+              {message.deleted ? (
+                <p className="chat-deleted-text"><Ban size={14} /> Сообщение удалено</p>
+              ) : editing ? (
+                <div className="chat-edit">
+                  <textarea
+                    value={editBody}
+                    rows={2}
+                    maxLength={1000}
+                    onChange={(event) => setEditBody(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") cancelEdit();
+                      if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); saveEdit(message.id); }
+                    }}
+                  />
+                  <div className="chat-edit-actions">
+                    <button type="button" className="chat-edit-cancel" onClick={cancelEdit}>Отмена</button>
+                    <button type="button" className="chat-edit-save" onClick={() => saveEdit(message.id)} disabled={actionPending}>Сохранить</button>
+                  </div>
+                  {editError ? <span className="chat-edit-err">{editError}</span> : null}
+                </div>
+              ) : (
+                <>
+                  <p>{message.body}</p>
+                  {message.previews.map((preview) => (
+                    <a className="safe-preview" href={preview.url} target="_blank" rel="noreferrer" key={preview.url}>
+                      <Link2 size={16} />
+                      <span><b>{preview.platform === "LINK" ? "Ссылка ReelPay" : preview.platform}</b><em>{preview.host}</em></span>
+                      <ArrowUpRight size={16} />
+                    </a>
+                  ))}
+                </>
+              )}
+              {canManage && !editing ? (
+                <div className="chat-msg-actions">
+                  <button type="button" aria-label="Изменить сообщение" onClick={() => startEdit(message)}><Pencil size={13} /></button>
+                  <button type="button" aria-label="Удалить сообщение" onClick={() => removeMessage(message.id)} disabled={actionPending}><Trash2 size={13} /></button>
+                </div>
+              ) : null}
             </article>
           );
         })}

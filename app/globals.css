@@ -10927,3 +10927,118 @@ a.social-btn:hover {
   .podium-invite button { padding: 8px 6px; font-size: 11.5px; gap: 4px; }
   .link-warning-actions { flex-direction: column-reverse; }
 }
+
+/* ============================================================
+   PASS 35 — Telegram-style chat: archive/delete threads, edit/delete msgs
+   ============================================================ */
+
+/* Active / Archive view toggle */
+.chat-view-tabs {
+  flex: none;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  margin: 0 14px 6px; padding: 4px;
+  border-radius: 12px; background: rgba(255, 255, 255, .035);
+}
+.chat-view-tabs a {
+  padding: 7px 5px; border-radius: 9px; text-align: center;
+  font-size: 12.5px; font-weight: 800; color: var(--muted);
+}
+.chat-view-tabs a.active { background: rgba(255, 255, 255, .09); color: var(--text); }
+
+/* Thread row stretched link + hover actions */
+.thread-rowlink { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.chat-thread-row .thread-avatar,
+.chat-thread-row .thread-main,
+.chat-thread-row .thread-status { position: relative; z-index: 0; }
+.thread-name-line, .thread-main em, .thread-main small { pointer-events: none; }
+.thread-main small.is-deleted { font-style: italic; opacity: .75; }
+
+.thread-menu {
+  position: absolute; top: 50%; right: 6px; z-index: 3;
+  transform: translateY(-50%);
+  display: flex; gap: 4px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s ease;
+}
+.chat-thread-row:hover .thread-menu,
+.chat-thread-row.active .thread-menu { opacity: 1; pointer-events: auto; }
+.thread-menu form { display: block; line-height: 0; }
+.thread-menu button {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 9px;
+  color: var(--muted);
+  background: rgba(20, 20, 24, .92);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.thread-menu button:hover { color: var(--text); background: rgba(44, 44, 50, .95); }
+.thread-menu button.danger:hover { color: #ff8a8a; background: rgba(255, 80, 80, .14); }
+@media (hover: none) { .thread-menu { opacity: 1; pointer-events: auto; } }
+
+/* Per-message edit/delete */
+.chat-bubble { position: relative; }
+.chat-msg-actions {
+  position: absolute; top: 4px;
+  display: flex; gap: 3px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s ease;
+}
+.chat-bubble.mine .chat-msg-actions { left: -4px; transform: translateX(-100%); }
+.chat-bubble:not(.mine) .chat-msg-actions { right: -4px; transform: translateX(100%); }
+.chat-bubble:hover .chat-msg-actions { opacity: 1; pointer-events: auto; }
+.chat-msg-actions button {
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 7px;
+  color: var(--muted);
+  background: rgba(20, 20, 24, .92);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .35);
+  cursor: pointer;
+}
+.chat-msg-actions button:hover { color: var(--text); background: rgba(44, 44, 50, .95); }
+.chat-msg-actions button:last-child:hover { color: #ff8a8a; }
+@media (hover: none) { .chat-msg-actions { opacity: .85; pointer-events: auto; } }
+
+.chat-deleted-text {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0; color: var(--muted); font-style: italic; font-size: 13px;
+}
+
+.chat-edit { display: grid; gap: 8px; min-width: min(280px, 60vw); }
+.chat-edit textarea {
+  width: 100%; resize: vertical; min-height: 56px;
+  border-radius: 10px; border: 1px solid rgba(201, 243, 29, .4);
+  background: rgba(0, 0, 0, .3); color: var(--text);
+  padding: 9px 11px; font: inherit; line-height: 1.45;
+}
+.chat-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.chat-edit-actions button { padding: 7px 13px; border-radius: 9px; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+.chat-edit-cancel { border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .05); color: var(--text); }
+.chat-edit-save { border: 0; background: #c9f31d; color: #0a0a0b; }
+.chat-edit-save:disabled { opacity: .6; cursor: default; }
+.chat-edit-err { color: #fecdd3; font-size: 12px; }
+
+/* ============================================================
+   PASS 36 — Admin chat audit list
+   ============================================================ */
+.admin-audit-list { display: grid; gap: 10px; }
+.admin-audit-row {
+  display: grid; gap: 8px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .025);
+}
+.admin-audit-row.is-delete { border-color: rgba(255, 140, 140, .22); background: rgba(255, 90, 90, .05); }
+.admin-audit-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.admin-audit-meta strong { font-size: 14px; }
+.admin-audit-meta span { color: var(--muted); font-size: 12.5px; }
+.admin-audit-meta time { margin-left: auto; color: var(--muted); font-size: 12px; }
+.admin-audit-diff { display: grid; gap: 4px; }
+.admin-audit-diff p { margin: 0; font-size: 13.5px; line-height: 1.5; word-break: break-word; }
+.admin-audit-diff b { color: var(--muted); font-weight: 800; margin-right: 4px; }
+.admin-audit-before { color: var(--muted); }
+.admin-audit-after { color: var(--text); }
+.admin-audit-thread { justify-self: start; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--muted); }

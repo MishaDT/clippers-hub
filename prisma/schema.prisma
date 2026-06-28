@@ -65,6 +65,7 @@ model User {
   moderationAuthored     ModerationCase[]  @relation("ModerationAuthor")
   moderationReported     ModerationCase[]  @relation("ModerationReporter")
   moderationReviewed     ModerationCase[]  @relation("ModerationReviewer")
+  messageAudits          ChatMessageEdit[] @relation("MessageEditor")
 
   @@index([role, createdAt])
   @@index([createdAt])
@@ -219,6 +220,10 @@ model ChatThread {
   workerId     String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  clientArchivedAt DateTime?
+  workerArchivedAt DateTime?
+  clientClearedAt  DateTime?
+  workerClearedAt  DateTime?
 
   campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   submission Submission?     @relation(fields: [submissionId], references: [id], onDelete: SetNull)
@@ -241,12 +246,34 @@ model ChatMessage {
   metadataJson     String   @default("{}")
   moderationStatus String   @default("APPROVED")
   createdAt        DateTime @default(now())
+  editedAt         DateTime?
+  deletedAt        DateTime?
 
-  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender User       @relation("ChatSender", fields: [senderId], references: [id], onDelete: Cascade)
+  thread ChatThread        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User              @relation("ChatSender", fields: [senderId], references: [id], onDelete: Cascade)
+  edits  ChatMessageEdit[]
 
   @@index([threadId, createdAt])
   @@index([senderId, createdAt])
+}
+
+// Immutable audit trail of every chat message edit/delete (admin visibility).
+model ChatMessageEdit {
+  id           String   @id @default(cuid())
+  messageId    String
+  threadId     String
+  editorId     String
+  previousBody String
+  newBody      String?
+  action       String   @default("EDIT")
+  createdAt    DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  editor  User        @relation("MessageEditor", fields: [editorId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, createdAt])
+  @@index([threadId, createdAt])
+  @@index([createdAt])
 }
 
 model UserHandleAlias {

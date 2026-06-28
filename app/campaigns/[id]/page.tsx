@@ -261,6 +261,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                 body: message.body,
                 type: message.type,
                 createdAt: shortDate(message.createdAt),
+                deleted: Boolean(message.deletedAt),
+                edited: Boolean(message.editedAt),
                 previews: (meta.urls || []).map(buildSafePreview).filter(Boolean) as Array<{ url: string; host: string; platform: string; title: string }>
               };
             })}

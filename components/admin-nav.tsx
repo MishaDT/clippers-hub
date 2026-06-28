@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ClipboardList, DatabaseZap, Headphones, ShieldAlert, SlidersHorizontal, UsersRound, WalletCards } from "lucide-react";
+import { BarChart3, ClipboardList, DatabaseZap, Headphones, MessageSquareText, ShieldAlert, SlidersHorizontal, UsersRound, WalletCards } from "lucide-react";
 import { clsx } from "clsx";
 import { formatBadgeCount } from "@/components/app-nav";
 import styles from "@/components/app-nav.module.css";
@@ -15,6 +15,7 @@ const items = [
   { href: "/admin/finance", label: "Финансы", hint: "Платежи и выводы", icon: WalletCards },
   { href: "/admin/security", label: "Безопасность", hint: "Риски и контроль", icon: ShieldAlert },
   { href: "/admin/moderation", label: "Модерация", hint: "Жалобы и санкции", icon: ShieldAlert },
+  { href: "/admin/messages", label: "Аудит чатов", hint: "Правки и удаления", icon: MessageSquareText },
   { href: "/admin/support", label: "Поддержка", hint: "Обращения пользователей", icon: Headphones },
   { href: "/admin/settings", label: "Настройки", hint: "Интеграции", icon: SlidersHorizontal }
 ];

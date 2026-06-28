@@ -283,7 +283,7 @@ export async function sendChatMessageAction(formData: FormData) {
         metadataJson: stringify({ urls: checked.urls })
       }
     }),
-    prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: now } }),
+    prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: now, clientClearedAt: null, workerClearedAt: null } }),
     prisma.chatReadState.upsert({
       where: { threadId_userId: { threadId, userId: user.id } },
       create: { threadId, userId: user.id, lastReadAt: now },
@@ -304,6 +304,125 @@ export async function sendChatMessageAction(formData: FormData) {
   revalidatePath(`/campaigns/${thread.campaignId}`);
   revalidatePath("/chats");
   return { ok: true };
+}
+
+export async function editChatMessageAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const messageId = String(formData.get("messageId") || "");
+  const checked = validateChatMessage(String(formData.get("body") || ""));
+  if (!messageId || !checked.ok) return { ok: false, error: checked.reasons[0] || "bad_message" };
+
+  const message = await prisma.chatMessage.findFirst({
+    where: { id: messageId, senderId: user.id, type: "TEXT", deletedAt: null },
+    select: { id: true, threadId: true, body: true, thread: { select: { campaignId: true } } }
+  });
+  if (!message) return { ok: false, error: "Это сообщение нельзя изменить" };
+  if (message.body === checked.body) return { ok: true };
+
+  const policy = await moderateText({
+    text: checked.body,
+    contentType: "CHAT_MESSAGE",
+    authorId: user.id,
+    context: "CHAT",
+    payload: { threadId: message.threadId, messageId }
+  });
+  if (policy.action === "BLOCK") return { ok: false, error: "Сообщение нарушает правила платформы" };
+  if (policy.action === "REVIEW") return { ok: false, error: "Изменение отправлено модератору на проверку" };
+
+  await prisma.$transaction([
+    prisma.chatMessageEdit.create({
+      data: {
+        messageId: message.id,
+        threadId: message.threadId,
+        editorId: user.id,
+        previousBody: message.body,
+        newBody: checked.body,
+        action: "EDIT"
+      }
+    }),
+    prisma.chatMessage.update({
+      where: { id: message.id },
+      data: { body: checked.body, editedAt: new Date(), metadataJson: stringify({ urls: checked.urls }) }
+    })
+  ]);
+  revalidatePath(`/campaigns/${message.thread.campaignId}`);
+  revalidatePath("/chats");
+  return { ok: true };
+}
+
+export async function deleteChatMessageAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const messageId = String(formData.get("messageId") || "");
+  if (!messageId) return { ok: false, error: "bad_request" };
+
+  const message = await prisma.chatMessage.findFirst({
+    where: { id: messageId, senderId: user.id, deletedAt: null },
+    select: { id: true, threadId: true, body: true, thread: { select: { campaignId: true } } }
+  });
+  if (!message) return { ok: false, error: "Это сообщение нельзя удалить" };
+
+  await prisma.$transaction([
+    prisma.chatMessageEdit.create({
+      data: {
+        messageId: message.id,
+        threadId: message.threadId,
+        editorId: user.id,
+        previousBody: message.body,
+        newBody: null,
+        action: "DELETE"
+      }
+    }),
+    prisma.chatMessage.update({
+      where: { id: message.id },
+      data: { deletedAt: new Date(), body: "", metadataJson: "{}" }
+    })
+  ]);
+  revalidatePath(`/campaigns/${message.thread.campaignId}`);
+  revalidatePath("/chats");
+  return { ok: true };
+}
+
+export async function archiveThreadAction(formData: FormData) {
+  const user = await requireUser();
+  const threadId = String(formData.get("threadId") || "");
+  const archive = String(formData.get("archive") || "1") === "1";
+  const thread = await prisma.chatThread.findFirst({
+    where: { id: threadId, OR: [{ clientId: user.id }, { workerId: user.id }] },
+    select: { id: true, clientId: true }
+  });
+  if (thread) {
+    const asClient = thread.clientId === user.id;
+    const value = archive ? new Date() : null;
+    await prisma.chatThread.update({
+      where: { id: thread.id },
+      data: asClient ? { clientArchivedAt: value } : { workerArchivedAt: value }
+    });
+  }
+  revalidatePath("/chats");
+  redirect(archive ? "/chats?view=archived" : "/chats");
+}
+
+export async function clearThreadAction(formData: FormData) {
+  const user = await requireUser();
+  const threadId = String(formData.get("threadId") || "");
+  const thread = await prisma.chatThread.findFirst({
+    where: { id: threadId, OR: [{ clientId: user.id }, { workerId: user.id }] },
+    select: { id: true, clientId: true }
+  });
+  if (thread) {
+    const asClient = thread.clientId === user.id;
+    const now = new Date();
+    await prisma.chatThread.update({
+      where: { id: thread.id },
+      data: asClient
+        ? { clientClearedAt: now, clientArchivedAt: null }
+        : { workerClearedAt: now, workerArchivedAt: null }
+    });
+  }
+  revalidatePath("/chats");
+  redirect("/chats");
 }
 
 export async function reportContentAction(formData: FormData) {
