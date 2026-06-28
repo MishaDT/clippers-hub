@@ -5,9 +5,9 @@ import { SocialAuth, authErrorText } from "@/components/social-auth";
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string | string[] }>;
+  searchParams: Promise<{ error?: string | string[]; intent?: string; returnTo?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, intent, returnTo } = await searchParams;
   const errorText = authErrorText(error);
 
   return (
@@ -28,18 +28,20 @@ export default async function LoginPage({
         ) : null}
 
         <form className="form" action="/api/auth/login" method="post">
+          <input type="hidden" name="intent" value={intent || ""} />
+          <input type="hidden" name="returnTo" value={returnTo || ""} />
           <label className="field">Email<input name="email" type="email" autoComplete="email" required /></label>
           <label className="field">Пароль<input name="password" type="password" autoComplete="current-password" required /></label>
           <button className="btn btn-primary" type="submit">Войти <ArrowRight size={18} /></button>
         </form>
 
-        <SocialAuth mode="login" />
+        <SocialAuth mode="login" intent={intent} returnTo={returnTo} />
 
         <div className="auth-hints">
           <span><ShieldCheck size={16} /> Защищённая сессия и проверка входа</span>
         </div>
 
-        <p className="small">Нет аккаунта? <Link href="/register">Зарегистрироваться</Link></p>
+        <p className="small">Нет аккаунта? <Link href={`/register?${new URLSearchParams({ ...(intent ? { intent } : {}), ...(returnTo ? { returnTo } : {}) })}`}>Зарегистрироваться</Link></p>
         <p className="auth-legal">
           Входя, вы принимаете <Link href="/legal/terms">Условия</Link> и{" "}
           <Link href="/legal/privacy">Политику конфиденциальности</Link>.

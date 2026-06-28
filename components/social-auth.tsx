@@ -56,7 +56,7 @@ const META: Record<ProviderId, { label: string; mark: React.ReactNode }> = {
 
 const ALL: ProviderId[] = ["google", "vk", "yandex"];
 
-export function SocialAuth({ mode = "login" }: { mode?: "login" | "register" }) {
+export function SocialAuth({ mode = "login", intent, returnTo }: { mode?: "login" | "register"; intent?: string; returnTo?: string }) {
   const enabled = enabledProviders();
   const verb = mode === "register" ? "регистрация" : "вход";
 
@@ -72,7 +72,7 @@ export function SocialAuth({ mode = "login" }: { mode?: "login" | "register" }) 
             </>
           );
           return enabled.includes(id) ? (
-            <a className={`social-btn social-${id}`} href={`/api/auth/oauth/${id}`} key={id}>
+            <a className={`social-btn social-${id}`} href={`/api/auth/oauth/${id}?${new URLSearchParams({ ...(intent ? { intent } : {}), ...(returnTo ? { returnTo } : {}) })}`} key={id}>
               {inner}
             </a>
           ) : (

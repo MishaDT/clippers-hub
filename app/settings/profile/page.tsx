@@ -47,7 +47,7 @@ export default async function ProfileSettingsPage({
     <main className="settings-page profile-settings">
       <header className="settings-title">
         <Link href="/profile"><ArrowLeft size={18} /> Профиль</Link>
-        <div><h1>Редактирование профиля</h1><p>Публичные данные и лучшие подтверждённые работы.</p></div>
+        <div><h1>Редактирование профиля</h1><p>Публичные данные и витрина для заказчиков.</p></div>
       </header>
       {params.saved ? <p className="form-success"><Check size={16} /> Изменения сохранены</p> : null}
       {params.error ? <p className="form-error">Проверьте данные. Никнейм может быть занят или временно недоступен для смены.</p> : null}
@@ -64,7 +64,7 @@ export default async function ProfileSettingsPage({
       </form>
 
       <section className="settings-card">
-        <div className="settings-section-head"><div><h2>Лучшие работы</h2><p>До шести подтверждённых роликов. Остальные места профиль заполнит автоматически.</p></div><Link href={`/clippers/${user.handle}`}><ExternalLink size={16} /> Открыть профиль</Link></div>
+        <div className="settings-section-head"><div><h2>Витрина работ</h2><p>Заказчики видят здесь до шести роликов. Без ручного закрепления показываются самые просматриваемые.</p></div><Link href={`/clippers/${user.handle}`}><ExternalLink size={16} /> Открыть профиль</Link></div>
         <div className="portfolio-manage">
           {user.portfolioPins.map((pin, index) => (
             <article key={pin.id}>
@@ -73,10 +73,10 @@ export default async function ProfileSettingsPage({
               <form action={removePortfolioPinAction}><input type="hidden" name="pinId" value={pin.id} /><button aria-label="Убрать"><Trash2 size={16} /></button></form>
             </article>
           ))}
-          {!user.portfolioPins.length ? <p className="muted">Закреплённых работ пока нет.</p> : null}
+          {!user.portfolioPins.length ? <p className="muted">Сейчас витрина заполняется автоматически лучшими подтверждёнными роликами.</p> : null}
         </div>
         {user.portfolioPins.length < 6 ? <div className="portfolio-available">
-          <h3>Добавить подтверждённую работу</h3>
+          <h3>Закрепить работу вручную</h3>
           {submissions.filter((item) => !pinnedIds.has(item.id)).slice(0, 12).map((item) => (
             <form action={pinPortfolioAction} key={item.id}><input type="hidden" name="submissionId" value={item.id} /><span><b>{item.campaign.title}</b><small>{item.currentViews.toLocaleString("ru-RU")} просмотров</small></span><button className="btn btn-ghost btn-small">Добавить</button></form>
           ))}

@@ -26,6 +26,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { markMarketGuideSeenAction } from "@/app/actions";
 
 type GuideVariant = "general" | "client" | "worker";
 
@@ -274,13 +275,13 @@ function PromoVisual({ scene }: { scene: number }) {
   );
 }
 
-export function CampaignGuide({ variant = "general" }: { variant?: GuideVariant }) {
+export function CampaignGuide({ variant = "general", initiallyCollapsed = false, persistSeen = false }: { variant?: GuideVariant; initiallyCollapsed?: boolean; persistSeen?: boolean }) {
   const scenes = sceneSets[variant];
   const copy = guideCopy[variant];
   const storageKey = `reelpay:campaign-guide-v3-${variant}-collapsed`;
   const frameRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(initiallyCollapsed);
   const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -291,8 +292,8 @@ export function CampaignGuide({ variant = "general" }: { variant?: GuideVariant 
   const [orientationChosen, setOrientationChosen] = useState(false);
 
   useEffect(() => {
-    setCollapsed(localStorage.getItem(storageKey) === "1");
-  }, [storageKey]);
+    setCollapsed(initiallyCollapsed || localStorage.getItem(storageKey) === "1");
+  }, [initiallyCollapsed, storageKey]);
 
   useEffect(() => {
     if (!playing) return;
@@ -333,6 +334,7 @@ export function CampaignGuide({ variant = "general" }: { variant?: GuideVariant 
     setPlaying(false);
     audioRef.current?.pause();
     localStorage.setItem(storageKey, next ? "1" : "0");
+    if (next && variant !== "general" && persistSeen) void markMarketGuideSeenAction();
   }
 
   function beginGuide() {

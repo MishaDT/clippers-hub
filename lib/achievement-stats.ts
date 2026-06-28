@@ -14,14 +14,15 @@ export async function loadAchievementStats(user: {
   referralCode: string;
 }): Promise<AchievementStats> {
   const since = new Date(Date.now() - WEEK_MS);
-  const [approvedClips, totalClips, weekViews, best, referrals, campaigns, clipsReceived] = await Promise.all([
+  const [approvedClips, totalClips, weekViews, best, referrals, campaigns, clipsReceived, completedOrders] = await Promise.all([
     prisma.submission.count({ where: { workerId: user.id, status: { in: [...APPROVED] } } }),
     prisma.submission.count({ where: { workerId: user.id } }),
     prisma.submission.aggregate({ where: { workerId: user.id, createdAt: { gte: since } }, _sum: { currentViews: true } }),
     prisma.submission.aggregate({ where: { workerId: user.id }, _max: { currentViews: true } }),
     prisma.user.count({ where: { referredBy: user.referralCode } }),
     prisma.campaign.count({ where: { ownerId: user.id } }),
-    prisma.submission.count({ where: { campaign: { ownerId: user.id } } })
+    prisma.submission.count({ where: { campaign: { ownerId: user.id } } }),
+    prisma.submission.count({ where: { workerId: user.id, status: "PAID", updatedAt: { gte: since } } })
   ]);
 
   return {
@@ -32,6 +33,7 @@ export async function loadAchievementStats(user: {
     streakDays: user.streakDays || 0,
     referrals,
     campaigns,
-    clipsReceived
+    clipsReceived,
+    completedOrders
   };
 }

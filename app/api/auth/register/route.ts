@@ -5,6 +5,8 @@ import { createSession, hashPassword } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { normalizeEmail, sameOrigin, validatePassword } from "@/lib/security";
+import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
+import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
 
 const schema = z.object({
   email: z.string().email(),
@@ -31,6 +33,8 @@ export async function POST(request: Request) {
     return fail(request, "too_many");
   }
   const formData = await request.formData();
+  const intent = parseAuthIntent(formData.get("intent"));
+  const returnTo = safeAuthReturnTo(formData.get("returnTo"), intent);
   const parsed = schema.safeParse({
     email: normalizeEmail(formData.get("email")),
     password: String(formData.get("password") || ""),
@@ -64,12 +68,15 @@ export async function POST(request: Request) {
         handle,
         role: "BOTH",
         referralCode: handle.toUpperCase().slice(0, 12),
-        referredBy
+        referredBy,
+        preferredRoleMode: intent
       }
     });
     await createSession(user.id);
     await trackEvent({ request, userId: user.id, type: "REGISTER_SUCCESS", path: "/register" });
-    return NextResponse.redirect(redirectUrl("/campaigns", request), 303);
+    const response = NextResponse.redirect(redirectUrl(returnTo, request), 303);
+    if (intent) response.cookies.set(ROLE_MODE_COOKIE, intent, { sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 31536000 });
+    return response;
   } catch {
     // unique email/handle collision, etc.
     return fail(request, "register_failed");

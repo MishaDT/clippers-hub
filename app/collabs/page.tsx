@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Handshake, Inbox, Send, X } from "lucide-react";
+import { Check, Handshake, Inbox, Send, Square, Undo2, X } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { respondCollabInviteAction } from "@/app/actions";
+import { cancelCollabInviteAction, endCollabAction, respondCollabInviteAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
 
@@ -13,7 +13,8 @@ const STATUS: Record<string, string> = {
   PENDING: "Ожидает",
   ACCEPTED: "Принято",
   DECLINED: "Отклонено",
-  CANCELLED: "Отменено"
+  CANCELLED: "Отменено",
+  COMPLETED: "Завершено"
 };
 
 function avatarFor(handle: string, avatar: string | null) {
@@ -87,6 +88,10 @@ export default async function CollabsPage() {
                     {invite.status === "ACCEPTED" && invite.chatThread
                       ? <Link className="collab-chat-link" href={`/chats?thread=${invite.chatThread.id}&type=collabs`}>Открыть обсуждение</Link>
                       : null}
+                    {invite.status === "ACCEPTED" ? <form action={endCollabAction}>
+                      <input type="hidden" name="inviteId" value={invite.id} />
+                      <button className="collab-end" type="submit"><Square size={13} /> Завершить</button>
+                    </form> : null}
                   </span>
                 )}
               </li>
@@ -113,6 +118,14 @@ export default async function CollabsPage() {
                   {invite.status === "ACCEPTED" && invite.chatThread
                     ? <Link className="collab-chat-link" href={`/chats?thread=${invite.chatThread.id}&type=collabs`}>Открыть обсуждение</Link>
                     : null}
+                  {invite.status === "PENDING" ? <form action={cancelCollabInviteAction}>
+                    <input type="hidden" name="inviteId" value={invite.id} />
+                    <button className="collab-cancel" type="submit"><Undo2 size={13} /> Отменить запрос</button>
+                  </form> : null}
+                  {invite.status === "ACCEPTED" ? <form action={endCollabAction}>
+                    <input type="hidden" name="inviteId" value={invite.id} />
+                    <button className="collab-end" type="submit"><Square size={13} /> Завершить</button>
+                  </form> : null}
                 </span>
               </li>
             ))}

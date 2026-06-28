@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowDownToLine, ArrowUpRight, Coins, CreditCard, ShieldCheck, WalletCards } from "lucide-react";
-import { depositAction, withdrawAction } from "@/app/actions";
+import { ArrowDownToLine, ArrowLeft, ArrowUpRight, Coins, CreditCard, ShieldCheck, WalletCards } from "lucide-react";
+import { convertRpToRubAction, convertRubToRpAction, depositAction, withdrawAction } from "@/app/actions";
 import { AppShell, Card, Stat, Tag } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { rub } from "@/lib/money";
@@ -24,6 +24,7 @@ export default async function WalletPage({
   const user = await requireUser();
   const mode = await getActiveRoleMode(user);
   const params = await searchParams;
+  const tab = ["operations", "reserved", "campaigns", "rp"].includes(String(params.tab)) ? String(params.tab) : "operations";
   const page = Math.max(1, Number(params.page || 1));
   const pageSize = 10;
   const visibleTypes = mode === "client"
@@ -71,17 +72,13 @@ export default async function WalletPage({
   const totalPages = Math.max(1, Math.ceil(totalTransactions / pageSize));
 
   return (
-    <AppShell>
+    <AppShell hideFooter>
       <section className="section wallet-screen">
+        <Link className="wallet-back" href="/profile"><ArrowLeft size={17} /> Назад</Link>
         <div className="wallet-hero">
           <div>
-            <span className="eyebrow">Кошелёк</span>
-            <h1>{mode === "client" ? "Бюджет" : "Выплаты"}</h1>
-            <p className="lead">
-              {mode === "client"
-                ? "Пополняйте баланс и контролируйте расходы кампаний."
-                : "Следите за начислениями и выводите доступные средства."}
-            </p>
+            <h1>Кошелёк</h1>
+            <p className="lead">Деньги, резерв кампаний и бонусы в одном месте.</p>
           </div>
           <Card className="wallet-balance-card">
             <WalletCards />
@@ -91,20 +88,20 @@ export default async function WalletPage({
           </Card>
           <Card className="wallet-balance-card wallet-rp-card">
             <Coins />
-            <span>Бонусы ReelPay</span>
+            <span>RP-баланс</span>
             <strong>{user.rpBalance.toLocaleString("ru-RU")} RP</strong>
-            <small>1 RP = 1 ₽ внутри сервиса · вывести нельзя</small>
+            <small>Куплено: {user.rpPurchasedBalance.toLocaleString("ru-RU")} · бонусы: {(user.rpBalance - user.rpPurchasedBalance).toLocaleString("ru-RU")}</small>
           </Card>
         </div>
 
-        <section className="grid grid-4 wallet-metrics">
-          <Stat value={rub(user.balanceCents)} label="доступно" tone="good" />
-          <Stat value={rub(mode === "client" ? reserved : user.holdBalanceCents)} label={mode === "client" ? "в кампаниях" : "на проверке"} />
-          <Stat value={rub(mode === "client" ? spent : totalMoney)} label={mode === "client" ? "потрачено" : "заработано"} />
-          <Stat value={String(totalTransactions)} label={mode === "client" ? "операций" : "выплат"} />
-        </section>
+        <nav className="wallet-tabs" aria-label="Разделы кошелька">
+          <Link className={tab === "operations" ? "active" : ""} href="/wallet?tab=operations">Операции</Link>
+          <Link className={tab === "reserved" ? "active" : ""} href="/wallet?tab=reserved">В резерве</Link>
+          <Link className={tab === "campaigns" ? "active" : ""} href="/wallet?tab=campaigns">Кампании</Link>
+          <Link className={tab === "rp" ? "active" : ""} href="/wallet?tab=rp">RP</Link>
+        </nav>
 
-        <section className="wallet-actions-grid">
+        {tab === "operations" ? <section className="wallet-actions-grid">
           {mode === "client" ? (
             <Card className="wallet-action-card">
               <div className="wallet-action-head"><CreditCard /><h2>Пополнить баланс</h2></div>
@@ -130,9 +127,9 @@ export default async function WalletPage({
               <p className="safe-note"><ShieldCheck size={18} /> Комиссия: 50 ₽ + 1%. Заявка проходит проверку перед выплатой.</p>
             </Card>
           )}
-        </section>
+        </section> : null}
 
-        {mode === "client" && campaignExpenses.length ? (
+        {tab === "campaigns" && mode === "client" && campaignExpenses.length ? (
           <Card className="wallet-history">
             <div className="section-head compact"><h2>Расходы по кампаниям</h2></div>
             <div className="pay-list">
@@ -150,7 +147,7 @@ export default async function WalletPage({
           </Card>
         ) : null}
 
-        <Card className="wallet-history">
+        {tab === "operations" ? <Card className="wallet-history">
           <div className="section-head compact">
             <h2>{mode === "client" ? "Пополнения и расходы" : "История выплат"}</h2>
             <Tag tone="soft">{totalTransactions}</Tag>
@@ -179,11 +176,31 @@ export default async function WalletPage({
               <Link className={page >= totalPages ? "disabled" : ""} href={`/wallet?page=${Math.min(totalPages, page + 1)}`}>Дальше</Link>
             </div>
           ) : null}
-        </Card>
+        </Card> : null}
 
-        {rpTransactions.length ? (
+        {tab === "reserved" ? (
+          <Card className="wallet-history wallet-reserve">
+            <div className="section-head compact"><h2>Средства в резерве</h2></div>
+            <div className="wallet-reserve-value">{rub(mode === "client" ? reserved : user.holdBalanceCents)}</div>
+            <p className="muted">{mode === "client" ? "Зарезервированы под активные кампании." : "Ожидают завершения проверки работ."}</p>
+          </Card>
+        ) : null}
+
+        {tab === "rp" ? (
           <Card className="wallet-history">
-            <div className="section-head compact"><h2>История RP</h2><Tag tone="soft">{user.rpBalance} RP</Tag></div>
+            <div className="section-head compact"><div><h2>RP</h2><p className="muted">1 RP = 1 ₽. Сначала расходуются бонусные RP.</p></div><Tag tone="soft">{user.rpBalance} RP</Tag></div>
+            <div className="rp-convert-grid">
+              <form action={convertRubToRpAction}>
+                <b>Купить RP с баланса</b>
+                <input name="amount" type="number" min="1" placeholder="Сумма" required />
+                <button className="btn btn-primary" type="submit">Перевести в RP</button>
+              </form>
+              <form action={convertRpToRubAction}>
+                <b>Вернуть купленные RP</b>
+                <input name="amount" type="number" min="1" max={user.rpPurchasedBalance} placeholder="Сумма" required />
+                <button className="btn" type="submit" disabled={!user.rpPurchasedBalance}>Вернуть в рубли</button>
+              </form>
+            </div>
             <div className="pay-list">
               {rpTransactions.map((item) => (
                 <div className="pay-row wallet-row" key={item.id}>
@@ -193,6 +210,7 @@ export default async function WalletPage({
                 </div>
               ))}
             </div>
+            <Link className="wallet-rp-help" href="/help/rp">Что такое RP и как ими пользоваться</Link>
           </Card>
         ) : null}
       </section>

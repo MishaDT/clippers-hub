@@ -13,7 +13,7 @@ import {
   WalletCards,
   Zap
 } from "lucide-react";
-import { switchRoleAction } from "@/app/actions";
+import { claimRecurringRewardAction, switchRoleAction } from "@/app/actions";
 import { AppShell, Card, Tag } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
 import { ProfileAchievements } from "@/components/profile-achievements";
@@ -23,6 +23,7 @@ import { ACHIEVEMENTS, achievementProgress, formatRp } from "@/lib/achievements"
 import { loadAchievementStats } from "@/lib/achievement-stats";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { RECURRING_REWARDS, moscowWeekKey } from "@/lib/rp";
 
 const ACTIVE_SUBMISSION_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
 
@@ -143,13 +144,15 @@ export default async function ProfilePage() {
   const user = await requireUser();
   const mode = await getActiveRoleMode(user);
   const canSwitchMode = user.role === "BOTH" || user.role === "ADMIN";
-  const [data, achievementStats, unlocked] = await Promise.all([
+  const periodKey = moscowWeekKey();
+  const [data, achievementStats, unlocked, weeklyClaims] = await Promise.all([
     mode === "worker" ? loadWorker(user.id) : loadClient(user.id),
     loadAchievementStats(user),
     prisma.userAchievement.findMany({
       where: { userId: user.id },
       select: { claimedAt: true, achievement: { select: { code: true } } }
-    })
+    }),
+    prisma.recurringRewardClaim.findMany({ where: { userId: user.id, periodKey }, select: { code: true } })
   ]);
   const claimedCodes = new Set(unlocked.filter((item) => item.claimedAt).map((item) => item.achievement.code));
   const achievementItems = ACHIEVEMENTS
@@ -159,6 +162,7 @@ export default async function ProfilePage() {
       ...achievementProgress(item, achievementStats),
       claimed: claimedCodes.has(item.code)
     }));
+  const weeklyClaimed = new Set(weeklyClaims.map((item) => item.code));
 
   return (
     <AppShell>
@@ -208,6 +212,22 @@ export default async function ProfilePage() {
             <span className="profile-rp-hint"><Trophy size={15} /> RP нельзя вывести</span>
           </div>
           <ProfileAchievements items={achievementItems} />
+          <div className="weekly-rewards">
+            <div className="section-head compact"><div><h3>Задания недели</h3><p className="muted">До 120 RP, обновление в понедельник по Москве.</p></div></div>
+            {RECURRING_REWARDS.map((reward) => {
+              const value = achievementStats[reward.metric] || 0;
+              const done = value >= reward.target;
+              const claimed = weeklyClaimed.has(reward.code);
+              return (
+                <form action={claimRecurringRewardAction} key={reward.code}>
+                  <input type="hidden" name="code" value={reward.code} />
+                  <span><b>{reward.title}</b><small>{Math.min(value, reward.target).toLocaleString("ru-RU")} / {reward.target.toLocaleString("ru-RU")}</small></span>
+                  <em>+{reward.reward} RP</em>
+                  <button className="btn btn-small" disabled={!done || claimed}>{claimed ? "Получено" : done ? "Забрать" : "В процессе"}</button>
+                </form>
+              );
+            })}
+          </div>
         </section>
 
         {mode === "worker" && "earningsCents" in data ? (
@@ -273,9 +293,10 @@ export default async function ProfilePage() {
             </section>
 
             <section className="section-list">
-              <div className="section-head compact"><h2>Кампании</h2><Link href="/campaigns/new">Создать</Link></div>
-              <Card className="stack-list">
-                {data.campaigns.length ? data.campaigns.map((campaign) => (
+              <div className="section-head compact"><h2>Мои заказы</h2><Link href="/campaigns/new">Создать</Link></div>
+              <div className="profile-order-groups">
+              <Card className="stack-list"><h3>Активные</h3>
+                {data.campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET", "PAUSED"].includes(campaign.status)).length ? data.campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET", "PAUSED"].includes(campaign.status)).map((campaign) => (
                   <div className="campaign-mini" key={campaign.id}>
                     <strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong>
                     <span>{campaign._count.submissions} роликов · {rub(campaign.remainingBudgetCents)} осталось</span>
@@ -283,8 +304,18 @@ export default async function ProfilePage() {
                       {campaignLabels[campaign.status] || campaign.status}
                     </Tag>
                   </div>
-                )) : <p className="muted">Кампаний пока нет.</p>}
+                )) : <p className="muted">Активных заказов нет.</p>}
               </Card>
+              <Card className="stack-list"><h3>Завершённые</h3>
+                {data.campaigns.filter((campaign) => campaign.status === "COMPLETED").length ? data.campaigns.filter((campaign) => campaign.status === "COMPLETED").map((campaign) => (
+                  <div className="campaign-mini" key={campaign.id}>
+                    <strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong>
+                    <span>{campaign._count.submissions} роликов</span>
+                    <Tag>{campaignLabels[campaign.status]}</Tag>
+                  </div>
+                )) : <p className="muted">Завершённых заказов нет.</p>}
+              </Card>
+              </div>
             </section>
 
             <section className="section-list">

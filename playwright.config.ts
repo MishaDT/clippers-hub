@@ -13,7 +13,7 @@ export default defineConfig({
     screenshot: "only-on-failure"
   },
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: "powershell -NoProfile -ExecutionPolicy Bypass -File .\\node_modules\\.bin\\next.ps1 dev --hostname 127.0.0.1 --port 3000",
+    command: "node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000",
     url: "http://localhost:3000",
     reuseExistingServer: true,
     timeout: 60_000

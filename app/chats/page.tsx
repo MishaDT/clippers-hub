@@ -15,6 +15,7 @@ import { ChatFilterNav } from "@/components/chat-filter-nav";
 import { ChatSearchForm } from "@/components/chat-search-form";
 import { ChatMobileFilter } from "@/components/chat-mobile-filter";
 import { SwipeChatRow } from "@/components/swipe-chat-row";
+import { ChatListRefresh } from "@/components/chat-list-refresh";
 import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -22,6 +23,7 @@ import { parseJson } from "@/lib/json";
 import { compactNumber } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { getUnreadSummary } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
@@ -160,14 +162,16 @@ export default async function ChatsPage({
       })
     : Promise.resolve(null);
 
-  const [totalThreads, threads, selectedThread, clientCount, workerCount, orderCount, collabCount] = await Promise.all([
+  const typeWhere: Prisma.ChatThreadWhereInput = typeFilter === "orders" ? { kind: "CAMPAIGN" } : typeFilter === "collabs" ? { kind: "COLLAB" } : {};
+  const [totalThreads, threads, selectedThread, clientCount, workerCount, orderCount, collabCount, unreadSummary] = await Promise.all([
     prisma.chatThread.count({ where }),
     threadsQuery,
     selectedThreadQuery,
-    prisma.chatThread.count({ where: { clientId: user.id } }),
-    prisma.chatThread.count({ where: { workerId: user.id } }),
+    prisma.chatThread.count({ where: { AND: [clientSide, typeWhere] } }),
+    prisma.chatThread.count({ where: { AND: [workerSide, typeWhere] } }),
     prisma.chatThread.count({ where: { AND: [participant, { kind: "CAMPAIGN" }] } }),
-    prisma.chatThread.count({ where: { AND: [participant, { kind: "COLLAB" }] } })
+    prisma.chatThread.count({ where: { AND: [participant, { kind: "COLLAB" }] } }),
+    getUnreadSummary(user.id)
   ]);
   const unreadRows = threads.length ? await prisma.$queryRaw<Array<{ threadId: string; count: bigint }>>(Prisma.sql`
     SELECT message."threadId" AS "threadId", COUNT(*)::bigint AS count
@@ -203,14 +207,14 @@ export default async function ChatsPage({
   return (
     <AppShell immersive hideBottomNav={Boolean(requestedThreadId)}>
       <section className={`chats-app ${requestedThreadId ? "has-selection" : ""}`}>
+        <ChatListRefresh />
         <aside className="chat-sidebar">
           <div className="chat-sidebar-head">
             <div>
               <span><MessageCircle size={15} /> Сообщения</span>
-              <h1>Чаты</h1>
+              <strong>{unreadSummary.chats ? `${unreadSummary.chats} непрочитано` : "Все прочитано"}</strong>
             </div>
             <div className="chat-sidebar-tools">
-              <b>{totalThreads}</b>
               <Link href="/support" aria-label="Поддержка"><Headphones size={18} /></Link>
               <Link href={hrefWith({ q: query, status, role: roleFilter, type: typeFilter, view: archivedView ? "all" : "archived" })} aria-label={archivedView ? "Активные чаты" : "Архив"}>
                 <Archive size={18} />

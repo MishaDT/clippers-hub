@@ -108,6 +108,7 @@ test.describe("client flow", () => {
     await page.locator('input[name="sourceUrl"]').fill("https://twitch.tv/videos/e2e-demo");
     await page.locator('input[name="budget"]').fill("50000");
     await page.locator('input[name="cpm"]').fill("45");
+    await page.locator('input[name="rightsConfirmed"]').check();
     await page.getByRole("button", { name: /Опубликовать заказ/i }).click();
 
     await expect(page).toHaveURL(/\/campaigns\/(?!new$)[^/]+$/);

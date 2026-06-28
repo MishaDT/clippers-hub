@@ -22,7 +22,8 @@
     "test:avatar": "node --experimental-strip-types --test tests/avatar-image.test.mts",
     "test:policy": "node --experimental-strip-types --test tests/content-policy.test.mts",
     "test:profile": "node --experimental-strip-types --test tests/profile-rules.test.mts",
-    "test:rp": "node --experimental-strip-types --test tests/rp-rewards.test.mts"
+    "test:rp": "node --experimental-strip-types --test tests/rp-rewards.test.mts",
+    "test:auth-intent": "node --experimental-strip-types --test tests/auth-intent.test.mts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

@@ -6,6 +6,7 @@ import {
   nextFeaturedUntil,
   RP_BOOST_COST
 } from "../lib/achievements.ts";
+import { moscowWeekKey, splitRpSpend, WEEKLY_RP_CAP } from "../lib/rp.ts";
 
 const emptyStats = {
   approvedClips: 0,
@@ -16,6 +17,7 @@ const emptyStats = {
   referrals: 0,
   campaigns: 0,
   clipsReceived: 0
+  ,completedOrders: 0
 };
 
 test("achievement unlocks exactly at its target", () => {
@@ -26,8 +28,18 @@ test("achievement unlocks exactly at its target", () => {
 
 test("catalogue has stable RP rewards", () => {
   assert.equal(ACHIEVEMENTS.length, 9);
-  assert.equal(ACHIEVEMENTS.find((item) => item.code === "MILLION_CLUB")?.reward, 5000);
+  assert.equal(ACHIEVEMENTS.find((item) => item.code === "MILLION_CLUB")?.reward, 300);
   assert.equal(RP_BOOST_COST, 100);
+});
+
+test("RP spending uses bonus before purchased balance", () => {
+  assert.deepEqual(splitRpSpend(150, 80, 100), { bonusUsed: 70, purchasedUsed: 30 });
+  assert.equal(WEEKLY_RP_CAP, 120);
+});
+
+test("Moscow reward period starts on Monday", () => {
+  assert.equal(moscowWeekKey(new Date("2026-06-28T20:00:00Z")), "2026-06-22");
+  assert.equal(moscowWeekKey(new Date("2026-06-29T10:00:00Z")), "2026-06-29");
 });
 
 test("promotion extends from the existing deadline", () => {

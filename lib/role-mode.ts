@@ -12,10 +12,11 @@ export function canUseRoleMode(role: User["role"], mode: RoleMode) {
   return mode === "client" ? role === "CLIENT" : role === "WORKER";
 }
 
-export async function getActiveRoleMode(user: Pick<User, "role">): Promise<RoleMode> {
+export async function getActiveRoleMode(user: Pick<User, "role"> & Partial<Pick<User, "preferredRoleMode">>): Promise<RoleMode> {
   if (user.role === "CLIENT") return "client";
   if (user.role === "WORKER") return "worker";
 
   const selected = (await cookies()).get(ROLE_MODE_COOKIE)?.value;
-  return selected === "client" ? "client" : "worker";
+  if (selected === "client" || selected === "worker") return selected;
+  return user.preferredRoleMode === "client" ? "client" : "worker";
 }

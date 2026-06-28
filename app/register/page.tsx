@@ -5,9 +5,9 @@ import { SocialAuth, authErrorText } from "@/components/social-auth";
 export default async function RegisterPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string | string[]; ref?: string | string[] }>;
+  searchParams: Promise<{ error?: string | string[]; ref?: string | string[]; intent?: string; returnTo?: string }>;
 }) {
-  const { error, ref } = await searchParams;
+  const { error, ref, intent, returnTo } = await searchParams;
   const errorText = authErrorText(error);
   const refCode = (Array.isArray(ref) ? ref[0] : ref)?.trim().slice(0, 12) || "";
 
@@ -35,6 +35,8 @@ export default async function RegisterPage({
         ) : null}
 
         <form className="form" action="/api/auth/register" method="post">
+          <input type="hidden" name="intent" value={intent || ""} />
+          <input type="hidden" name="returnTo" value={returnTo || ""} />
           {refCode ? <input type="hidden" name="ref" value={refCode} /> : null}
           <label className="field">Имя<input name="name" placeholder="Как тебя зовут" autoComplete="name" required /></label>
           <label className="field">Email<input name="email" type="email" placeholder="you@example.com" autoComplete="email" required /></label>
@@ -42,7 +44,7 @@ export default async function RegisterPage({
           <button className="btn btn-primary" type="submit"><UserPlus size={18} /> Создать аккаунт</button>
         </form>
 
-        <SocialAuth mode="register" />
+        <SocialAuth mode="register" intent={intent} returnTo={returnTo} />
 
         <div className="auth-hints">
           <span><CheckCircle2 size={16} /> Бесплатно</span>

@@ -9,6 +9,7 @@ import { LeaderboardFireCanvas } from "@/components/leaderboard-fire-canvas";
 import { LeaderboardPeriodTabs } from "@/components/leaderboard-period-tabs";
 import { ReferralCard } from "@/components/referral-card";
 import { PodiumFlameCanvas } from "@/components/podium-flame-canvas";
+import { LeaderboardLoadMore } from "@/components/leaderboard-load-more";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { sendCollabInviteAction } from "@/app/actions";
@@ -173,11 +174,10 @@ function Avatar({ row, podium }: { row: Row; podium?: boolean }) {
 export default async function LeaderboardPage({
   searchParams
 }: {
-  searchParams: Promise<{ period?: string; expand?: string }>;
+  searchParams: Promise<{ period?: string }>;
 }) {
-  const { period: rawPeriod, expand: rawExpand } = await searchParams;
+  const { period: rawPeriod } = await searchParams;
   const period: Period = rawPeriod === "all" ? "all" : "week";
-  const expand = rawExpand === "1";
   const currentUser = await getCurrentUser();
   const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
   const [rows, me] = await Promise.all([
@@ -187,7 +187,6 @@ export default async function LeaderboardPage({
 
   const podium = rows.slice(0, 3);
   const rest = rows.slice(3);
-  const shownRest = expand ? rest : rest.slice(0, 7);
   const visualOrder = [1, 0, 2].filter((i) => podium[i]); // 2nd, 1st, 3rd
 
   const achievements = me
@@ -322,57 +321,7 @@ export default async function LeaderboardPage({
                   </article>
                 </section> : null}
 
-                {rest.length > 0 ? (
-                  <ol className="leaderboard-table">
-                    {shownRest.map((row) => (
-                      <li className="leaderboard-row" key={row.id}>
-                        <span className="lr-rank">{row.rank}</span>
-                        <Avatar row={row} />
-                        <div className="lr-id">
-                          <strong>{row.name}</strong>
-                          {row.verified ? <BadgeCheck size={14} className="verified" /> : null}
-                          <LeagueBadge views={row.lifetimeViews} size="sm" />
-                        </div>
-                        <div className="lr-views">
-                          <b>{compactNumber(row.views)}</b>
-                          <em>просмотров</em>
-                        </div>
-                        <div className="lr-clips">
-                          <b>{row.clips}</b>
-                          <em>клипов</em>
-                        </div>
-                        <Link className="lr-clip" href={`/clippers/${row.handle}`} aria-label="Лучший клип" prefetch>
-                          <img src={row.cover} alt="" loading="lazy" />
-                          <span className="lr-clip-play"><Play size={12} fill="#fff" /></span>
-                        </Link>
-                        {mode === "client" ? (
-                          <form className="invite-btn-form" action={sendCollabInviteAction}>
-                            <input type="hidden" name="workerId" value={row.id} />
-                            <input type="hidden" name="handle" value={row.handle} />
-                            <input type="hidden" name="message" value={COLLAB_MSG} />
-                            <button className="invite-btn" type="submit">
-                              <Handshake size={14} />
-                              <span className="invite-full">Пригласить</span>
-                              <span className="invite-short">Звать</span>
-                            </button>
-                          </form>
-                        ) : (
-                          <Link className="invite-btn" href={`/clippers/${row.handle}`} prefetch>
-                            <Handshake size={14} />
-                            <span className="invite-full">Открыть профиль</span>
-                            <span className="invite-short">Открыть</span>
-                          </Link>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                ) : null}
-
-                {!expand && rest.length > 7 ? (
-                  <Link className="lb-more" href={`/leaderboard?period=${period}&expand=1`} prefetch>
-                    Показать больше <ChevronDown size={16} />
-                  </Link>
-                ) : null}
+                {rest.length > 0 ? <LeaderboardLoadMore rows={rest} clientMode={mode === "client"} /> : null}
               </>
             )}
           </div>

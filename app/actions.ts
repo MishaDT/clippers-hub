@@ -22,6 +22,7 @@ import { syncMockViews } from "@/lib/social-sync";
 import { notifyModerators } from "@/lib/video-checks";
 import { canUseRoleMode, getActiveRoleMode, ROLE_MODE_COOKIE, type RoleMode } from "@/lib/role-mode";
 import { assertAccountActive, moderateText, reportContent } from "@/lib/moderation";
+import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@/lib/rp";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -79,6 +80,7 @@ export async function switchRoleAction(formData: FormData) {
     path: "/",
     maxAge: 60 * 60 * 24 * 365
   });
+  await prisma.user.update({ where: { id: user.id }, data: { preferredRoleMode: mode } });
   revalidatePath("/profile");
   redirect("/campaigns");
 }
@@ -87,6 +89,7 @@ export async function createCampaignAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
+  if (formData.get("rightsConfirmed") !== "on") redirect("/campaigns/new?error=rights");
 
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
@@ -135,6 +138,18 @@ export async function createCampaignAction(formData: FormData) {
           sourcePlatform: cleanSourcePlatform,
           checkedAt: new Date().toISOString()
         }
+      }),
+      briefJson: stringify({
+        deliverableCount: Math.max(1, Math.min(20, Number(formData.get("deliverableCount") || 1))),
+        clipDuration: String(formData.get("clipDuration") || "30-60"),
+        aspectRatio: String(formData.get("aspectRatio") || "9:16"),
+        style: String(formData.get("style") || "dynamic").slice(0, 40),
+        language: String(formData.get("language") || "ru").slice(0, 12),
+        subtitles: String(formData.get("subtitles") || "required").slice(0, 30),
+        cta: String(formData.get("cta") || "").trim().slice(0, 180),
+        mustInclude: String(formData.get("mustInclude") || "").trim().slice(0, 400),
+        exampleUrls: String(formData.get("exampleUrls") || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 3),
+        rightsConfirmed: formData.get("rightsConfirmed") === "on"
       }),
       cpmRateCents: cpm || 4500,
       viewThreshold: Number(formData.get("viewThreshold") || 10000),
@@ -497,11 +512,36 @@ export async function boostCampaignWithRpAction(formData: FormData) {
       if (!campaign) throw new Error("CAMPAIGN_NOT_AVAILABLE");
       const featuredUntil = nextFeaturedUntil(campaign.featuredUntil, now);
       if (!featuredUntil) throw new Error("FEATURED_LIMIT");
-      const charged = await tx.user.updateMany({
-        where: { id: user.id, rpBalance: { gte: RP_BOOST_COST } },
-        data: { rpBalance: { decrement: RP_BOOST_COST } }
+      const account = await tx.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: { rpBalance: true, rpPurchasedBalance: true, balanceCents: true }
       });
-      if (!charged.count) throw new Error("RP_BALANCE");
+      const missing = Math.max(0, RP_BOOST_COST - account.rpBalance);
+      const autoConvert = String(formData.get("autoConvert") || "") === "1";
+      if (missing && !autoConvert) throw new Error("RP_BALANCE");
+      if (account.balanceCents < missing * 100) throw new Error("RUB_BALANCE");
+      const totalBeforeSpend = account.rpBalance + missing;
+      const purchasedBeforeSpend = account.rpPurchasedBalance + missing;
+      const { purchasedUsed } = splitRpSpend(totalBeforeSpend, purchasedBeforeSpend, RP_BOOST_COST);
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          balanceCents: account.balanceCents - missing * 100,
+          rpBalance: totalBeforeSpend - RP_BOOST_COST,
+          rpPurchasedBalance: purchasedBeforeSpend - purchasedUsed
+        }
+      });
+      if (missing) {
+        await tx.rpTransaction.create({
+          data: {
+            userId: user.id,
+            amount: missing,
+            type: "PURCHASE",
+            reference: `rp:auto:${campaign.id}:${featuredUntil.toISOString()}`,
+            metadataJson: stringify({ rubCents: missing * 100, automatic: true })
+          }
+        });
+      }
       await tx.campaign.update({ where: { id: campaign.id }, data: { featuredUntil } });
       await tx.rpTransaction.create({
         data: {
@@ -509,7 +549,7 @@ export async function boostCampaignWithRpAction(formData: FormData) {
           amount: -RP_BOOST_COST,
           type: "CAMPAIGN_BOOST",
           reference: `boost:${campaign.id}:${featuredUntil.toISOString()}`,
-          metadataJson: stringify({ campaignId: campaign.id, featuredUntil })
+          metadataJson: stringify({ campaignId: campaign.id, featuredUntil, purchasedUsed })
         }
       });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -521,6 +561,115 @@ export async function boostCampaignWithRpAction(formData: FormData) {
   revalidatePath("/campaigns");
   revalidatePath("/profile");
   redirect("/campaigns?boost=ok");
+}
+
+export async function convertRubToRpAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const amount = Math.max(1, Math.min(1_000_000, Number(formData.get("amount") || 0)));
+  try {
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.user.updateMany({
+        where: { id: user.id, balanceCents: { gte: amount * 100 } },
+        data: {
+          balanceCents: { decrement: amount * 100 },
+          rpBalance: { increment: amount },
+          rpPurchasedBalance: { increment: amount }
+        }
+      });
+      if (!result.count) throw new Error("RUB_BALANCE");
+      await tx.rpTransaction.create({
+        data: {
+          userId: user.id,
+          amount,
+          type: "PURCHASE",
+          reference: `rp:purchase:${user.id}:${randomBytes(8).toString("hex")}`,
+          metadataJson: stringify({ rubCents: amount * 100 })
+        }
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch {
+    redirect("/wallet?tab=rp&error=rub_balance");
+  }
+  revalidatePath("/wallet");
+  revalidatePath("/profile");
+  redirect("/wallet?tab=rp&converted=1");
+}
+
+export async function convertRpToRubAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const amount = Math.max(1, Math.min(1_000_000, Number(formData.get("amount") || 0)));
+  try {
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.user.updateMany({
+        where: { id: user.id, rpPurchasedBalance: { gte: amount }, rpBalance: { gte: amount } },
+        data: {
+          balanceCents: { increment: amount * 100 },
+          rpBalance: { decrement: amount },
+          rpPurchasedBalance: { decrement: amount }
+        }
+      });
+      if (!result.count) throw new Error("RP_REFUND");
+      await tx.rpTransaction.create({
+        data: {
+          userId: user.id,
+          amount: -amount,
+          type: "REFUND",
+          reference: `rp:refund:${user.id}:${randomBytes(8).toString("hex")}`,
+          metadataJson: stringify({ rubCents: amount * 100 })
+        }
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch {
+    redirect("/wallet?tab=rp&error=rp_refund");
+  }
+  revalidatePath("/wallet");
+  revalidatePath("/profile");
+  redirect("/wallet?tab=rp&refunded=1");
+}
+
+export async function claimRecurringRewardAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const code = String(formData.get("code") || "");
+  const reward = RECURRING_REWARDS.find((item) => item.code === code);
+  if (!reward) redirect("/profile?reward=invalid");
+  const stats = await loadAchievementStats(user);
+  if ((stats[reward.metric] || 0) < reward.target) redirect("/profile?reward=locked");
+  const periodKey = moscowWeekKey();
+  const claimed = await prisma.recurringRewardClaim.aggregate({
+    where: { userId: user.id, periodKey },
+    _sum: { rewardRp: true }
+  });
+  if ((claimed._sum.rewardRp || 0) + reward.reward > WEEKLY_RP_CAP) redirect("/profile?reward=limit");
+  try {
+    await prisma.$transaction([
+      prisma.recurringRewardClaim.create({ data: { userId: user.id, code, periodKey, rewardRp: reward.reward } }),
+      prisma.user.update({ where: { id: user.id }, data: { rpBalance: { increment: reward.reward } } }),
+      prisma.rpTransaction.create({
+        data: {
+          userId: user.id,
+          amount: reward.reward,
+          type: "WEEKLY_REWARD",
+          reference: `weekly:${user.id}:${code}:${periodKey}`,
+          metadataJson: stringify({ code, periodKey })
+        }
+      })
+    ]);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") redirect("/profile?reward=already");
+    throw error;
+  }
+  revalidatePath("/profile");
+  revalidatePath("/wallet");
+  redirect("/profile?reward=claimed");
+}
+
+export async function markMarketGuideSeenAction() {
+  const user = await requireUser();
+  await prisma.user.update({ where: { id: user.id }, data: { marketGuideSeenAt: new Date() } });
+  revalidatePath("/campaigns");
 }
 
 export async function reportContentAction(formData: FormData) {
@@ -886,6 +1035,76 @@ export async function respondCollabInviteAction(formData: FormData) {
   ]);
   revalidatePath("/collabs");
   redirect("/collabs");
+}
+
+export async function cancelCollabInviteAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const inviteId = String(formData.get("inviteId") || "");
+  const invite = await prisma.collabInvite.findFirst({
+    where: { id: inviteId, clientId: user.id, status: "PENDING" },
+    select: { id: true, workerId: true }
+  });
+  if (!invite) redirect("/collabs");
+  await prisma.$transaction([
+    prisma.collabInvite.update({
+      where: { id: invite.id },
+      data: { status: "CANCELLED", cancelledAt: new Date(), respondedAt: new Date() }
+    }),
+    prisma.notification.updateMany({
+      where: { userId: invite.workerId, href: `/collabs?invite=${invite.id}`, archivedAt: null },
+      data: { archivedAt: new Date(), readAt: new Date() }
+    })
+  ]);
+  revalidatePath("/collabs");
+  revalidatePath("/", "layout");
+  redirect("/collabs?cancelled=1");
+}
+
+export async function endCollabAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const inviteId = String(formData.get("inviteId") || "");
+  const invite = await prisma.collabInvite.findFirst({
+    where: {
+      id: inviteId,
+      status: "ACCEPTED",
+      OR: [{ clientId: user.id }, { workerId: user.id }]
+    },
+    select: { id: true, clientId: true, workerId: true, chatThread: { select: { id: true } } }
+  });
+  if (!invite) redirect("/collabs");
+  const peerId = invite.clientId === user.id ? invite.workerId : invite.clientId;
+  await prisma.$transaction(async (tx) => {
+    await tx.collabInvite.update({
+      where: { id: invite.id },
+      data: { status: "COMPLETED", endedAt: new Date() }
+    });
+    if (invite.chatThread) {
+      await tx.chatMessage.create({
+        data: {
+          threadId: invite.chatThread.id,
+          senderId: user.id,
+          type: "SYSTEM",
+          body: "Коллаб завершён. История обсуждения сохранена."
+        }
+      });
+    }
+    await tx.notification.create({
+      data: {
+        userId: peerId,
+        title: "Коллаб завершён",
+        body: `${user.name} завершил совместный проект`,
+        channel: "IN_APP",
+        priority: "NORMAL",
+        kind: "COLLAB",
+        href: invite.chatThread ? `/chats?thread=${invite.chatThread.id}&type=collabs` : "/collabs"
+      }
+    });
+  });
+  revalidatePath("/collabs");
+  revalidatePath("/chats");
+  redirect("/collabs?ended=1");
 }
 
 export async function endorseClipperAction(formData: FormData) {

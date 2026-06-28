@@ -12,12 +12,6 @@ import { compactNumber, expectedPayout, rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
 
-function taskList(description: string) {
-  const tasks = ["Выбрать 3-5 сильных моментов", "Сделать вертикальный ролик 9:16", "Добавить субтитры и цепляющий первый кадр"];
-  if (!description.toLowerCase().includes("тег")) tasks.push("Добавить обязательные теги из правил");
-  return tasks;
-}
-
 function shortDate(value: Date) {
   return value.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
@@ -60,11 +54,13 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       sourcePlatform: true,
       allowedPlatformsJson: true,
       rulesJson: true,
+      briefJson: true,
       cpmRateCents: true,
       viewThreshold: true,
       deadline: true,
       createdAt: true,
       niche: true,
+      language: true,
       visibility: true,
       remainingBudgetCents: true,
       trackingPrefix: true,
@@ -101,11 +97,30 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
     : [null, null];
 
   const rules = parseJson<{ requiredTags?: string[]; bans?: string[]; watermarkBonus?: boolean }>(campaign.rulesJson, {});
+  const brief = parseJson<{
+    deliverableCount?: number;
+    clipDuration?: string;
+    aspectRatio?: string;
+    style?: string;
+    language?: string;
+    subtitles?: string;
+    cta?: string;
+    mustInclude?: string;
+    exampleUrls?: string[];
+    rightsConfirmed?: boolean;
+  }>(campaign.briefJson, {});
   const platforms = parseJson<string[]>(campaign.allowedPlatformsJson, []);
   const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
   const daysLeft = Math.max(1, Math.ceil((campaign.deadline.getTime() - Date.now()) / 86400000));
   const safeSource = buildSafePreview(campaign.sourceUrl);
-  const tasks = taskList(campaign.description);
+  const briefRows = [
+    ["Роликов", brief.deliverableCount ? String(brief.deliverableCount) : null],
+    ["Длительность", brief.clipDuration ? `${brief.clipDuration} сек.` : null],
+    ["Формат", brief.aspectRatio || null],
+    ["Стиль", brief.style || null],
+    ["Язык", brief.language?.toUpperCase() || campaign.language.toUpperCase()],
+    ["Субтитры", brief.subtitles || null]
+  ].filter((row): row is [string, string] => Boolean(row[1]));
   const urgent = daysLeft <= 2;
   const signal = campaign.visibility === "FEATURED"
     ? { cls: "hot", Icon: Megaphone, text: "Продвижение" }
@@ -198,11 +213,14 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
             <section className="od-block">
               <h2 className="od-h2">Что сделать</h2>
-              <ul className="od-tasks">
-                {tasks.map((task) => (
-                  <li key={task}><Check size={16} /> <span>{task}</span></li>
-                ))}
-              </ul>
+              <p className="od-description">{campaign.description}</p>
+              {briefRows.length ? (
+                <div className="od-rules">
+                  {briefRows.map(([label, value]) => <div key={label}><b>{label}</b><span>{value}</span></div>)}
+                </div>
+              ) : null}
+              {brief.mustInclude ? <div className="od-callout"><Check size={16} /><span><b>Обязательно:</b> {brief.mustInclude}</span></div> : null}
+              {brief.cta ? <div className="od-callout"><Target size={16} /><span><b>Призыв:</b> {brief.cta}</span></div> : null}
             </section>
 
             <section className="od-block">
@@ -213,6 +231,15 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                 <div><b>Нельзя</b><span>{rules.bans?.slice(0, 3).join(", ") || "NSFW, оскорбления, политика"}</span></div>
                 <div><b>Watermark</b><span>{rules.watermarkBonus ? "Нужен ReelPay watermark" : "Не обязателен"}</span></div>
               </div>
+              {brief.exampleUrls?.length ? (
+                <div className="od-examples">
+                  <b>Примеры результата</b>
+                  {brief.exampleUrls.map((url, index) => {
+                    const preview = buildSafePreview(url);
+                    return preview ? <a href={preview.url} target="_blank" rel="noreferrer" key={preview.url}>Пример {index + 1} <ArrowUpRight size={14} /></a> : null;
+                  })}
+                </div>
+              ) : null}
             </section>
           </div>
         </div>

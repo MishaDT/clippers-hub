@@ -18,10 +18,10 @@ export default async function HomePage() {
             Заказчики публикуют задания, клипперы режут рилсы из стримов и подкастов. Платим за просмотры.
           </p>
           <div className="lpa-cta">
-            <Link className="lpa-btn lpa-btn--primary" href="/register">
+            <Link className="lpa-btn lpa-btn--primary" href="/register?intent=worker&returnTo=%2Fcampaigns">
               Зарабатывать на клипах <ArrowRight size={18} />
             </Link>
-            <Link className="lpa-btn lpa-btn--ghost" href="/register">Заказать клипы</Link>
+            <Link className="lpa-btn lpa-btn--ghost" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">Заказать клипы</Link>
           </div>
           <a className="lpa-how" href="#how">Как это работает ↓</a>
         </div>
@@ -69,7 +69,7 @@ export default async function HomePage() {
           <p>Выбери роль — это бесплатно и займёт минуту.</p>
         </div>
         <div className="lpa-roles">
-          <Link className="lpa-role" href="/register">
+          <Link className="lpa-role" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">
             <span className="lpa-role-eyebrow">Я заказчик</span>
             <strong>Создаю кампании и получаю готовые видео</strong>
             <ul>
@@ -79,7 +79,7 @@ export default async function HomePage() {
             </ul>
             <em>Создать заказ</em>
           </Link>
-          <Link className="lpa-role lpa-role--primary" href="/campaigns">
+          <Link className="lpa-role lpa-role--primary" href="/register?intent=worker&returnTo=%2Fcampaigns">
             <span className="lpa-role-badge">Популярно</span>
             <span className="lpa-role-eyebrow">Я клиппер</span>
             <strong>Выполняю заказы и зарабатываю на роликах</strong>

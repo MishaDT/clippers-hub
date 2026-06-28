@@ -139,7 +139,7 @@ function median(values: number[]) {
   return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
 }
 
-async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: number } }) {
+async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: number; marketGuideSeenAt: Date | null } }) {
   const campaigns = await prisma.campaign.findMany({
     where: { ownerId: user.id },
     select: {
@@ -166,7 +166,7 @@ async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: nu
   return (
     <AppShell hideFooter>
       <section className={`section market-screen client-campaigns ${styles.marketplace}`}>
-        <CampaignGuide variant="client" />
+        <CampaignGuide variant="client" initiallyCollapsed={Boolean(user.marketGuideSeenAt)} persistSeen />
         <div className="market-head">
           <div>
             <span className="eyebrow">Работа заказчика</span>
@@ -205,7 +205,8 @@ async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: nu
                   <span><b>{rub(campaign.remainingBudgetCents)}</b> осталось</span>
                   {boostable ? <form className="client-campaign-boost" action={boostCampaignWithRpAction}>
                     <input type="hidden" name="campaignId" value={campaign.id} />
-                    <button type="submit" disabled={user.rpBalance < 100}>+24ч · 100 RP</button>
+                    <input type="hidden" name="autoConvert" value="1" />
+                    <button type="submit">+24ч · 100 RP{user.rpBalance < 100 ? " (доплата с баланса)" : ""}</button>
                   </form> : null}
                   <ArrowRight size={18} />
                 </article>
@@ -305,7 +306,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           </Link>
         ) : null}
 
-        <CampaignGuide variant="worker" />
+        <CampaignGuide variant="worker" initiallyCollapsed={Boolean(user?.marketGuideSeenAt) || currentPage > 1} persistSeen={Boolean(user)} />
 
         <header className="mk-head">
           <div>
@@ -322,22 +323,13 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           <span className="mk-stat mk-stat--urgent"><b>{quickCount}</b> срочных</span>
         </div>
 
-        <details className={styles.signalRules}>
-          <summary>Как считаются метки заказов</summary>
-          <p>
-            «Продвижение» — поднятие заказа администратором или платным бустом.
-            «Новый» — опубликован менее 48 часов назад. Процент ставки считается относительно медианы текущей выдачи.
-            Срок и остаток бюджета берутся напрямую из заказа.
-          </p>
-        </details>
-
-        <CampaignFilters
+        <div id="orders"><CampaignFilters
           query={query}
           category={category}
           deadline={deadline}
           sort={sort}
           resultCount={filtered.length}
-        />
+        /></div>
 
         {campaigns.length ? (
           <div className="mk-grid">
@@ -408,9 +400,9 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
         {totalPages > 1 ? (
           <div className="mk-pages">
-            <Link className={currentPage <= 1 ? "disabled" : ""} href={makeHref({ page: String(Math.max(1, currentPage - 1)) })}>Назад</Link>
+            <Link className={currentPage <= 1 ? "disabled" : ""} href={`${makeHref({ page: String(Math.max(1, currentPage - 1)) })}#orders`}>Назад</Link>
             <span>{currentPage} / {totalPages}</span>
-            <Link className={currentPage >= totalPages ? "disabled" : ""} href={makeHref({ page: String(Math.min(totalPages, currentPage + 1)) })}>Дальше</Link>
+            <Link className={currentPage >= totalPages ? "disabled" : ""} href={`${makeHref({ page: String(Math.min(totalPages, currentPage + 1)) })}#orders`}>Дальше</Link>
           </div>
         ) : null}
       </section>

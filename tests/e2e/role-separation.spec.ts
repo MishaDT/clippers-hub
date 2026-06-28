@@ -17,7 +17,7 @@ test("authorized interface stays inside the selected role", async ({ page, conte
   await expect(page.locator(`${navSelector} a[href="/upload"]`)).toBeVisible();
 
   await page.goto("/wallet");
-  await expect(page.getByRole("heading", { name: "Выплаты", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Кошелёк", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Вывести средства" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Пополнить баланс" })).toHaveCount(0);
 
@@ -36,7 +36,7 @@ test("authorized interface stays inside the selected role", async ({ page, conte
   await expect(page.locator(`${navSelector} a[href="/upload"]`)).toHaveCount(0);
 
   await page.goto("/wallet");
-  await expect(page.getByRole("heading", { name: "Бюджет", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Кошелёк", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Пополнить баланс" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Вывести средства" })).toHaveCount(0);
 

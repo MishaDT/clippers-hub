@@ -11,12 +11,15 @@ import {
 } from "@/lib/oauth";
 import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   const base = redirectBase(request.url);
   const url = new URL(request.url);
   const intent = url.searchParams.get("mode") === "link" ? "link" : "login";
+  const roleIntent = parseAuthIntent(url.searchParams.get("intent"));
+  const returnTo = safeAuthReturnTo(url.searchParams.get("returnTo"), roleIntent);
 
   if (!isProvider(provider)) {
     await trackEvent({ request, type: "OAUTH_FAILED", path: "/login", metadata: { reason: "invalid_provider", provider } });
@@ -46,6 +49,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   jar.set("oauth_verifier", verifier, cookieOpts);
   jar.set("oauth_provider", provider, cookieOpts);
   jar.set("oauth_intent", intent, cookieOpts);
+  if (roleIntent) jar.set("oauth_role_intent", roleIntent, cookieOpts);
+  jar.set("oauth_return_to", returnTo, cookieOpts);
 
   const authorizeUrl = buildAuthorizeUrl(provider, {
     redirectUri: callbackUri(request.url, provider),

@@ -136,8 +136,112 @@ export function CampaignForm() {
           <div className="order-section-title">
             <b>2</b>
             <div>
-              <h2>Оплата и цель</h2>
-              <p>Сколько просмотров нужно и сколько платим за 1000 просмотров.</p>
+              <h2>Результат</h2>
+              <p>Точные параметры роликов, которые получит заказчик.</p>
+            </div>
+          </div>
+
+          <div className="order-grid-2">
+            <label className="order-field">
+              <span>Количество роликов</span>
+              <input name="deliverableCount" type="number" min={1} max={20} defaultValue={3} required />
+            </label>
+            <label className="order-field">
+              <span>Длительность</span>
+              <select name="clipDuration" defaultValue="30-60">
+                <option value="15-30">15-30 секунд</option>
+                <option value="30-60">30-60 секунд</option>
+                <option value="60-90">60-90 секунд</option>
+              </select>
+            </label>
+            <label className="order-field">
+              <span>Формат</span>
+              <select name="aspectRatio" defaultValue="9:16">
+                <option value="9:16">Вертикальный 9:16</option>
+                <option value="1:1">Квадратный 1:1</option>
+                <option value="16:9">Горизонтальный 16:9</option>
+              </select>
+            </label>
+            <label className="order-field">
+              <span>Стиль</span>
+              <select name="style" defaultValue="Динамичный">
+                <option>Динамичный</option>
+                <option>Разговорный</option>
+                <option>Экспертный</option>
+                <option>Юмор</option>
+                <option>Минималистичный</option>
+              </select>
+            </label>
+            <label className="order-field">
+              <span>Язык</span>
+              <select name="language" defaultValue="ru">
+                <option value="ru">Русский</option>
+                <option value="en">Английский</option>
+              </select>
+            </label>
+            <label className="order-field">
+              <span>Субтитры</span>
+              <select name="subtitles" defaultValue="Обязательны">
+                <option>Обязательны</option>
+                <option>По желанию</option>
+                <option>Не нужны</option>
+              </select>
+            </label>
+          </div>
+          <label className="order-field">
+            <span>Что обязательно должно быть в ролике</span>
+            <textarea name="mustInclude" maxLength={400} placeholder="Фразы, кадры, продукт, логотип или другие обязательные элементы" />
+          </label>
+          <label className="order-field">
+            <span>Призыв к действию</span>
+            <input name="cta" maxLength={180} placeholder="Например: подписаться на канал" />
+          </label>
+        </section>
+
+        <section className="order-panel">
+          <div className="order-section-title">
+            <b>3</b>
+            <div>
+              <h2>Публикация и правила</h2>
+              <p>Площадки, примеры, обязательные теги и запреты.</p>
+            </div>
+          </div>
+
+          <div className="order-platforms">
+            {platformOptions.map(([value, label]) => (
+              <label key={value}>
+                <input type="checkbox" name="platforms" value={value} checked={platforms.includes(value)} onChange={() => togglePlatform(value)} />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+          <label className="order-field">
+            <span>Примеры роликов, до 3 ссылок</span>
+            <textarea name="exampleUrls" placeholder={"https://youtube.com/shorts/...\nhttps://vk.com/clip-..."} />
+          </label>
+          <label className="order-field">
+            <span>Обязательные теги</span>
+            <div className="order-input-icon">
+              <Hash size={18} />
+              <input name="requiredTags" value={requiredTags} onChange={(event) => setRequiredTags(event.target.value)} />
+            </div>
+          </label>
+          <label className="order-field">
+            <span>Запреты</span>
+            <textarea name="bans" value={bans} onChange={(event) => setBans(event.target.value)} />
+          </label>
+          <label className="order-check">
+            <input type="checkbox" name="watermarkBonus" checked={watermarkBonus} onChange={(event) => setWatermarkBonus(event.target.checked)} />
+            <span><ShieldCheck size={18} /> +5% к ставке за watermark ReelPay</span>
+          </label>
+        </section>
+
+        <section className="order-panel">
+          <div className="order-section-title">
+            <b>4</b>
+            <div>
+              <h2>Бюджет и срок</h2>
+              <p>Цель по просмотрам, ставка, общий бюджет и дедлайн.</p>
             </div>
           </div>
 
@@ -165,25 +269,6 @@ export function CampaignForm() {
             <AlertCircle size={17} />
             <span>Для старта лучше держать ставку от 45 ₽ за 1000 просмотров. Ниже клипперы будут выбирать заказ реже.</span>
           </div>
-        </section>
-
-        <section className="order-panel">
-          <div className="order-section-title">
-            <b>3</b>
-            <div>
-              <h2>Публикация и правила</h2>
-              <p>Куда можно выкладывать ролики и что обязательно указать.</p>
-            </div>
-          </div>
-
-          <div className="order-platforms">
-            {platformOptions.map(([value, label]) => (
-              <label key={value}>
-                <input type="checkbox" name="platforms" value={value} checked={platforms.includes(value)} onChange={() => togglePlatform(value)} />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
 
           <label className="order-field">
             <span>Срок</span>
@@ -192,22 +277,9 @@ export function CampaignForm() {
             </select>
           </label>
 
-          <label className="order-field">
-            <span>Обязательные теги</span>
-            <div className="order-input-icon">
-              <Hash size={18} />
-              <input name="requiredTags" value={requiredTags} onChange={(event) => setRequiredTags(event.target.value)} />
-            </div>
-          </label>
-
-          <label className="order-field">
-            <span>Запреты</span>
-            <textarea name="bans" value={bans} onChange={(event) => setBans(event.target.value)} />
-          </label>
-
           <label className="order-check">
-            <input type="checkbox" name="watermarkBonus" checked={watermarkBonus} onChange={(event) => setWatermarkBonus(event.target.checked)} />
-            <span><ShieldCheck size={18} /> +5% к ставке за watermark ReelPay</span>
+            <input type="checkbox" name="rightsConfirmed" required />
+            <span><ShieldCheck size={18} /> Подтверждаю права на исходный материал и разрешаю его монтаж</span>
           </label>
         </section>
       </div>
@@ -250,7 +322,6 @@ export function CampaignForm() {
       </aside>
 
       <input type="hidden" name="trackingPrefix" value="REELPAY" />
-      <input type="hidden" name="language" value="ru" />
       <input type="hidden" name="visibility" value="PUBLIC" />
     </form>
   );
