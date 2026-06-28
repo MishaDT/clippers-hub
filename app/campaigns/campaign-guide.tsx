@@ -40,7 +40,7 @@ const scenes = [
     kicker: "Две стороны — один процесс",
     title: "Контент уже есть",
     text: "Заказчику нужны короткие ролики. Исполнителю — понятные заказы и честная оплата.",
-    duration: 6500
+    duration: 7000
   },
   {
     label: "Заказчик",
@@ -54,21 +54,21 @@ const scenes = [
     kicker: "Путь исполнителя",
     title: "Выбери задачу без переговоров",
     text: "Сразу видны тема, требования, срок, цель и ожидаемая оплата.",
-    duration: 6500
+    duration: 7000
   },
   {
     label: "Публикация",
     kicker: "От исходника до клипа",
     title: "Смонтируй. Опубликуй. Отправь ссылку",
     text: "Shorts, TikTok, Reels или VK Clips — площадку выбирает заказчик.",
-    duration: 6500
+    duration: 7000
   },
   {
     label: "Проверка",
     kicker: "Прозрачность и защита",
     title: "ReelPay проверяет результат",
     text: "Tracking-код, реальные просмотры через API и защита от подозрительной активности.",
-    duration: 6500
+    duration: 7000
   },
   {
     label: "Результат",
@@ -82,7 +82,7 @@ const scenes = [
     kicker: "Твой следующий шаг",
     title: "Превращай контент в охват и доход",
     text: "Выбери свою роль и начни с одного простого действия.",
-    duration: 5000
+    duration: 6000
   }
 ] as const;
 
@@ -238,6 +238,7 @@ export function CampaignGuide() {
   const [playing, setPlaying] = useState(false);
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [playbackRun, setPlaybackRun] = useState(0);
 
   useEffect(() => {
     setCollapsed(localStorage.getItem(STORAGE_KEY) === "1");
@@ -266,7 +267,7 @@ export function CampaignGuide() {
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [active, playing]);
+  }, [active, playing, playbackRun]);
 
   function setGuideCollapsed(next: boolean) {
     setCollapsed(next);
@@ -288,6 +289,7 @@ export function CampaignGuide() {
     setActive(index);
     setProgress(0);
     setPlaying(true);
+    setPlaybackRun((value) => value + 1);
   }
 
   function togglePlayback() {
