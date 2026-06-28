@@ -1,19 +1,26 @@
 import Link from "next/link";
 import {
+  ArrowRight,
   BriefcaseBusiness,
   CheckCircle2,
+  Coins,
   Eye,
   Film,
   Plus,
   Settings,
+  SquarePen,
+  Trophy,
   WalletCards,
   Zap
 } from "lucide-react";
 import { switchRoleAction } from "@/app/actions";
 import { AppShell, Card, Tag } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
+import { ProfileAchievements } from "@/components/profile-achievements";
 import { requireUser } from "@/lib/auth";
 import { compactNumber, rub } from "@/lib/money";
+import { ACHIEVEMENTS, achievementProgress, formatRp } from "@/lib/achievements";
+import { loadAchievementStats } from "@/lib/achievement-stats";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
 
@@ -136,12 +143,27 @@ export default async function ProfilePage() {
   const user = await requireUser();
   const mode = await getActiveRoleMode(user);
   const canSwitchMode = user.role === "BOTH" || user.role === "ADMIN";
-  const data = mode === "worker" ? await loadWorker(user.id) : await loadClient(user.id);
+  const [data, achievementStats, unlocked] = await Promise.all([
+    mode === "worker" ? loadWorker(user.id) : loadClient(user.id),
+    loadAchievementStats(user),
+    prisma.userAchievement.findMany({
+      where: { userId: user.id },
+      select: { claimedAt: true, achievement: { select: { code: true } } }
+    })
+  ]);
+  const claimedCodes = new Set(unlocked.filter((item) => item.claimedAt).map((item) => item.achievement.code));
+  const achievementItems = ACHIEVEMENTS
+    .filter((item) => item.role === "any" || item.role === mode)
+    .map((item) => ({
+      ...item,
+      ...achievementProgress(item, achievementStats),
+      claimed: claimedCodes.has(item.code)
+    }));
 
   return (
     <AppShell>
       <section className="section profile-screen">
-        <div className="profile-main">
+        <header className="profile-overview">
           <div className="profile-person">
             <UserAvatar avatar={user.avatar} name={user.name} handle={user.handle} size={72} />
             <div>
@@ -150,11 +172,24 @@ export default async function ProfilePage() {
               <Tag>{mode === "client" ? "Заказчик" : "Исполнитель"}</Tag>
             </div>
           </div>
-          <Link className="btn btn-ghost" href="/settings/account">
-            <Settings size={17} /> Аккаунт
+          <div className="profile-edit-actions">
+            <Link href="/settings/profile" aria-label="Редактировать профиль"><SquarePen size={18} /></Link>
+            <Link href="/settings/account" aria-label="Настройки аккаунта"><Settings size={18} /></Link>
+          </div>
+        </header>
+
+        <section className="profile-balances" aria-label="Баланс">
+          <Link href="/wallet">
+            <WalletCards size={20} />
+            <span><small>Рублёвый баланс</small><b>{rub(user.balanceCents)}</b></span>
+            <ArrowRight size={17} />
           </Link>
-          <Link className="btn btn-ghost" href="/settings/profile">Редактировать профиль</Link>
-        </div>
+          <div>
+            <Coins size={20} />
+            <span><small>Бонусы ReelPay</small><b>{formatRp(user.rpBalance)}</b></span>
+            <em>1 RP = 1 ₽ внутри сервиса</em>
+          </div>
+        </section>
 
         {canSwitchMode ? (
           <form className="role-switch" action={switchRoleAction}>
@@ -166,6 +201,14 @@ export default async function ProfilePage() {
             </button>
           </form>
         ) : null}
+
+        <section className="profile-achievements">
+          <div className="section-head compact">
+            <div><span className="eyebrow">Награды</span><h2>Достижения</h2></div>
+            <span className="profile-rp-hint"><Trophy size={15} /> RP нельзя вывести</span>
+          </div>
+          <ProfileAchievements items={achievementItems} />
+        </section>
 
         {mode === "worker" && "earningsCents" in data ? (
           <>

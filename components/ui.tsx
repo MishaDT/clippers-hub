@@ -25,11 +25,13 @@ const loadAdminAlerts = unstable_cache(
 export async function AppShell({
   children,
   hideBottomNav = false,
+  hideFooter = false,
   immersive = false,
   publicOnly = false
 }: {
   children: React.ReactNode;
   hideBottomNav?: boolean;
+  hideFooter?: boolean;
   immersive?: boolean;
   publicOnly?: boolean;
 }) {
@@ -96,7 +98,7 @@ export async function AppShell({
       </header>
       <main className={clsx("content", immersive && "content-immersive")}>
         {children}
-        {!immersive ? <SiteFooter /> : null}
+        {!immersive && !hideFooter ? <SiteFooter /> : null}
       </main>
       {user ? <Suspense fallback={null}><ReadStateTracker /></Suspense> : null}
       {user && !hideBottomNav ? <BottomNav mode={mode} unreadChats={unread.chatBadge} /> : null}

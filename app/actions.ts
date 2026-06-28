@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +14,8 @@ import { scoreSubmissionFraud } from "@/lib/fraud";
 import { checkOwnership, platformIsVerifiable } from "@/lib/antifraud";
 import { stringify } from "@/lib/json";
 import { canEndorse } from "@/lib/leagues";
+import { achievementByCode, achievementProgress, nextFeaturedUntil, RP_BOOST_COST } from "@/lib/achievements";
+import { loadAchievementStats } from "@/lib/achievement-stats";
 import { parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { syncMockViews } from "@/lib/social-sync";
@@ -161,6 +163,7 @@ export async function createCampaignAction(formData: FormData) {
   });
 
   revalidatePath("/campaigns");
+  revalidateTag("campaigns");
   revalidatePath("/profile");
   redirect(`/campaigns/${campaign.id}`);
 }
@@ -423,6 +426,101 @@ export async function clearThreadAction(formData: FormData) {
   }
   revalidatePath("/chats");
   redirect("/chats");
+}
+
+export async function claimAchievementAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const code = String(formData.get("code") || "");
+  const def = achievementByCode(code);
+  if (!def) return { ok: false, error: "Достижение не найдено" };
+  const mode = await getActiveRoleMode(user);
+  if (def.role !== "any" && def.role !== mode) return { ok: false, error: "Достижение относится к другой роли" };
+
+  const stats = await loadAchievementStats(user);
+  if (!achievementProgress(def, stats).done) return { ok: false, error: "Условие ещё не выполнено" };
+
+  const achievement = await prisma.achievement.upsert({
+    where: { code: def.code },
+    create: { code: def.code, title: def.title, description: def.description, icon: def.icon },
+    update: {},
+    select: { id: true }
+  });
+
+  const reference = `achievement:${user.id}:${def.code}`;
+  try {
+    const claimed = await prisma.$transaction(async (tx) => {
+      const unlocked = await tx.userAchievement.upsert({
+        where: { userId_achievementId: { userId: user.id, achievementId: achievement.id } },
+        create: { userId: user.id, achievementId: achievement.id },
+        update: {}
+      });
+      if (unlocked.claimedAt) return false;
+      await tx.rpTransaction.create({
+        data: {
+          userId: user.id,
+          amount: def.reward,
+          type: "ACHIEVEMENT",
+          reference,
+          metadataJson: stringify({ code: def.code })
+        }
+      });
+      await tx.user.update({ where: { id: user.id }, data: { rpBalance: { increment: def.reward } } });
+      await tx.userAchievement.update({
+        where: { id: unlocked.id },
+        data: { claimedAt: new Date(), rewardRp: def.reward }
+      });
+      return true;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    if (!claimed) return { ok: true, already: true, reward: 0 };
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
+    return { ok: true, already: true, reward: 0 };
+  }
+  revalidatePath("/profile");
+  revalidatePath("/leaderboard");
+  return { ok: true, reward: def.reward };
+}
+
+export async function boostCampaignWithRpAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
+  const campaignId = String(formData.get("campaignId") || "");
+  const now = new Date();
+  try {
+    await prisma.$transaction(async (tx) => {
+      const campaign = await tx.campaign.findFirst({
+        where: { id: campaignId, ownerId: user.id, status: { in: ["ACTIVE", "LOW_BUDGET"] } },
+        select: { id: true, featuredUntil: true }
+      });
+      if (!campaign) throw new Error("CAMPAIGN_NOT_AVAILABLE");
+      const featuredUntil = nextFeaturedUntil(campaign.featuredUntil, now);
+      if (!featuredUntil) throw new Error("FEATURED_LIMIT");
+      const charged = await tx.user.updateMany({
+        where: { id: user.id, rpBalance: { gte: RP_BOOST_COST } },
+        data: { rpBalance: { decrement: RP_BOOST_COST } }
+      });
+      if (!charged.count) throw new Error("RP_BALANCE");
+      await tx.campaign.update({ where: { id: campaign.id }, data: { featuredUntil } });
+      await tx.rpTransaction.create({
+        data: {
+          userId: user.id,
+          amount: -RP_BOOST_COST,
+          type: "CAMPAIGN_BOOST",
+          reference: `boost:${campaign.id}:${featuredUntil.toISOString()}`,
+          metadataJson: stringify({ campaignId: campaign.id, featuredUntil })
+        }
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "boost";
+    redirect(`/campaigns?boost=${encodeURIComponent(reason)}`);
+  }
+  revalidateTag("campaigns");
+  revalidatePath("/campaigns");
+  revalidatePath("/profile");
+  redirect("/campaigns?boost=ok");
 }
 
 export async function reportContentAction(formData: FormData) {

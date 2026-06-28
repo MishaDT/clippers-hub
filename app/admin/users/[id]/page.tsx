@@ -25,7 +25,8 @@ export default async function AdminUserDetailPage({
       transactions: { orderBy: { createdAt: "desc" }, take: 18 },
       analyticsEvents: { orderBy: { createdAt: "desc" }, take: 18 },
       auditLogs: { orderBy: { createdAt: "desc" }, take: 12 },
-      moderationAuthored: { orderBy: { createdAt: "desc" }, take: 30 }
+      moderationAuthored: { orderBy: { createdAt: "desc" }, take: 30 },
+      rpTransactions: { orderBy: { createdAt: "desc" }, take: 30 }
     }
   });
   if (!user) notFound();
@@ -72,6 +73,19 @@ export default async function AdminUserDetailPage({
             </form>
           </Card>
         </div>
+
+        <Card className="admin-panel">
+          <div className="section-head compact"><h2>Операции RP</h2><Tag tone="soft">{user.rpBalance} RP</Tag></div>
+          <div className="admin-dense-list always">
+            {user.rpTransactions.map((item) => (
+              <details className="admin-dense-row" key={item.id}>
+                <summary><span>{item.type}</span><b>{item.amount > 0 ? `+${item.amount}` : item.amount} RP</b><em>{fullDate(item.createdAt)}</em></summary>
+                <div className="admin-dense-details"><p><b>Reference:</b> {item.reference}</p></div>
+              </details>
+            ))}
+            {!user.rpTransactions.length ? <p className="muted">Операций RP нет.</p> : null}
+          </div>
+        </Card>
 
         <Card className="admin-panel">
           <div className="section-head compact">

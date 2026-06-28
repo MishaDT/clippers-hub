@@ -14,7 +14,7 @@ export default async function NewCampaignPage({
   if (await getActiveRoleMode(user) !== "client") redirect("/campaigns");
 
   return (
-    <AppShell hideBottomNav>
+    <AppShell hideBottomNav hideFooter>
       <section className="section order-create-screen">
         {params.error === "source_url" ? (
           <Card className="upload-status warn">

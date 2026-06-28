@@ -212,6 +212,11 @@ export function CampaignForm() {
         </section>
       </div>
 
+      <div className="order-mobile-submit">
+        <span><small>Выплата за результат</small><b>{rub(estimate.payout)}</b></span>
+        <SubmitButton />
+      </div>
+
       <aside className="order-summary">
         <div className="summary-card">
           <span className="summary-kicker">Прогноз заказа</span>

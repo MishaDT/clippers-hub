@@ -15,6 +15,7 @@ import {
   Users
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
+import { boostCampaignWithRpAction } from "@/app/actions";
 import { UserAvatar } from "@/components/user-avatar";
 import { CampaignFilters } from "./campaign-filters";
 import { CampaignGuide } from "./campaign-guide";
@@ -80,6 +81,7 @@ const getCampaigns = unstable_cache(
         deadline: true,
         niche: true,
         visibility: true,
+        featuredUntil: true,
         remainingBudgetCents: true,
         createdAt: true,
         owner: { select: { name: true, handle: true, avatar: true } },
@@ -137,14 +139,15 @@ function median(values: number[]) {
   return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
 }
 
-async function ClientCampaignsView({ userId }: { userId: string }) {
+async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: number } }) {
   const campaigns = await prisma.campaign.findMany({
-    where: { ownerId: userId },
+    where: { ownerId: user.id },
     select: {
       id: true,
       title: true,
       status: true,
-      remainingBudgetCents: true
+      remainingBudgetCents: true,
+      featuredUntil: true
     },
     orderBy: { createdAt: "desc" },
     take: 30
@@ -161,7 +164,7 @@ async function ClientCampaignsView({ userId }: { userId: string }) {
   const activeCount = campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET"].includes(campaign.status)).length;
 
   return (
-    <AppShell>
+    <AppShell hideFooter>
       <section className={`section market-screen client-campaigns ${styles.marketplace}`}>
         <div className="market-head">
           <div>
@@ -179,6 +182,7 @@ async function ClientCampaignsView({ userId }: { userId: string }) {
           <span><b>{compactNumber(totalViews)}</b> просмотров</span>
           <span><b>{totalClips}</b> роликов</span>
         </div>
+        <div className="client-rp-balance"><span>Бонусный баланс</span><b>{user.rpBalance.toLocaleString("ru-RU")} RP</b><small>100 RP = сутки продвижения</small></div>
 
         {campaigns.length ? (
           <div className="client-campaign-list">
@@ -186,17 +190,24 @@ async function ClientCampaignsView({ userId }: { userId: string }) {
               const stats = statsByCampaign.get(campaign.id);
               const views = stats?._sum.currentViews || 0;
               const clips = stats?._count._all || 0;
+              const promoted = Boolean(campaign.featuredUntil && campaign.featuredUntil > new Date());
+              const boostable = ["ACTIVE", "LOW_BUDGET"].includes(campaign.status);
               return (
-                <Link className="client-campaign-row" href={`/campaigns/${campaign.id}`} key={campaign.id}>
+                <article className="client-campaign-row" key={campaign.id}>
+                  <Link className="client-campaign-main" href={`/campaigns/${campaign.id}`} aria-label={`Открыть ${campaign.title}`} />
                   <div>
                     <strong>{campaign.title}</strong>
-                    <span>{campaign.status === "ACTIVE" ? "Активна" : campaign.status === "LOW_BUDGET" ? "Заканчивается бюджет" : "Не активна"}</span>
+                    <span>{promoted ? `Featured до ${campaign.featuredUntil?.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : campaign.status === "ACTIVE" ? "Активна" : campaign.status === "LOW_BUDGET" ? "Заканчивается бюджет" : "Не активна"}</span>
                   </div>
                   <span><b>{clips}</b> роликов</span>
                   <span><b>{compactNumber(views)}</b> просмотров</span>
                   <span><b>{rub(campaign.remainingBudgetCents)}</b> осталось</span>
+                  {boostable ? <form className="client-campaign-boost" action={boostCampaignWithRpAction}>
+                    <input type="hidden" name="campaignId" value={campaign.id} />
+                    <button type="submit" disabled={user.rpBalance < 100}>+24ч · 100 RP</button>
+                  </form> : null}
                   <ArrowRight size={18} />
-                </Link>
+                </article>
               );
             })}
           </div>
@@ -216,7 +227,7 @@ async function ClientCampaignsView({ userId }: { userId: string }) {
 export default async function CampaignsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await getCurrentUser();
   if (user && await getActiveRoleMode(user) === "client") {
-    return <ClientCampaignsView userId={user.id} />;
+    return <ClientCampaignsView user={user} />;
   }
 
   const params = await searchParams;
@@ -236,7 +247,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
     })
     .sort((a, b) => {
       if (sort === "promoted") {
-        const visibilityDelta = Number(b.visibility === "FEATURED") - Number(a.visibility === "FEATURED");
+        const visibilityDelta = Number(b.visibility === "FEATURED" || Boolean(b.featuredUntil && timeOf(b.featuredUntil) > Date.now()))
+          - Number(a.visibility === "FEATURED" || Boolean(a.featuredUntil && timeOf(a.featuredUntil) > Date.now()));
         if (visibilityDelta) return visibilityDelta;
         return timeOf(b.createdAt) - timeOf(a.createdAt);
       }
@@ -335,7 +347,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
               const urgent = daysLeft <= 2;
               const newCampaign = Date.now() - timeOf(campaign.createdAt) <= 48 * 60 * 60 * 1000;
               const rateDelta = medianRate > 0 ? Math.round((campaign.cpmRateCents / medianRate - 1) * 100) : 0;
-              const signal = campaign.visibility === "FEATURED"
+              const signal = campaign.visibility === "FEATURED" || Boolean(campaign.featuredUntil && timeOf(campaign.featuredUntil) > Date.now())
                 ? { cls: "hot", icon: Megaphone, text: "Продвижение", title: "Заказ поднят в выдаче через продвижение" }
                 : campaign.remainingBudgetCents < payout
                   ? { cls: "urgent", icon: CircleAlert, text: "Мало бюджета", title: "Остатка бюджета может не хватить на полную выплату" }

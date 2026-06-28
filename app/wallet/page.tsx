@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDownToLine, ArrowUpRight, CreditCard, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, Coins, CreditCard, ShieldCheck, WalletCards } from "lucide-react";
 import { depositAction, withdrawAction } from "@/app/actions";
 import { AppShell, Card, Stat, Tag } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -31,7 +31,7 @@ export default async function WalletPage({
     : ["EARNING", "WITHDRAWAL", "REFERRAL_BONUS", "STREAK_BONUS"] as const;
   const transactionWhere = { userId: user.id, type: { in: [...visibleTypes] } };
 
-  const [transactions, totalTransactions, totalAggregate, campaignBudget, campaignExpenses] = await Promise.all([
+  const [transactions, totalTransactions, totalAggregate, campaignBudget, campaignExpenses, rpTransactions] = await Promise.all([
     prisma.transaction.findMany({
       where: transactionWhere,
       select: { id: true, type: true, netCents: true, status: true, createdAt: true },
@@ -57,7 +57,12 @@ export default async function WalletPage({
           orderBy: { updatedAt: "desc" },
           take: 5
         })
-      : Promise.resolve([])
+      : Promise.resolve([]),
+    prisma.rpTransaction.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 5
+    })
   ]);
 
   const totalMoney = totalAggregate._sum.netCents || 0;
@@ -83,6 +88,12 @@ export default async function WalletPage({
             <span>Доступно</span>
             <strong>{rub(user.balanceCents)}</strong>
             <small>{mode === "client" ? `В кампаниях: ${rub(reserved)}` : `На проверке: ${rub(user.holdBalanceCents)}`}</small>
+          </Card>
+          <Card className="wallet-balance-card wallet-rp-card">
+            <Coins />
+            <span>Бонусы ReelPay</span>
+            <strong>{user.rpBalance.toLocaleString("ru-RU")} RP</strong>
+            <small>1 RP = 1 ₽ внутри сервиса · вывести нельзя</small>
           </Card>
         </div>
 
@@ -169,6 +180,21 @@ export default async function WalletPage({
             </div>
           ) : null}
         </Card>
+
+        {rpTransactions.length ? (
+          <Card className="wallet-history">
+            <div className="section-head compact"><h2>История RP</h2><Tag tone="soft">{user.rpBalance} RP</Tag></div>
+            <div className="pay-list">
+              {rpTransactions.map((item) => (
+                <div className="pay-row wallet-row" key={item.id}>
+                  <span>RP</span>
+                  <div><strong>{item.type === "ACHIEVEMENT" ? "Награда за достижение" : "Продвижение кампании"}</strong><small>{item.createdAt.toLocaleString("ru-RU")}</small></div>
+                  <b>{item.amount > 0 ? "+" : ""}{item.amount} RP</b>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
       </section>
     </AppShell>
   );

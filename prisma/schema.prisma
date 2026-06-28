@@ -27,6 +27,7 @@ model User {
   role              Role          @default(WORKER)
   balanceCents      Int           @default(0)
   holdBalanceCents  Int           @default(0)
+  rpBalance         Int           @default(0)
   rank              Rank          @default(BRONZE)
   trustScore        Int           @default(100)
   streakDays        Int           @default(0)
@@ -66,6 +67,7 @@ model User {
   moderationReported     ModerationCase[]  @relation("ModerationReporter")
   moderationReviewed     ModerationCase[]  @relation("ModerationReviewer")
   messageAudits          ChatMessageEdit[] @relation("MessageEditor")
+  rpTransactions         RpTransaction[]
 
   @@index([role, createdAt])
   @@index([createdAt])
@@ -125,6 +127,7 @@ model Campaign {
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   moderationStatus     String         @default("APPROVED")
+  featuredUntil        DateTime?
 
   owner       User            @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   submissions Submission[]
@@ -134,6 +137,7 @@ model Campaign {
 
   @@index([ownerId, createdAt])
   @@index([status, createdAt])
+  @@index([featuredUntil])
 }
 
 model SavedCampaign {
@@ -213,13 +217,13 @@ model VideoCheck {
 }
 
 model ChatThread {
-  id           String   @id @default(cuid())
-  campaignId   String
-  submissionId String?
-  clientId     String
-  workerId     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String    @id @default(cuid())
+  campaignId       String
+  submissionId     String?
+  clientId         String
+  workerId         String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   clientArchivedAt DateTime?
   workerArchivedAt DateTime?
   clientClearedAt  DateTime?
@@ -238,14 +242,14 @@ model ChatThread {
 }
 
 model ChatMessage {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   threadId         String
   senderId         String
   body             String
-  type             String   @default("TEXT")
-  metadataJson     String   @default("{}")
-  moderationStatus String   @default("APPROVED")
-  createdAt        DateTime @default(now())
+  type             String    @default("TEXT")
+  metadataJson     String    @default("{}")
+  moderationStatus String    @default("APPROVED")
+  createdAt        DateTime  @default(now())
   editedAt         DateTime?
   deletedAt        DateTime?
 
@@ -455,15 +459,32 @@ model Achievement {
 }
 
 model UserAchievement {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
   achievementId String
-  unlockedAt    DateTime @default(now())
+  unlockedAt    DateTime  @default(now())
+  claimedAt     DateTime?
+  rewardRp      Int       @default(0)
 
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([userId, achievementId])
+}
+
+model RpTransaction {
+  id           String   @id @default(cuid())
+  userId       String
+  amount       Int
+  type         String
+  reference    String   @unique
+  metadataJson String   @default("{}")
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
 }
 
 model LeaderboardSnapshot {

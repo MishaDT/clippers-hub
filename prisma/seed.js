@@ -223,9 +223,14 @@ async function main() {
 
   const achievements = await Promise.all([
     prisma.achievement.create({ data: { code: "FIRST_CLIP", title: "Первый клип", description: "Первая одобренная публикация", icon: "play" } }),
-    prisma.achievement.create({ data: { code: "ONE_HUNDRED_K", title: "100K просмотров", description: "Один клип набрал 100K+", icon: "100K" } }),
-    prisma.achievement.create({ data: { code: "VIRAL_HIT", title: "Viral Hit", description: "Клип набрал 1M+ просмотров", icon: "1M" } }),
-    prisma.achievement.create({ data: { code: "STREAK_30", title: "Streak 30", description: "30 дней подряд с публикациями", icon: "30" } })
+    prisma.achievement.create({ data: { code: "RISING_STAR", title: "Восходящая звезда", description: "10 000 просмотров за неделю", icon: "star" } }),
+    prisma.achievement.create({ data: { code: "CLIPMAKER", title: "Клипмейкер", description: "50 опубликованных клипов", icon: "scissors" } }),
+    prisma.achievement.create({ data: { code: "STREAK_7", title: "Серия 7 дней", description: "7 дней подряд с публикациями", icon: "flame" } }),
+    prisma.achievement.create({ data: { code: "VIRAL_HIT", title: "Вирусный", description: "100 000 просмотров на одном клипе", icon: "flame" } }),
+    prisma.achievement.create({ data: { code: "MILLION_CLUB", title: "Клуб миллиона", description: "1 000 000 просмотров на клипе", icon: "trophy" } }),
+    prisma.achievement.create({ data: { code: "CONNECTOR", title: "Амбассадор", description: "Три приглашённых пользователя", icon: "users" } }),
+    prisma.achievement.create({ data: { code: "FIRST_CAMPAIGN", title: "Первый заказ", description: "Первая опубликованная кампания", icon: "megaphone" } }),
+    prisma.achievement.create({ data: { code: "PRODUCER", title: "Продюсер", description: "25 роликов на своих заказах", icon: "film" } })
   ]);
 
   await prisma.userAchievement.createMany({

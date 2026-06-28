@@ -7,6 +7,8 @@ import {
   CircleDashed,
   MessageCircle,
   Headphones,
+  Archive,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { Prisma, SubmissionStatus } from "@prisma/client";
 import { CampaignChat } from "@/components/campaign-chat";
@@ -181,7 +183,7 @@ export default async function ChatsPage({
   ];
 
   return (
-    <AppShell immersive>
+    <AppShell immersive hideBottomNav={Boolean(requestedThreadId)}>
       <section className={`chats-app ${requestedThreadId ? "has-selection" : ""}`}>
         <aside className="chat-sidebar">
           <div className="chat-sidebar-head">
@@ -189,9 +191,33 @@ export default async function ChatsPage({
               <span><MessageCircle size={15} /> Сообщения</span>
               <h1>Чаты</h1>
             </div>
-            <b>{totalThreads}</b>
+            <div className="chat-sidebar-tools">
+              <b>{totalThreads}</b>
+              <Link href="/support" aria-label="Поддержка"><Headphones size={18} /></Link>
+              <Link href={hrefWith({ q: query, status, role: roleFilter, view: archivedView ? "all" : "archived" })} aria-label={archivedView ? "Активные чаты" : "Архив"}>
+                <Archive size={18} />
+              </Link>
+              <details className="chat-mobile-filter">
+                <summary aria-label="Фильтры"><SlidersHorizontal size={18} /></summary>
+                <div className="chat-mobile-filter-sheet">
+                  <strong>Показывать</strong>
+                  {canSeeBoth ? <nav>
+                    <Link className={roleFilter === "all" ? "active" : ""} href={hrefWith({ q: query, status, view })}>Все роли <b>{clientCount + workerCount}</b></Link>
+                    <Link className={roleFilter === "client" ? "active" : ""} href={hrefWith({ q: query, status, role: "client", view })}>Я заказчик <b>{clientCount}</b></Link>
+                    <Link className={roleFilter === "worker" ? "active" : ""} href={hrefWith({ q: query, status, role: "worker", view })}>Я исполнитель <b>{workerCount}</b></Link>
+                  </nav> : null}
+                  <strong>Статус</strong>
+                  <nav>
+                    <Link className={status === "all" ? "active" : ""} href={hrefWith({ q: query, role: roleFilter, view })}>Все</Link>
+                    <Link className={status === "active" ? "active" : ""} href={hrefWith({ q: query, status: "active", role: roleFilter, view })}>В работе</Link>
+                    <Link className={status === "done" ? "active" : ""} href={hrefWith({ q: query, status: "done", role: roleFilter, view })}>Завершены</Link>
+                  </nav>
+                </div>
+              </details>
+            </div>
           </div>
 
+          <div className="chat-desktop-filters">
           <nav className="chat-view-tabs" aria-label="Архив чатов">
             <Link className={!archivedView ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter })}>Активные</Link>
             <Link className={archivedView ? "active" : ""} href={hrefWith({ q: query, status, role: roleFilter, view: "archived" })}>Архив</Link>
@@ -215,6 +241,7 @@ export default async function ChatsPage({
               done: hrefWith({ q: query, status: "done", role: roleFilter, view })
             }}
           />
+          </div>
 
           <Link className="chat-support" href="/support">
             <span className="chat-support-ico"><Headphones size={18} /></span>
