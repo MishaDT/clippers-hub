@@ -15,8 +15,9 @@ import {
   TrendingUp
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
+import { ReportDialog } from "@/components/report-dialog";
 import { LeagueBadge } from "@/components/league-badge";
-import { endorseClipperAction, reportContentAction, sendCollabInviteAction } from "@/app/actions";
+import { cancelCollabInviteAction, endorseClipperAction, sendCollabInviteAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, canManageClient } from "@/lib/auth";
 import { canEndorse } from "@/lib/leagues";
@@ -144,7 +145,7 @@ export default async function ClipperPortfolioPage({
   const isClient = viewer ? canManageClient(viewer.role) && (await getActiveRoleMode(viewer)) === "client" : false;
   const isSelf = viewer?.id === user.id;
 
-  let pendingInvite = false;
+  let pendingInviteId: string | null = null;
   let alreadyEndorsed = false;
   let viewerCanEndorse = false;
   if (viewer && isClient && !isSelf) {
@@ -153,12 +154,12 @@ export default async function ClipperPortfolioPage({
       prisma.endorsement.findFirst({ where: { clientId: viewer.id, workerId: user.id }, select: { id: true } }),
       prisma.campaign.count({ where: { ownerId: viewer.id } })
     ]);
-    pendingInvite = Boolean(pi);
+    pendingInviteId = pi?.id || null;
     alreadyEndorsed = Boolean(ae);
     viewerCanEndorse = canEndorse(orders);
   }
 
-  const showInviteForm = isClient && !isSelf && !pendingInvite && invited !== "1";
+  const showInviteForm = isClient && !isSelf && !pendingInviteId && invited !== "1";
   const showEndorseForm = isClient && !isSelf && viewerCanEndorse && !alreadyEndorsed && endorsed !== "1";
 
   // A single, honest read for a client deciding whether to work with this clipper.
@@ -188,7 +189,7 @@ export default async function ClipperPortfolioPage({
             </div>
             <div className="cp-id">
               <h1>
-                {user.name}
+                {isSelf ? "Я" : user.name}
                 {verified ? <BadgeCheck size={22} className="verified" aria-label="Проверенный клиппер" /> : null}
               </h1>
               <span className="cp-handle">@{user.handle}</span>
@@ -208,16 +209,25 @@ export default async function ClipperPortfolioPage({
               <Gauge size={15} /> {verdict.text}
             </div>
             {isSelf ? (
-              <span className="cp-cta-note">Это ваш профиль</span>
+              <span className="cp-cta-note">Ваш публичный профиль</span>
             ) : isClient ? (
               showInviteForm ? (
                 <a className="btn btn-primary cp-cta-btn" href="#cp-invite"><Sparkles size={16} /> Пригласить на коллаб</a>
               ) : (
-                <span className="cp-cta-sent"><Check size={15} /> Приглашение отправлено</span>
+                <div className="cp-invite-pending">
+                  <span className="cp-cta-sent"><Check size={15} /> Приглашение отправлено</span>
+                  {pendingInviteId ? (
+                    <form action={cancelCollabInviteAction}>
+                      <input type="hidden" name="inviteId" value={pendingInviteId} />
+                      <input type="hidden" name="returnTo" value={`/clippers/${user.handle}`} />
+                      <button className="cp-cancel-invite" type="submit">Отменить</button>
+                    </form>
+                  ) : null}
+                </div>
               )
-            ) : (
+            ) : !viewer ? (
               <Link className="btn btn-primary cp-cta-btn" href="/login">Войти, чтобы пригласить</Link>
-            )}
+            ) : null}
           </div>
         </header>
 
@@ -232,13 +242,15 @@ export default async function ClipperPortfolioPage({
         ) : null}
 
         {!isSelf && viewer ? (
-          <form className="cp-report" action={reportContentAction}>
-            <input type="hidden" name="contentType" value="USER" />
-            <input type="hidden" name="entityId" value={user.id} />
-            <input type="hidden" name="authorId" value={user.id} />
-            <input type="hidden" name="returnTo" value={`/clippers/${user.handle}`} />
-            <button className="btn btn-ghost btn-small" type="submit">Пожаловаться на профиль</button>
-          </form>
+          <div className="cp-report">
+            <ReportDialog
+              contentType="USER"
+              entityId={user.id}
+              authorId={user.id}
+              returnTo={`/clippers/${user.handle}`}
+              label="Пожаловаться на профиль"
+            />
+          </div>
         ) : null}
 
         {/* SNAPSHOT */}
@@ -338,7 +350,16 @@ export default async function ClipperPortfolioPage({
                   <button className="btn btn-primary" type="submit"><Sparkles size={16} /> Пригласить на коллаб</button>
                 </form>
               ) : (
-                <div className="cp-form cp-form--done"><Check size={18} /> Приглашение уже отправлено — ждём ответа.</div>
+                <div className="cp-form cp-form--done">
+                  <span><Check size={18} /> Приглашение уже отправлено — ждём ответа.</span>
+                  {pendingInviteId ? (
+                    <form action={cancelCollabInviteAction}>
+                      <input type="hidden" name="inviteId" value={pendingInviteId} />
+                      <input type="hidden" name="returnTo" value={`/clippers/${user.handle}`} />
+                      <button className="btn btn-ghost btn-small" type="submit">Отменить приглашение</button>
+                    </form>
+                  ) : null}
+                </div>
               )}
 
               {showEndorseForm ? (

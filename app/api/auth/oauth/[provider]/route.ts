@@ -51,6 +51,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   jar.set("oauth_intent", intent, cookieOpts);
   if (roleIntent) jar.set("oauth_role_intent", roleIntent, cookieOpts);
   jar.set("oauth_return_to", returnTo, cookieOpts);
+  const referralCode = url.searchParams.get("ref")?.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 12);
+  if (referralCode) jar.set("oauth_referral", referralCode, cookieOpts);
 
   const authorizeUrl = buildAuthorizeUrl(provider, {
     redirectUri: callbackUri(request.url, provider),

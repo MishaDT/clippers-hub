@@ -80,6 +80,7 @@ export async function reportContent(input: {
   contentType: string;
   entityId: string;
   reason: string;
+  category?: string;
 }) {
   const existing = await prisma.moderationCase.findFirst({
     where: { source: "REPORT", reporterId: input.reporterId, contentType: input.contentType, entityId: input.entityId, status: "OPEN" },
@@ -93,7 +94,7 @@ export async function reportContent(input: {
     contentType: input.contentType,
     entityId: input.entityId,
     text: input.reason,
-    category: "USER_REPORT",
+    category: input.category || "USER_REPORT",
     severity: "MEDIUM"
   });
 }

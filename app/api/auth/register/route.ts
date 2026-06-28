@@ -7,6 +7,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { normalizeEmail, sameOrigin, validatePassword } from "@/lib/security";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
+import { awardReferralSignup } from "@/lib/referrals";
 
 const schema = z.object({
   email: z.string().email(),
@@ -60,17 +61,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await prisma.user.create({
-      data: {
-        email: input.email.toLowerCase(),
-        passwordHash: await hashPassword(input.password),
-        name: input.name,
-        handle,
-        role: "BOTH",
-        referralCode: handle.toUpperCase().slice(0, 12),
-        referredBy,
-        preferredRoleMode: intent
-      }
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: input.email.toLowerCase(),
+          passwordHash: await hashPassword(input.password),
+          name: input.name,
+          handle,
+          role: "BOTH",
+          referralCode: handle.toUpperCase().slice(0, 12),
+          referredBy,
+          preferredRoleMode: intent
+        }
+      });
+      await awardReferralSignup(tx, created);
+      return created;
     });
     await createSession(user.id);
     await trackEvent({ request, userId: user.id, type: "REGISTER_SUCCESS", path: "/register" });

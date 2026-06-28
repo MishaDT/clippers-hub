@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Copy, Share2, Users } from "lucide-react";
 
-export function ReferralCard({ code, invited }: { code: string; invited: number }) {
+export function ReferralCard({ code, invited, rewardRp }: { code: string; invited: number; rewardRp: number }) {
   const [copied, setCopied] = useState(false);
   const link = typeof window !== "undefined" ? `${window.location.origin}/register?ref=${code}` : `/register?ref=${code}`;
 
@@ -34,7 +34,7 @@ export function ReferralCard({ code, invited }: { code: string; invited: number 
       <div className="referral-head">
         <Users size={16} /> <b>Пригласи друга</b>
       </div>
-      <p>За каждого друга, который начнёт зарабатывать на платформе — бонус тебе на баланс.</p>
+      <p><b>+25 RP</b> за каждого друга после регистрации. За 3 друзей откроется дополнительное достижение.</p>
 
       <div className="referral-link">
         <span>{code}</span>
@@ -48,7 +48,8 @@ export function ReferralCard({ code, invited }: { code: string; invited: number 
       </button>
 
       <div className="referral-stat">
-        <b>{invited}</b> уже приглашено
+        <span><b>{invited}</b> зарегистрировано</span>
+        <span><b>{rewardRp} RP</b> получено</span>
       </div>
     </div>
   );

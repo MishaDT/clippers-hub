@@ -44,7 +44,7 @@ export default async function RegisterPage({
           <button className="btn btn-primary" type="submit"><UserPlus size={18} /> Создать аккаунт</button>
         </form>
 
-        <SocialAuth mode="register" intent={intent} returnTo={returnTo} />
+        <SocialAuth mode="register" intent={intent} returnTo={returnTo} referralCode={refCode} />
 
         <div className="auth-hints">
           <span><CheckCircle2 size={16} /> Бесплатно</span>

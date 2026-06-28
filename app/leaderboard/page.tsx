@@ -121,7 +121,7 @@ async function loadMyProgress() {
   const user = await getCurrentUser();
   if (!user) return null;
   const since = new Date(Date.now() - SINCE_MS);
-  const [allStats, weekStats, invited] = await Promise.all([
+  const [allStats, weekStats, invited, referralRewards] = await Promise.all([
     prisma.submission.aggregate({
       where: { workerId: user.id },
       _count: { _all: true },
@@ -131,7 +131,11 @@ async function loadMyProgress() {
       where: { workerId: user.id, createdAt: { gte: since } },
       _sum: { currentViews: true }
     }),
-    prisma.user.count({ where: { referredBy: user.referralCode } })
+    prisma.user.count({ where: { referredBy: user.referralCode } }),
+    prisma.rpTransaction.aggregate({
+      where: { userId: user.id, type: "REFERRAL_REWARD" },
+      _sum: { amount: true }
+    })
   ]);
   return {
     name: user.name,
@@ -140,7 +144,8 @@ async function loadMyProgress() {
     maxViews: allStats._max.currentViews || 0,
     weekViews: weekStats._sum.currentViews || 0,
     referralCode: user.referralCode,
-    invited
+    invited,
+    referralRewardRp: referralRewards._sum.amount || 0
   };
 }
 
@@ -268,7 +273,7 @@ export default async function LeaderboardPage({
                           <Avatar row={row} podium />
                           <div className="podium-rank">{row.rank}</div>
                           <div className="podium-name">
-                            <strong>{row.name}</strong>
+                            <strong>{row.id === currentUser?.id ? "Я" : row.name}</strong>
                             {row.verified ? <BadgeCheck size={15} className="verified" /> : null}
                           </div>
                           <LeagueBadge views={row.lifetimeViews} size="sm" />
@@ -277,14 +282,14 @@ export default async function LeaderboardPage({
                             <span>просмотров</span>
                           </div>
                           <div className="podium-clips">{row.clips} клипов</div>
-                          {mode === "client" ? (
+                          {mode === "client" && row.id !== currentUser?.id ? (
                             <form className="podium-invite" action={sendCollabInviteAction}>
                               <input type="hidden" name="workerId" value={row.id} />
                               <input type="hidden" name="handle" value={row.handle} />
                               <input type="hidden" name="message" value={COLLAB_MSG} />
                               <button type="submit"><Handshake size={14} /> Пригласить</button>
                             </form>
-                          ) : null}
+                          ) : row.id === currentUser?.id ? <span className="podium-self">Ваше место</span> : null}
                         </li>
                       );
                     })}
@@ -321,7 +326,7 @@ export default async function LeaderboardPage({
                   </article>
                 </section> : null}
 
-                {rest.length > 0 ? <LeaderboardLoadMore rows={rest} clientMode={mode === "client"} /> : null}
+                {rest.length > 0 ? <LeaderboardLoadMore rows={rest} clientMode={mode === "client"} currentUserId={currentUser?.id} /> : null}
               </>
             )}
           </div>
@@ -329,7 +334,7 @@ export default async function LeaderboardPage({
           <aside className="leaderboard-rail">
             {me && mode === "worker" ? (
               <section className="rail-panel referral-panel">
-                <ReferralCard code={me.referralCode} invited={me.invited} />
+                <ReferralCard code={me.referralCode} invited={me.invited} rewardRp={me.referralRewardRp} />
               </section>
             ) : null}
 

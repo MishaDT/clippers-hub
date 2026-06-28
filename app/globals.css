@@ -11059,6 +11059,35 @@ a.social-btn:hover {
 .weekly-rewards{display:grid;gap:7px;margin-top:18px}.weekly-rewards form{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;min-height:58px;padding:9px 12px;border:1px solid #29292f;border-radius:7px;background:#151519}.weekly-rewards span{display:grid;gap:2px}.weekly-rewards small{color:#92939b}.weekly-rewards em{color:#c9f31d;font-style:normal;font-weight:850}.profile-order-groups{display:grid;grid-template-columns:1fr 1fr;gap:10px}.profile-order-groups h3{margin:0 0 8px}.settings-checks label{position:relative;display:inline-flex!important;align-items:center;gap:8px}.settings-checks input{appearance:none;width:19px;height:19px;border:1px solid #484850;border-radius:5px;background:#0d0d10}.settings-checks input:checked{border-color:#c9f31d;background:#c9f31d;box-shadow:inset 0 0 0 5px #151519}
 @media(max-width:760px){.weekly-rewards form{grid-template-columns:minmax(0,1fr) auto}.weekly-rewards button{grid-column:1/-1;width:100%}.profile-order-groups{grid-template-columns:1fr}.profile-settings .settings-title{align-items:flex-start}.profile-settings .settings-section-head{align-items:flex-start;gap:8px}.profile-settings .settings-card{padding:14px!important;border-radius:8px!important}}
 .chat-thread-list:has(.chat-empty){justify-content:flex-start!important;align-content:flex-start!important}.chat-thread-list .chat-empty{margin-top:10px!important}
+
+/* PASS 39: profile safety, collab cancellation, centered stage and Ridzhi sheet */
+.cp-invite-pending{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.cp-cancel-invite,.collab-cancel,.collab-end{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 11px;border:1px solid #3a3a41;border-radius:7px;background:#19191d;color:#d7d7dc;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.cp-cancel-invite:hover,.collab-cancel:hover{border-color:#7f3038;background:#27171a;color:#fecaca}
+.collab-end:hover{border-color:#6f861e;color:#e7ff8b}
+.cp-form--done{justify-items:start;align-items:start}.cp-form--done>span{display:flex;align-items:center;gap:8px}
+.collab-result{min-width:128px}
+.podium-self{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 10px;border:1px solid rgba(255,213,76,.4);border-radius:7px;color:#ffe682;font-size:12px;font-weight:850}
+.leaderboard-hero>.lb-fire-canvas{inset:0!important;width:100%!important;height:100%!important;transform:none!important}
+.leaderboard-hero>.tree-glow{inset:0!important;background:radial-gradient(48% 56% at 50% 18%,rgba(255,210,74,.15),transparent 65%),radial-gradient(76% 82% at 50% 22%,rgba(201,243,29,.12),transparent 68%)!important}
+.referral-stat{display:flex;justify-content:space-between;gap:8px}.referral-stat span{display:grid;gap:2px}
+
+.report-trigger{width:100%;justify-content:center}
+.report-dialog{width:min(520px,calc(100vw - 24px));max-height:min(720px,calc(100dvh - 24px));padding:0;border:1px solid #38383f;border-radius:10px;background:#121216;color:#f7f7f8;box-shadow:0 28px 90px #000d}
+.report-dialog::backdrop{background:rgba(0,0,0,.76);backdrop-filter:blur(5px)}
+.report-dialog form{display:grid;gap:14px;padding:18px}
+.report-dialog header,.report-dialog header>span,.report-dialog footer{display:flex;align-items:center}.report-dialog header{justify-content:space-between}.report-dialog header>span{gap:8px;font-size:20px;font-weight:900}.report-dialog header>span svg{color:#ef4444}.report-dialog header>button{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:#25252a;color:#fff}.report-dialog p{margin:0;color:#a4a5ad;font-size:13px}
+.report-reasons{display:grid;grid-template-columns:1fr 1fr;gap:7px}.report-reasons label{position:relative}.report-reasons input{position:absolute;opacity:0}.report-reasons span{display:flex;align-items:center;min-height:44px;padding:8px 11px;border:1px solid #303037;border-radius:7px;background:#19191e;color:#c6c7cc;font-size:13px;font-weight:750}.report-reasons input:checked+span{border-color:#ef4444;background:#2b171b;color:#fff}
+.report-details{display:grid;gap:7px}.report-details>span{font-size:12px;font-weight:800}.report-details textarea{resize:none;width:100%;padding:11px;border:1px solid #34343b;border-radius:7px;background:#0d0d10;color:#fff;font:inherit}.report-details small{text-align:right;color:#85868e}.report-details small.error{color:#fb7185}.report-dialog footer{justify-content:flex-end;gap:8px}.btn-danger{border-color:#7f1d1d!important;background:#dc2626!important;color:#fff!important}
+
+.ridzi-overlay{position:fixed;z-index:120;inset:0;display:grid;align-items:end;justify-items:end;padding:18px;background:rgba(0,0,0,.36);backdrop-filter:blur(3px)}
+.ridzi-sheet{width:min(380px,calc(100vw - 24px));padding:12px;border:1px solid #38383f;border-radius:12px;background:#141418;box-shadow:0 24px 80px #000d}
+.ridzi-sheet header,.ridzi-sheet header>div,.ridzi-actions a{display:flex;align-items:center}.ridzi-sheet header{justify-content:space-between;padding:3px 3px 11px}.ridzi-sheet header>div{gap:9px}.ridzi-sheet header>div>div{display:grid}.ridzi-sheet header b{font-size:16px}.ridzi-sheet header small{color:#8f9098;font-size:11px}.ridzi-sheet header>button{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:#25252a;color:#fff}.ridzi-mini{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#ef4444;color:#fff;font-weight:950}
+.ridzi-actions{display:grid;gap:6px}.ridzi-actions a{gap:11px;min-height:58px;padding:9px;border-radius:8px;color:#f4f4f5}.ridzi-actions a:hover{background:#202025}.ridzi-actions a>span{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:9px;background:#27272d;color:#c9f31d}.ridzi-actions a>div{display:grid;gap:2px}.ridzi-actions strong{font-size:14px}.ridzi-actions small{color:#92939b;font-size:11px}
+.mascot-body{animation:none!important}.mascot-body>svg{animation:mascot-bob 3.6s ease-in-out infinite}
+@media(max-width:760px){
+  .leaderboard-hero{overflow:hidden!important}.cp-invite-pending{display:grid;justify-items:stretch}.cp-invite-pending form,.cp-cancel-invite{width:100%}.collab-result{grid-column:1/-1;width:100%;justify-items:stretch!important}.collab-result>span,.collab-result>a,.collab-result form,.collab-result button{width:100%;text-align:center;justify-content:center}.report-reasons{grid-template-columns:1fr}.report-dialog form{padding:14px}.ridzi-overlay{justify-items:center;padding:10px;padding-bottom:calc(88px + var(--safe-b))}.ridzi-sheet{width:100%;border-radius:12px}
+}
 @media(min-width:761px){.chat-sidebar-tools>a,.chat-mobile-filter{display:none}.order-mobile-submit{display:none}}
 
 /* PASS 37: Telegram-like chat density, collabs and notification archive */

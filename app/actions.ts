@@ -23,6 +23,8 @@ import { notifyModerators } from "@/lib/video-checks";
 import { canUseRoleMode, getActiveRoleMode, ROLE_MODE_COOKIE, type RoleMode } from "@/lib/role-mode";
 import { assertAccountActive, moderateText, reportContent } from "@/lib/moderation";
 import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@/lib/rp";
+import { scanContent } from "@/lib/content-policy";
+import { isSafeRussianReport, normalizeRussianReport, reportReasonLabel } from "@/lib/report-reasons";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -32,6 +34,10 @@ function safeCheckoutUrl(url: string | undefined) {
     if (host.endsWith("stripe.com") || host.endsWith("checkout.stripe.com") || host.endsWith("yookassa.ru") || host.endsWith("yoomoney.ru")) return url;
   } catch {}
   return "/wallet?deposit=blocked";
+}
+
+function safeInternalPath(value: string, fallback: string) {
+  return value.startsWith("/") && !value.startsWith("//") && !value.includes("\\") ? value.slice(0, 240) : fallback;
 }
 
 function safeJson<T>(value: string, fallback: T): T {
@@ -677,14 +683,28 @@ export async function reportContentAction(formData: FormData) {
   const contentType = String(formData.get("contentType") || "");
   const entityId = String(formData.get("entityId") || "");
   const authorId = String(formData.get("authorId") || "") || undefined;
-  const reason = String(formData.get("reason") || "Нарушение правил").trim().slice(0, 300);
+  const category = String(formData.get("category") || "");
+  const categoryLabel = reportReasonLabel(category);
+  const details = normalizeRussianReport(String(formData.get("details") || ""));
   if (!["USER", "CAMPAIGN", "SUBMISSION", "CHAT_MESSAGE", "AVATAR"].includes(contentType) || !entityId) {
     redirect("/support");
   }
-  await reportContent({ reporterId: user.id, authorId, contentType, entityId, reason });
-  const returnTo = String(formData.get("returnTo") || "/profile");
-  revalidatePath(returnTo.startsWith("/") ? returnTo : "/profile");
-  redirect(`${returnTo.startsWith("/") ? returnTo : "/profile"}?reported=1`);
+  const returnTo = safeInternalPath(String(formData.get("returnTo") || "/profile"), "/profile");
+  if (!categoryLabel || (category === "OTHER" && !isSafeRussianReport(details)) || authorId === user.id) {
+    redirect(`${returnTo}?error=report`);
+  }
+  const reason = category === "OTHER" ? `${categoryLabel}: ${details}` : categoryLabel;
+  const policy = scanContent(reason, "SUPPORT");
+  await reportContent({
+    reporterId: user.id,
+    authorId,
+    contentType,
+    entityId,
+    reason,
+    category: policy.category === "NONE" ? `REPORT_${category}` : policy.category
+  });
+  revalidatePath(returnTo);
+  redirect(`${returnTo}?reported=1`);
 }
 
 export async function submitClipAction(formData: FormData) {
@@ -1045,7 +1065,8 @@ export async function cancelCollabInviteAction(formData: FormData) {
     where: { id: inviteId, clientId: user.id, status: "PENDING" },
     select: { id: true, workerId: true }
   });
-  if (!invite) redirect("/collabs");
+  const returnTo = safeInternalPath(String(formData.get("returnTo") || "/collabs"), "/collabs");
+  if (!invite) redirect(returnTo);
   await prisma.$transaction([
     prisma.collabInvite.update({
       where: { id: invite.id },
@@ -1057,8 +1078,9 @@ export async function cancelCollabInviteAction(formData: FormData) {
     })
   ]);
   revalidatePath("/collabs");
+  revalidatePath(returnTo);
   revalidatePath("/", "layout");
-  redirect("/collabs?cancelled=1");
+  redirect(`${returnTo}?cancelled=1`);
 }
 
 export async function endCollabAction(formData: FormData) {

@@ -7,6 +7,7 @@ import { trackEvent } from "@/lib/analytics";
 import { callbackUri, exchangeAndFetchProfile, isConfigured, isProvider, redirectBase } from "@/lib/oauth";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
+import { awardReferralSignup } from "@/lib/referrals";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
@@ -32,12 +33,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   const intent = jar.get("oauth_intent")?.value === "link" ? "link" : "login";
   const roleIntent = parseAuthIntent(jar.get("oauth_role_intent")?.value);
   const requestedReturnTo = jar.get("oauth_return_to")?.value;
+  const referralCode = jar.get("oauth_referral")?.value;
   jar.delete("oauth_state");
   jar.delete("oauth_verifier");
   jar.delete("oauth_provider");
   jar.delete("oauth_intent");
   jar.delete("oauth_role_intent");
   jar.delete("oauth_return_to");
+  jar.delete("oauth_referral");
   if (!cookieState || !verifier || cookieState !== state || cookieProvider !== provider) return fail("oauth_state");
 
   let profile;
@@ -82,18 +85,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
       if (!user) {
         const handleBase = email.split("@")[0].replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 12) || "user";
         const handle = `${handleBase}${Math.floor(Math.random() * 9000 + 1000)}`;
-        user = await prisma.user.create({
-          data: {
-            email,
-            name: profile.name || handleBase,
-            handle,
-            avatar: profile.avatar ?? undefined,
-            // OAuth accounts get a random, unusable password hash (password login can't match it).
-            passwordHash: await hashPassword(randomBytes(24).toString("hex")),
-            role: "BOTH",
-            referralCode: handle.toUpperCase().slice(0, 12),
-            preferredRoleMode: roleIntent
-          }
+        const validReferrer = referralCode
+          ? await prisma.user.findUnique({ where: { referralCode }, select: { referralCode: true } })
+          : null;
+        user = await prisma.$transaction(async (tx) => {
+          const created = await tx.user.create({
+            data: {
+              email,
+              name: profile.name || handleBase,
+              handle,
+              avatar: profile.avatar ?? undefined,
+              // OAuth accounts get a random, unusable password hash (password login can't match it).
+              passwordHash: await hashPassword(randomBytes(24).toString("hex")),
+              role: "BOTH",
+              referralCode: handle.toUpperCase().slice(0, 12),
+              referredBy: validReferrer?.referralCode,
+              preferredRoleMode: roleIntent
+            }
+          });
+          await awardReferralSignup(tx, created);
+          return created;
         });
         createdUser = true;
       }
