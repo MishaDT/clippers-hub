@@ -3,15 +3,26 @@ import { redirect } from "next/navigation";
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { expectedPayout, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, rub } from "@/lib/money";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { UploadForm } from "./upload-form";
+
+const PLATFORM_LABEL: Record<string, string> = { TIKTOK: "TikTok", YOUTUBE: "YouTube", INSTAGRAM: "Instagram", VK: "VK", TWITCH: "Twitch" };
 
 function parseRules(value: string) {
   try {
     return JSON.parse(value) as { watermarkBonus?: boolean; requiredTags?: string[] };
   } catch {
     return {};
+  }
+}
+
+function parsePlatforms(value: string) {
+  try {
+    const list = JSON.parse(value) as string[];
+    return Array.isArray(list) ? list.map((p) => PLATFORM_LABEL[p] || p) : [];
+  } catch {
+    return [];
   }
 }
 
@@ -37,6 +48,9 @@ export default async function UploadPage({
       title: submission.campaign.title,
       trackingCode: submission.trackingCode,
       payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents)),
+      target: compactNumber(submission.campaign.viewThreshold),
+      daysLeft: Math.max(1, Math.ceil((submission.campaign.deadline.getTime() - Date.now()) / 86400000)),
+      platforms: parsePlatforms(submission.campaign.allowedPlatformsJson),
       watermarkRequired: Boolean(rules.watermarkBonus),
       requiredTags: rules.requiredTags || []
     };
@@ -44,10 +58,11 @@ export default async function UploadPage({
 
   return (
     <AppShell>
-      <section className="section upload-screen">
-        <div className="screen-title">
+      <section className="section up-screen">
+        <div className="up-head">
+          <span className="up-eyebrow">Сдача работы</span>
           <h1>Выложить работу</h1>
-          <p className="lead">Вставь ссылку на опубликованный ролик — мы начнём считать просмотры. Оплата после проверки.</p>
+          <p>Опубликуй ролик с кодом заказа в описании и вставь ссылку — мы подтвердим, что клип твой, начнём считать просмотры и начислим выплату после проверки.</p>
         </div>
 
         {params.sent ? (
