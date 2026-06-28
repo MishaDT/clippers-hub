@@ -45,6 +45,28 @@ function coverFor(seed: string) {
   return COVERS[hash % COVERS.length];
 }
 
+function youtubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) return u.pathname.split("/").filter(Boolean)[0] || null;
+    if (u.searchParams.get("v")) return u.searchParams.get("v");
+    const shorts = u.pathname.match(/\/shorts\/([^/?#]+)/);
+    return shorts?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+// Real preview where it's free + instant (YouTube CDN thumbnail), styled cover
+// otherwise — TikTok/IG/VK have no public thumbnail without a per-video API call.
+function thumbFor(platform: string, postUrl: string, seed: string) {
+  if (platform === "YOUTUBE") {
+    const id = youtubeId(postUrl);
+    if (id) return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+  }
+  return coverFor(seed);
+}
+
 function dicebear(handle: string, avatar: string | null) {
   return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "clipper")}&backgroundColor=transparent`;
 }
@@ -75,7 +97,7 @@ export default async function ClipperPortfolioPage({
       where: { workerId: user.id },
       select: { id: true, currentViews: true, postUrl: true, platform: true },
       orderBy: { currentViews: "desc" },
-      take: 9
+      take: 6
     }),
     prisma.submission.aggregate({
       where: { workerId: user.id },
@@ -235,14 +257,8 @@ export default async function ClipperPortfolioPage({
           ) : (
             <div className="cp-grid">
               {topSubs.map((sub) => (
-                <a
-                  className="cp-clip"
-                  href={sub.postUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.04), rgba(0,0,0,.82)), url('${coverFor(sub.id)}')` }}
-                  key={sub.id}
-                >
+                <a className="cp-clip" href={sub.postUrl} target="_blank" rel="noreferrer" key={sub.id}>
+                  <img className="cp-clip-thumb" src={thumbFor(sub.platform, sub.postUrl, sub.id)} alt="" loading="lazy" />
                   <span className="cp-clip-plat">{PLATFORM_LABEL[sub.platform] || sub.platform}</span>
                   <span className="cp-clip-play"><Play size={16} fill="#fff" /></span>
                   <span className="cp-clip-views"><Eye size={13} /> {compactNumber(sub.currentViews)}</span>
