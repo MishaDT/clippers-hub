@@ -10294,7 +10294,7 @@ a.social-btn:hover {
 .campaign-promo-start small { color: rgba(255,255,255,.58); }
 
 .campaign-promo-controls {
-  min-height: 54px; display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px;
+  min-height: 54px; display: grid; grid-template-columns: 36px 36px minmax(0, 1fr) 36px;
   align-items: center; gap: 10px; padding: 8px 10px; border-top: 1px solid rgba(255,255,255,.08); background: #0c0c10;
 }
 .campaign-promo-controls > button {
@@ -10484,7 +10484,7 @@ a.social-btn:hover {
   .campaign-promo-caption { right: 14px; bottom: 17px; left: 14px; }
   .campaign-promo-caption h3 { font-size: 21px; }
   .campaign-promo-caption p { font-size: 11px; }
-  .campaign-promo-controls { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 6px; padding: 7px 6px; }
+  .campaign-promo-controls { grid-template-columns: 34px 34px minmax(0, 1fr) 34px; gap: 5px; padding: 7px 6px; }
   .campaign-promo-controls > button { width: 34px; height: 34px; }
   .campaign-promo-chapters { gap: 3px; }
   .campaign-promo-chapters button { height: 27px; }

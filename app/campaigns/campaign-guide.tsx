@@ -21,6 +21,8 @@ import {
   Sparkles,
   Upload,
   UserRound,
+  Volume2,
+  VolumeX,
   X
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -233,9 +235,11 @@ function PromoVisual({ scene }: { scene: number }) {
 
 export function CampaignGuide() {
   const frameRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
   const [playbackRun, setPlaybackRun] = useState(0);
@@ -269,9 +273,19 @@ export function CampaignGuide() {
     return () => cancelAnimationFrame(frame);
   }, [active, playing, playbackRun]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = 0.32;
+    audio.muted = muted;
+    if (playing && started) void audio.play().catch(() => undefined);
+    else audio.pause();
+  }, [muted, playing, started]);
+
   function setGuideCollapsed(next: boolean) {
     setCollapsed(next);
     setPlaying(false);
+    audioRef.current?.pause();
     localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
   }
 
@@ -282,6 +296,12 @@ export function CampaignGuide() {
     }
     setStarted(true);
     setPlaying(true);
+    const audio = audioRef.current;
+    if (audio) {
+      if (active === scenes.length - 1 && progress >= 1) audio.currentTime = 0;
+      audio.volume = 0.32;
+      void audio.play().catch(() => undefined);
+    }
   }
 
   function goTo(index: number) {
@@ -290,6 +310,7 @@ export function CampaignGuide() {
     setProgress(0);
     setPlaying(true);
     setPlaybackRun((value) => value + 1);
+    void audioRef.current?.play().catch(() => undefined);
   }
 
   function togglePlayback() {
@@ -340,6 +361,7 @@ export function CampaignGuide() {
       </div>
 
       <div className="campaign-promo" ref={frameRef}>
+        <audio ref={audioRef} src="/assets/reelpay-promo-music.mp3" preload="metadata" loop />
         <div className="campaign-promo-stage" data-scene={active}>
           <header>
             <div className="campaign-promo-brand"><Sparkles size={16} /><b>ReelPay</b></div>
@@ -368,6 +390,9 @@ export function CampaignGuide() {
         <div className="campaign-promo-controls">
           <button type="button" onClick={togglePlayback} aria-label={playing ? "Пауза" : "Продолжить"}>
             {playing ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
+          </button>
+          <button type="button" onClick={() => setMuted((value) => !value)} aria-label={muted ? "Включить звук" : "Выключить звук"}>
+            {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
           </button>
           <div className="campaign-promo-chapters" aria-label="Разделы ролика">
             {scenes.map((scene, index) => (
