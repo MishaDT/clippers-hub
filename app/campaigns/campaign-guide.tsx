@@ -33,56 +33,56 @@ const scenes = [
     kicker: "Контент начинает работать",
     title: "Видео, которые приносят результат",
     text: "Заказчики получают охват. Исполнители зарабатывают на монтаже.",
-    duration: 6000
+    duration: 3500
   },
   {
     label: "Задача",
     kicker: "Две стороны — один процесс",
     title: "Контент уже есть",
     text: "Заказчику нужны короткие ролики. Исполнителю — понятные заказы и честная оплата.",
-    duration: 7000
+    duration: 4000
   },
   {
     label: "Заказчик",
     kicker: "Путь заказчика",
     title: "Создай заказ за несколько минут",
     text: "Добавь исходник, правила, цель по просмотрам и бюджет. Деньги резервируются до результата.",
-    duration: 7000
+    duration: 4000
   },
   {
     label: "Исполнитель",
     kicker: "Путь исполнителя",
     title: "Выбери задачу без переговоров",
     text: "Сразу видны тема, требования, срок, цель и ожидаемая оплата.",
-    duration: 7000
+    duration: 4000
   },
   {
     label: "Публикация",
     kicker: "От исходника до клипа",
     title: "Смонтируй. Опубликуй. Отправь ссылку",
     text: "Shorts, TikTok, Reels или VK Clips — площадку выбирает заказчик.",
-    duration: 7000
+    duration: 4000
   },
   {
     label: "Проверка",
     kicker: "Прозрачность и защита",
     title: "ReelPay проверяет результат",
     text: "Tracking-код, реальные просмотры через API и защита от подозрительной активности.",
-    duration: 7000
+    duration: 4000
   },
   {
     label: "Результат",
     kicker: "Выгода для двоих",
     title: "Просмотры превращаются в результат",
     text: "Заказчик получает охват и ролики. Исполнитель — оплату после подтверждения.",
-    duration: 7000
+    duration: 4500
   },
   {
     label: "Старт",
     kicker: "Твой следующий шаг",
     title: "Превращай контент в охват и доход",
     text: "Выбери свою роль и начни с одного простого действия.",
-    duration: 6000
+    duration: 3500
   }
 ] as const;
 
@@ -310,7 +310,7 @@ export function CampaignGuide() {
   if (collapsed) {
     return (
       <button className="campaign-guide-collapsed" type="button" onClick={() => setGuideCollapsed(false)}>
-        <span><Play size={16} fill="currentColor" /> Как работает ReelPay · 54 сек.</span>
+        <span><Play size={16} fill="currentColor" /> Как работает ReelPay · 32 сек.</span>
         <ChevronDown size={18} />
       </button>
     );
@@ -330,7 +330,7 @@ export function CampaignGuide() {
       </button>
 
       <div className="campaign-guide-copy">
-        <span><CircleDollarSign size={15} /> ReelPay за 54 секунды</span>
+        <span><CircleDollarSign size={15} /> ReelPay за 32 секунды</span>
         <h2>Как контент превращается в охват и доход</h2>
         <p>Полный путь заказчика и исполнителя — от исходного видео до проверенной выплаты.</p>
         <div className="campaign-guide-audience">
@@ -360,7 +360,7 @@ export function CampaignGuide() {
             <button className="campaign-promo-start" type="button" onClick={startGuide}>
               <span><Play size={22} fill="currentColor" /></span>
               <b>Смотреть, как работает ReelPay</b>
-              <small>Заказчик + исполнитель · 54 сек.</small>
+              <small>Заказчик + исполнитель · 32 сек.</small>
             </button>
           ) : null}
         </div>
