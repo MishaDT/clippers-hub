@@ -10131,3 +10131,19 @@ a.social-btn:hover {
 .cp-clip-thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
 .cp-clip::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.04), rgba(0,0,0,.82)); }
 .cp-clip-plat, .cp-clip-play, .cp-clip-views { z-index: 2; }
+
+/* ============================================================
+   PASS 29 — Mobile header UX: clear actions + working notifications
+   ============================================================ */
+@media (max-width: 760px) {
+  /* The bare ⚡ "role" pill was cryptic on mobile and is redundant — the
+     bottom nav already has Профиль (where you switch role). Hide it; keep
+     the bell, Выйти, and the admin shield (admins only). */
+  .top-actions .role-pill:not(.admin-link):not(.admin-bell) { display: none; }
+
+  /* The notification dropdown is position:fixed, but the sticky .topbar uses
+     backdrop-filter (-> becomes the containing block) AND had overflow:hidden,
+     which clipped the panel to the header strip. Let it escape. */
+  .topbar { overflow: visible; }
+  .top-actions { overflow: visible; }
+}
