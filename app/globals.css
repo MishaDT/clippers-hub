@@ -9963,3 +9963,23 @@ a.social-btn:hover {
 /* PASS 26 — hero centering fix (override global h1 max-width left-pin) */
 .lpa-hero { display: flex; flex-direction: column; align-items: center; }
 .lpa-title { max-width: 780px; }
+
+/* ============================================================
+   PASS 27 — Public header (first-time visitor)
+   ============================================================ */
+.top-actions { grid-column: 3; justify-self: end; }
+.top-actions .btn-ghost { color: var(--soft); border-color: rgba(255, 255, 255, .14); }
+.top-actions .btn-ghost:hover { border-color: rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .05); }
+
+.public-nav { grid-column: 2; display: flex; justify-content: center; align-items: center; gap: 4px; }
+.public-nav a {
+  display: inline-flex; align-items: center;
+  padding: 8px 14px; border-radius: 999px;
+  color: var(--muted); font-weight: 720; font-size: 14px;
+  transition: color .2s ease, background .2s ease;
+}
+.public-nav a:hover { color: var(--text); background: rgba(255, 255, 255, .06); }
+
+@media (max-width: 760px) {
+  .public-nav { display: none; }
+}

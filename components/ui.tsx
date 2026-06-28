@@ -56,7 +56,15 @@ export async function AppShell({
         <Link className="brand" href="/">
           <span className="brand-word">Reel<span>Pay</span></span>
         </Link>
-        {user ? <DesktopNav mode={mode} unreadChats={unread.chatBadge} /> : null}
+        {user ? (
+          <DesktopNav mode={mode} unreadChats={unread.chatBadge} />
+        ) : (
+          <nav className="public-nav" aria-label="Навигация">
+            <Link href="/#how">Как это работает</Link>
+            <Link href="/campaigns">Заказы</Link>
+            <Link href="/leaderboard">Лидеры</Link>
+          </nav>
+        )}
         <div className="top-actions">
           {user ? (
             <>
