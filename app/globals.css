@@ -5194,6 +5194,8 @@ h1, .brand-word { font-weight: 850; }
 }
 .chat-sidebar {
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   border-right: 1px solid rgba(255,255,255,.08);
@@ -5706,11 +5708,13 @@ h1, .brand-word { font-weight: 850; }
 }
 
 .chat-thread-list {
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0 8px 14px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.12) transparent;
@@ -10801,4 +10805,125 @@ a.social-btn:hover {
   .profile-settings{width:min(100% - 24px,920px);padding-top:20px}.settings-title,.settings-section-head{display:grid;gap:12px}.settings-form{grid-template-columns:1fr}.settings-form>label{grid-column:1}.settings-card{padding:15px}
   .portfolio-manage article{gap:7px}.portfolio-manage article>span{display:none}.up-material{align-items:flex-start;flex-wrap:wrap}.up-material-downloads{width:100%}.up-material-downloads a{flex:1;justify-content:center}
   .chat-role-tabs{grid-template-columns:1fr}.moderation-row summary{grid-template-columns:20px 1fr auto}.moderation-row summary span,.moderation-row summary em{grid-column:2/-1}.moderation-row summary time{display:none}.moderation-details{padding-left:12px}.moderation-details dl{grid-template-columns:1fr}
+}
+
+/* ============================================================
+   PASS 34 — Chats scroll/support, leaderboard collab, link guard
+   ============================================================ */
+
+/* Pinned support contact above the thread list */
+.chat-support {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 14px 8px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(201, 243, 29, .22);
+  background: linear-gradient(180deg, rgba(201, 243, 29, .08), rgba(201, 243, 29, .03));
+  color: var(--text);
+  transition: border-color .18s ease, background .18s ease;
+}
+.chat-support:hover { border-color: rgba(201, 243, 29, .42); background: rgba(201, 243, 29, .1); }
+.chat-support-ico {
+  flex: none;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 11px;
+  color: #d9ff5e;
+  background: rgba(201, 243, 29, .12);
+}
+.chat-support-body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.chat-support-body b { font-size: 13.5px; }
+.chat-support-body em { font-style: normal; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-support > svg { flex: none; color: var(--muted); }
+
+/* Podium: clickable card + one-click collab invite */
+.podium-cardlink { position: absolute; inset: 0; z-index: 3; border-radius: inherit; }
+.podium-card { transition: border-color .2s ease, transform .15s ease, box-shadow .2s ease; }
+.podium-card:hover { transform: translateY(-2px); border-color: rgba(201, 243, 29, .34); }
+.podium-card--first:hover { border-color: rgba(255, 210, 74, .6); }
+.podium-invite { position: relative; z-index: 4; width: 100%; margin-top: 2px; }
+.podium-invite button {
+  width: 100%;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 10px;
+  border-radius: 11px;
+  font-weight: 850; font-size: 12.5px;
+  color: #0c1003;
+  background: linear-gradient(140deg, #d9ff45, #a3e635);
+  border: 0; cursor: pointer;
+  transition: filter .2s ease, transform .15s ease;
+}
+.podium-invite button:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.podium-card--first .podium-invite button { background: linear-gradient(140deg, #ffe27a, #ffce3a); }
+
+/* Rest-list invite as a real one-click form (keeps the grid cell) */
+.invite-btn-form { display: contents; }
+.invite-btn-form .invite-btn { width: 100%; cursor: pointer; }
+
+/* External link safety interstitial */
+.link-warning {
+  position: fixed; inset: 0; z-index: 120;
+  display: grid; place-items: center;
+  padding: 20px;
+  background: rgba(5, 6, 9, .68);
+  backdrop-filter: blur(6px);
+  animation: lw-fade .14s ease;
+}
+@keyframes lw-fade { from { opacity: 0; } to { opacity: 1; } }
+.link-warning-card {
+  width: min(420px, 100%);
+  display: grid; gap: 10px; justify-items: start;
+  padding: 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 196, 84, .3);
+  background: #15151a;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+}
+.link-warning-ico {
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  border-radius: 13px;
+  color: #ffd24a;
+  background: rgba(255, 210, 74, .12);
+}
+.link-warning-card h3 { margin: 2px 0 0; font-size: 18px; }
+.link-warning-card p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.link-warning-url {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(0, 0, 0, .3);
+  color: #cbd5b5;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+.link-warning-actions { width: 100%; display: flex; gap: 10px; margin-top: 4px; }
+.link-warning-actions .lw-cancel {
+  flex: 1;
+  padding: 11px;
+  border-radius: 12px;
+  font-weight: 800; font-size: 13.5px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .1);
+  cursor: pointer;
+}
+.link-warning-actions .lw-go {
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px;
+  border-radius: 12px;
+  font-weight: 850; font-size: 13.5px;
+  color: #1a1205;
+  background: linear-gradient(140deg, #ffe27a, #ffce3a);
+}
+
+@media (max-width: 620px) {
+  .podium-invite button { padding: 8px 6px; font-size: 11.5px; gap: 4px; }
+  .link-warning-actions { flex-direction: column-reverse; }
 }

@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   BriefcaseBusiness,
   ChevronLeft,
+  ChevronRight,
   CircleDashed,
   MessageCircle,
   Headphones,
@@ -174,10 +175,6 @@ export default async function ChatsPage({
             <b>{totalThreads}</b>
           </div>
 
-          <Link className="btn btn-ghost btn-small" href="/support">
-            <Headphones size={16} /> Поддержка ReelPay
-          </Link>
-
           {canSeeBoth ? (
             <nav className="chat-role-tabs" aria-label="Роль в диалоге">
               <Link className={roleFilter === "all" ? "active" : ""} href={hrefWith({ q: query, status })}>Все <b>{clientCount + workerCount}</b></Link>
@@ -196,6 +193,15 @@ export default async function ChatsPage({
               done: hrefWith({ q: query, status: "done", role: roleFilter })
             }}
           />
+
+          <Link className="chat-support" href="/support">
+            <span className="chat-support-ico"><Headphones size={18} /></span>
+            <span className="chat-support-body">
+              <b>Поддержка ReelPay</b>
+              <em>Поможем с заказом, выплатой или спором</em>
+            </span>
+            <ChevronRight size={16} />
+          </Link>
 
           <div className="chat-thread-list">
             {threads.map((thread) => {

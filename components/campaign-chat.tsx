@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
-import { ArrowUpRight, CheckCircle2, ChevronDown, ChevronUp, Link2, RefreshCw, Send } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Link2, RefreshCw, Send, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { sendChatMessageAction } from "@/app/actions";
@@ -68,6 +68,7 @@ export function CampaignChat({
   const [body, setBody] = useState("");
   const [progressOpen, setProgressOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [warnUrl, setWarnUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [visibleMessages, addOptimisticMessage] = useOptimistic(
     compactSystemMessages(messages),
@@ -144,7 +145,20 @@ export function CampaignChat({
         </div>
       ) : null}
 
-      <div className="chat-list" ref={listRef} aria-live="polite">
+      <div
+        className="chat-list"
+        ref={listRef}
+        aria-live="polite"
+        onClick={(event) => {
+          const anchor = (event.target as HTMLElement).closest("a.safe-preview") as HTMLAnchorElement | null;
+          if (!anchor) return;
+          try {
+            if (new URL(anchor.href).host === window.location.host) return; // internal ReelPay link — safe
+          } catch { /* unparsable — warn anyway */ }
+          event.preventDefault();
+          setWarnUrl(anchor.href);
+        }}
+      >
         {visibleMessages.map((message) => {
           const mine = message.senderId === currentUserId;
           const system = message.type === "SYSTEM";
@@ -215,6 +229,29 @@ export function CampaignChat({
         </div>
         {error ? <p className="chat-error">{error}</p> : null}
       </form>
+
+      {warnUrl ? (
+        <div className="link-warning" role="dialog" aria-modal="true" onClick={() => setWarnUrl(null)}>
+          <div className="link-warning-card" onClick={(event) => event.stopPropagation()}>
+            <span className="link-warning-ico"><ShieldAlert size={26} /></span>
+            <h3>Переход на внешний сайт</h3>
+            <p>Эта ссылка ведёт за пределы ReelPay. Мы не проверяли, что на той стороне — не вводите пароли и платёжные данные. Если не уверены в отправителе, лучше не переходить.</p>
+            <span className="link-warning-url">{warnUrl}</span>
+            <div className="link-warning-actions">
+              <button type="button" className="lw-cancel" onClick={() => setWarnUrl(null)}>Остаться</button>
+              <a
+                className="lw-go"
+                href={warnUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                onClick={() => setWarnUrl(null)}
+              >
+                Всё равно перейти <ExternalLink size={15} />
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

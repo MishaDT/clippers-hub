@@ -40,7 +40,8 @@ function desktopItems(mode: RoleMode) {
     items[0],
     ...(mode === "client"
       ? [
-          { href: "/leaderboard", label: "Исполнители", icon: Trophy }
+          { href: "/leaderboard", label: "Исполнители", icon: Trophy },
+          { href: "/collabs", label: "Коллабы", icon: Handshake }
         ]
       : [
           { href: "/leaderboard", label: "Лидеры", icon: Trophy },

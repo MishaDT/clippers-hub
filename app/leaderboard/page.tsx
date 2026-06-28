@@ -11,9 +11,13 @@ import { ReferralCard } from "@/components/referral-card";
 import { PodiumFlameCanvas } from "@/components/podium-flame-canvas";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { sendCollabInviteAction } from "@/app/actions";
 import { compactNumber } from "@/lib/money";
 import { LEAGUES, leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
 import { getActiveRoleMode } from "@/lib/role-mode";
+
+// Default friendly opener for a one-click collab invite from the board.
+const COLLAB_MSG = "Привет! Хочу позвать тебя на совместный клип в ReelPay. Обсудим?";
 
 export const metadata: Metadata = {
   title: "Доска лидеров",
@@ -259,6 +263,7 @@ export default async function LeaderboardPage({
                       const pos = row.rank === 1 ? "first" : row.rank === 2 ? "second" : "third";
                       return (
                         <li className={`podium-card podium-card--${pos}`} key={row.id}>
+                          <Link className="podium-cardlink" href={`/clippers/${row.handle}`} aria-label={`Профиль ${row.name}`} prefetch />
                           <span className="podium-top-light" aria-hidden="true" />
                           {row.rank === 1 ? <div className="podium-crown" aria-hidden="true"><Crown /></div> : null}
                           <Avatar row={row} podium />
@@ -273,6 +278,14 @@ export default async function LeaderboardPage({
                             <span>просмотров</span>
                           </div>
                           <div className="podium-clips">{row.clips} клипов</div>
+                          {mode === "client" ? (
+                            <form className="podium-invite" action={sendCollabInviteAction}>
+                              <input type="hidden" name="workerId" value={row.id} />
+                              <input type="hidden" name="handle" value={row.handle} />
+                              <input type="hidden" name="message" value={COLLAB_MSG} />
+                              <button type="submit"><Handshake size={14} /> Пригласить</button>
+                            </form>
+                          ) : null}
                         </li>
                       );
                     })}
@@ -332,11 +345,24 @@ export default async function LeaderboardPage({
                           <img src={row.cover} alt="" loading="lazy" />
                           <span className="lr-clip-play"><Play size={12} fill="#fff" /></span>
                         </Link>
-                        <Link className="invite-btn" href={`/clippers/${row.handle}`} prefetch>
-                          <Handshake size={14} />
-                          <span className="invite-full">{mode === "client" ? "Пригласить на коллаб" : "Открыть профиль"}</span>
-                          <span className="invite-short">Открыть</span>
-                        </Link>
+                        {mode === "client" ? (
+                          <form className="invite-btn-form" action={sendCollabInviteAction}>
+                            <input type="hidden" name="workerId" value={row.id} />
+                            <input type="hidden" name="handle" value={row.handle} />
+                            <input type="hidden" name="message" value={COLLAB_MSG} />
+                            <button className="invite-btn" type="submit">
+                              <Handshake size={14} />
+                              <span className="invite-full">Пригласить</span>
+                              <span className="invite-short">Звать</span>
+                            </button>
+                          </form>
+                        ) : (
+                          <Link className="invite-btn" href={`/clippers/${row.handle}`} prefetch>
+                            <Handshake size={14} />
+                            <span className="invite-full">Открыть профиль</span>
+                            <span className="invite-short">Открыть</span>
+                          </Link>
+                        )}
                       </li>
                     ))}
                   </ol>
