@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -16,20 +16,12 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
-import { endorseClipperAction, sendCollabInviteAction } from "@/app/actions";
+import { endorseClipperAction, reportContentAction, sendCollabInviteAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, canManageClient } from "@/lib/auth";
 import { canEndorse } from "@/lib/leagues";
 import { compactNumber } from "@/lib/money";
 import { getActiveRoleMode } from "@/lib/role-mode";
-
-const COVERS = [
-  "/assets/gaming-order.png",
-  "/assets/podcast-order.png",
-  "/assets/marketplace-thumb.png",
-  "/assets/hero-studio.png",
-  "/assets/creator-nika.png"
-];
 
 const PLATFORM_LABEL: Record<string, string> = {
   TIKTOK: "TikTok",
@@ -38,12 +30,6 @@ const PLATFORM_LABEL: Record<string, string> = {
   VK: "VK",
   TWITCH: "Twitch"
 };
-
-function coverFor(seed: string) {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  return COVERS[hash % COVERS.length];
-}
 
 function youtubeId(url: string): string | null {
   try {
@@ -59,12 +45,12 @@ function youtubeId(url: string): string | null {
 
 // Real preview where it's free + instant (YouTube CDN thumbnail), styled cover
 // otherwise — TikTok/IG/VK have no public thumbnail without a per-video API call.
-function thumbFor(platform: string, postUrl: string, seed: string) {
+function thumbFor(platform: string, postUrl: string) {
   if (platform === "YOUTUBE") {
     const id = youtubeId(postUrl);
     if (id) return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
   }
-  return coverFor(seed);
+  return null;
 }
 
 function dicebear(handle: string, avatar: string | null) {
@@ -88,16 +74,36 @@ export default async function ClipperPortfolioPage({
 
   const user = await prisma.user.findUnique({
     where: { handle },
-    select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true, createdAt: true }
+    select: {
+      id: true, name: true, handle: true, avatar: true, bio: true,
+      specialtiesJson: true, socialLinksJson: true, lifetimeViews: true,
+      kycStatus: true, createdAt: true
+    }
   });
-  if (!user) notFound();
+  if (!user) {
+    const alias = await prisma.userHandleAlias.findUnique({
+      where: { handle },
+      select: { user: { select: { handle: true } } }
+    });
+    if (alias) permanentRedirect(`/clippers/${alias.user.handle}`);
+    notFound();
+  }
 
-  const [topSubs, stats, platformGroups, endorsements, viewer] = await Promise.all([
+  const [pins, automaticSubs, stats, platformGroups, endorsements, viewer] = await Promise.all([
+    prisma.portfolioPin.findMany({
+      where: { userId: user.id },
+      orderBy: { position: "asc" },
+      select: { submission: { select: { id: true, currentViews: true, postUrl: true, platform: true } } }
+    }),
     prisma.submission.findMany({
-      where: { workerId: user.id },
+      where: {
+        workerId: user.id,
+        verifiedAt: { not: null },
+        status: { in: ["VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"] }
+      },
       select: { id: true, currentViews: true, postUrl: true, platform: true },
       orderBy: { currentViews: "desc" },
-      take: 6
+      take: 12
     }),
     prisma.submission.aggregate({
       where: { workerId: user.id },
@@ -118,6 +124,11 @@ export default async function ClipperPortfolioPage({
     }),
     getCurrentUser()
   ]);
+  const pinned = pins.map((item) => item.submission);
+  const pinnedIds = new Set(pinned.map((item) => item.id));
+  const topSubs = [...pinned, ...automaticSubs.filter((item) => !pinnedIds.has(item.id))].slice(0, 6);
+  const specialties = JSON.parse(user.specialtiesJson) as string[];
+  const socialLinks = JSON.parse(user.socialLinksJson) as string[];
 
   const clips = stats._count._all;
   const totalViews = stats._sum.currentViews ?? user.lifetimeViews ?? 0;
@@ -210,6 +221,26 @@ export default async function ClipperPortfolioPage({
           </div>
         </header>
 
+        {user.bio || specialties.length || socialLinks.length ? (
+          <div className="cp-about">
+            {user.bio ? <p>{user.bio}</p> : null}
+            {specialties.length ? <div>{specialties.map((item) => <span key={item}>{item}</span>)}</div> : null}
+            {socialLinks.length ? <nav>{socialLinks.map((url) => (
+              <a href={url} target="_blank" rel="noreferrer" key={url}>{new URL(url).hostname.replace(/^www\./, "")}</a>
+            ))}</nav> : null}
+          </div>
+        ) : null}
+
+        {!isSelf && viewer ? (
+          <form className="cp-report" action={reportContentAction}>
+            <input type="hidden" name="contentType" value="USER" />
+            <input type="hidden" name="entityId" value={user.id} />
+            <input type="hidden" name="authorId" value={user.id} />
+            <input type="hidden" name="returnTo" value={`/clippers/${user.handle}`} />
+            <button className="btn btn-ghost btn-small" type="submit">Пожаловаться на профиль</button>
+          </form>
+        ) : null}
+
         {/* SNAPSHOT */}
         <div className="cp-metrics">
           <div className="cp-metric">
@@ -256,14 +287,18 @@ export default async function ClipperPortfolioPage({
             <p className="cp-empty">Пока нет опубликованных работ.</p>
           ) : (
             <div className="cp-grid">
-              {topSubs.map((sub) => (
+              {topSubs.map((sub) => {
+                const thumb = thumbFor(sub.platform, sub.postUrl);
+                return (
                 <a className="cp-clip" href={sub.postUrl} target="_blank" rel="noreferrer" key={sub.id}>
-                  <img className="cp-clip-thumb" src={thumbFor(sub.platform, sub.postUrl, sub.id)} alt="" loading="lazy" />
+                  {thumb
+                    ? <img className="cp-clip-thumb" src={thumb} alt="" loading="lazy" />
+                    : <span className="cp-clip-neutral">{PLATFORM_LABEL[sub.platform] || sub.platform}</span>}
                   <span className="cp-clip-plat">{PLATFORM_LABEL[sub.platform] || sub.platform}</span>
                   <span className="cp-clip-play"><Play size={16} fill="#fff" /></span>
                   <span className="cp-clip-views"><Eye size={13} /> {compactNumber(sub.currentViews)}</span>
                 </a>
-              ))}
+              )})}
             </div>
           )}
         </section>

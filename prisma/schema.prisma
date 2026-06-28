@@ -11,24 +11,31 @@ datasource db {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  passwordHash     String
-  name             String
-  handle           String    @unique
-  avatar           String?
-  role             Role      @default(WORKER)
-  balanceCents     Int       @default(0)
-  holdBalanceCents Int       @default(0)
-  rank             Rank      @default(BRONZE)
-  trustScore       Int       @default(100)
-  streakDays       Int       @default(0)
-  lifetimeViews    Int       @default(0)
-  referredBy       String?
-  referralCode     String    @unique
-  kycStatus        KYCStatus @default(NONE)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String        @id @default(cuid())
+  email             String        @unique
+  passwordHash      String
+  name              String
+  handle            String        @unique
+  avatar            String?
+  bio               String?
+  specialtiesJson   String        @default("[]")
+  socialLinksJson   String        @default("[]")
+  handleChangedAt   DateTime?
+  accountStatus     AccountStatus @default(ACTIVE)
+  restrictionReason String?
+  restrictedUntil   DateTime?
+  role              Role          @default(WORKER)
+  balanceCents      Int           @default(0)
+  holdBalanceCents  Int           @default(0)
+  rank              Rank          @default(BRONZE)
+  trustScore        Int           @default(100)
+  streakDays        Int           @default(0)
+  lifetimeViews     Int           @default(0)
+  referredBy        String?
+  referralCode      String        @unique
+  kycStatus         KYCStatus     @default(NONE)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   ownedCampaigns         Campaign[]        @relation("CampaignOwner")
   submissions            Submission[]
@@ -53,6 +60,11 @@ model User {
   collabReceived         CollabInvite[]    @relation("CollabWorker")
   endorsementsGiven      Endorsement[]     @relation("EndorseClient")
   endorsementsReceived   Endorsement[]     @relation("EndorseWorker")
+  handleAliases          UserHandleAlias[]
+  portfolioPins          PortfolioPin[]
+  moderationAuthored     ModerationCase[]  @relation("ModerationAuthor")
+  moderationReported     ModerationCase[]  @relation("ModerationReporter")
+  moderationReviewed     ModerationCase[]  @relation("ModerationReviewer")
 
   @@index([role, createdAt])
   @@index([createdAt])
@@ -111,6 +123,7 @@ model Campaign {
   metricsJson          String         @default("{}")
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
+  moderationStatus     String         @default("APPROVED")
 
   owner       User            @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   submissions Submission[]
@@ -167,13 +180,15 @@ model Submission {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  worker       User          @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  disputes     DisputeCase[]
-  chatThreads  ChatThread[]
-  videoChecks  VideoCheck[]
+  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  worker        User           @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  disputes      DisputeCase[]
+  chatThreads   ChatThread[]
+  videoChecks   VideoCheck[]
+  portfolioPins PortfolioPin[]
 
+  @@unique([campaignId, workerId])
   @@index([workerId, createdAt])
   @@index([workerId, currentViews])
   @@index([campaignId, currentViews])
@@ -218,19 +233,74 @@ model ChatThread {
 }
 
 model ChatMessage {
-  id           String   @id @default(cuid())
-  threadId     String
-  senderId     String
-  body         String
-  type         String   @default("TEXT")
-  metadataJson String   @default("{}")
-  createdAt    DateTime @default(now())
+  id               String   @id @default(cuid())
+  threadId         String
+  senderId         String
+  body             String
+  type             String   @default("TEXT")
+  metadataJson     String   @default("{}")
+  moderationStatus String   @default("APPROVED")
+  createdAt        DateTime @default(now())
 
   thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   sender User       @relation("ChatSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
   @@index([senderId, createdAt])
+}
+
+model UserHandleAlias {
+  id        String   @id @default(cuid())
+  userId    String
+  handle    String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PortfolioPin {
+  id           String   @id @default(cuid())
+  userId       String
+  submissionId String
+  position     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, submissionId])
+  @@unique([userId, position])
+  @@index([userId, position])
+}
+
+model ModerationCase {
+  id          String    @id @default(cuid())
+  source      String
+  contentType String
+  entityId    String?
+  authorId    String?
+  reporterId  String?
+  reviewerId  String?
+  category    String
+  severity    String
+  status      String    @default("OPEN")
+  excerpt     String?
+  payloadJson String    @default("{}")
+  resolution  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  reviewedAt  DateTime?
+
+  author   User? @relation("ModerationAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  reporter User? @relation("ModerationReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  reviewer User? @relation("ModerationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([status, severity, createdAt])
+  @@index([authorId, createdAt])
+  @@index([entityId, contentType])
 }
 
 model ChatReadState {
@@ -462,6 +532,13 @@ enum Role {
   WORKER
   BOTH
   ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  RESTRICTED
+  FROZEN
+  BANNED
 }
 
 enum Rank {

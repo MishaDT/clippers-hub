@@ -59,11 +59,12 @@ function avatarFor(handle: string, avatar: string | null) {
   return avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(handle || "user")}`;
 }
 
-function hrefWith(params: { thread?: string; q?: string; status?: string; page?: number }) {
+function hrefWith(params: { thread?: string; q?: string; status?: string; page?: number; role?: string }) {
   const search = new URLSearchParams();
   if (params.thread) search.set("thread", params.thread);
   if (params.q) search.set("q", params.q);
   if (params.status && params.status !== "all") search.set("status", params.status);
+  if (params.role && params.role !== "all") search.set("role", params.role);
   if (params.page && params.page > 1) search.set("page", String(params.page));
   const value = search.toString();
   return value ? `/chats?${value}` : "/chats";
@@ -77,6 +78,10 @@ export default async function ChatsPage({
   const user = await requireUser();
   const mode = await getActiveRoleMode(user);
   const params = await searchParams;
+  const canSeeBoth = user.role === "BOTH" || user.role === "ADMIN";
+  const roleFilter = canSeeBoth && ["client", "worker"].includes(String(params.role))
+    ? String(params.role)
+    : canSeeBoth ? "all" : mode;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
   const status = params.status === "active" || params.status === "done" ? params.status : "all";
   const requestedThreadId = typeof params.thread === "string" ? params.thread : "";
@@ -84,7 +89,9 @@ export default async function ChatsPage({
 
   const where: Prisma.ChatThreadWhereInput = {
     AND: [
-      mode === "client" ? { clientId: user.id } : { workerId: user.id },
+      roleFilter === "all"
+        ? { OR: [{ clientId: user.id }, { workerId: user.id }] }
+        : roleFilter === "client" ? { clientId: user.id } : { workerId: user.id },
       ...(query ? [{
         OR: [
           { campaign: { title: { contains: query, mode: "insensitive" as const } } },
@@ -117,7 +124,7 @@ export default async function ChatsPage({
     ? prisma.chatThread.findFirst({
         where: {
           id: requestedThreadId,
-          ...(mode === "client" ? { clientId: user.id } : { workerId: user.id })
+          OR: [{ clientId: user.id }, { workerId: user.id }]
         },
         include: {
           campaign: { select: { id: true, title: true, viewThreshold: true } },
@@ -133,16 +140,19 @@ export default async function ChatsPage({
       })
     : Promise.resolve(null);
 
-  const [totalThreads, threads, selectedThread] = await Promise.all([
+  const [totalThreads, threads, selectedThread, clientCount, workerCount] = await Promise.all([
     prisma.chatThread.count({ where }),
     threadsQuery,
-    selectedThreadQuery
+    selectedThreadQuery,
+    prisma.chatThread.count({ where: { clientId: user.id } }),
+    prisma.chatThread.count({ where: { workerId: user.id } })
   ]);
   const totalPages = Math.max(1, Math.ceil(totalThreads / threadsPerPage));
   const selectedThreadId = requestedThreadId;
 
+  const selectedAsClient = selectedThread?.clientId === user.id;
   const selectedPeer = selectedThread
-    ? mode === "client" ? selectedThread.worker : selectedThread.client
+    ? selectedAsClient ? selectedThread.worker : selectedThread.client
     : null;
   const selectedStatus = selectedThread?.submission?.status;
   const progressSteps = [
@@ -168,27 +178,36 @@ export default async function ChatsPage({
             <Headphones size={16} /> Поддержка ReelPay
           </Link>
 
+          {canSeeBoth ? (
+            <nav className="chat-role-tabs" aria-label="Роль в диалоге">
+              <Link className={roleFilter === "all" ? "active" : ""} href={hrefWith({ q: query, status })}>Все <b>{clientCount + workerCount}</b></Link>
+              <Link className={roleFilter === "client" ? "active" : ""} href={hrefWith({ q: query, status, role: "client" })}>Как заказчик <b>{clientCount}</b></Link>
+              <Link className={roleFilter === "worker" ? "active" : ""} href={hrefWith({ q: query, status, role: "worker" })}>Как исполнитель <b>{workerCount}</b></Link>
+            </nav>
+          ) : null}
+
           <ChatSearchForm initialValue={query} status={status} />
 
           <ChatFilterNav
             current={status}
             links={{
-              all: hrefWith({ q: query }),
-              active: hrefWith({ q: query, status: "active" }),
-              done: hrefWith({ q: query, status: "done" })
+              all: hrefWith({ q: query, role: roleFilter }),
+              active: hrefWith({ q: query, status: "active", role: roleFilter }),
+              done: hrefWith({ q: query, status: "done", role: roleFilter })
             }}
           />
 
           <div className="chat-thread-list">
             {threads.map((thread) => {
-              const peer = mode === "client" ? thread.worker : thread.client;
+              const asClient = thread.clientId === user.id;
+              const peer = asClient ? thread.worker : thread.client;
               const last = thread.messages[0];
               const current = thread.id === selectedThreadId;
               const isSystem = last?.type === "SYSTEM";
               return (
                 <Link
                   className={`chat-thread-row ${current ? "active" : ""}`}
-                  href={hrefWith({ thread: thread.id, q: query, status, page: currentPage })}
+                  href={hrefWith({ thread: thread.id, q: query, status, page: currentPage, role: roleFilter })}
                   key={thread.id}
                   aria-current={current ? "page" : undefined}
                   prefetch
@@ -242,6 +261,7 @@ export default async function ChatsPage({
                 threadId={selectedThread.id}
                 currentUserId={user.id}
                 peerName={selectedPeer.name}
+                peerRole={selectedAsClient ? "Исполнитель" : "Заказчик"}
                 peerHandle={`@${selectedPeer.handle}`}
                 peerAvatar={avatarFor(selectedPeer.handle, selectedPeer.avatar)}
                 campaignTitle={selectedThread.campaign.title}

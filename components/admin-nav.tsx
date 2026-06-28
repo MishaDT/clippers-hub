@@ -14,6 +14,7 @@ const items = [
   { href: "/admin/content", label: "Контент", hint: "Заказы и работы", icon: DatabaseZap },
   { href: "/admin/finance", label: "Финансы", hint: "Платежи и выводы", icon: WalletCards },
   { href: "/admin/security", label: "Безопасность", hint: "Риски и контроль", icon: ShieldAlert },
+  { href: "/admin/moderation", label: "Модерация", hint: "Жалобы и санкции", icon: ShieldAlert },
   { href: "/admin/support", label: "Поддержка", hint: "Обращения пользователей", icon: Headphones },
   { href: "/admin/settings", label: "Настройки", hint: "Интеграции", icon: SlidersHorizontal }
 ];

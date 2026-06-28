@@ -9,6 +9,7 @@ import { validateChatMessage } from "@/lib/chat-safety";
 import { stringify } from "@/lib/json";
 import { prisma } from "@/lib/prisma";
 import { supportCategories, supportPriorities, supportStatuses } from "@/lib/support";
+import { moderateText } from "@/lib/moderation";
 
 function cleanSubject(value: FormDataEntryValue | null) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 120);
@@ -68,6 +69,13 @@ export async function createSupportThreadAction(formData: FormData) {
     },
     select: { id: true }
   });
+  await moderateText({
+    text: `${subject}\n${checked.body}`,
+    contentType: "SUPPORT_MESSAGE",
+    authorId: user.id,
+    context: "SUPPORT",
+    payload: { threadId: thread.id }
+  });
 
   await notifyAdmins("Новое обращение", subject, `/admin/support?thread=${thread.id}`);
   revalidatePath("/support");
@@ -105,6 +113,13 @@ export async function sendSupportMessageAction(formData: FormData) {
       }
     })
   ]);
+  await moderateText({
+    text: checked.body,
+    contentType: "SUPPORT_MESSAGE",
+    authorId: user.id,
+    context: "SUPPORT",
+    payload: { threadId }
+  });
 
   await notifyAdmins("Ответ в поддержке", checked.body.slice(0, 90), `/admin/support?thread=${threadId}`);
   revalidatePath("/support");
@@ -221,4 +236,3 @@ export async function markAdminSupportReadAction(threadId: string) {
   });
   revalidatePath("/admin/support");
 }
-

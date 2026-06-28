@@ -101,7 +101,8 @@ export default function TermsPage() {
         <p>
           Условия могут обновляться; дата вверху отражает последнюю редакцию. Вопросы:{" "}
           <a href={`mailto:${LEGAL.contact}`}>{LEGAL.contact}</a>. См. также{" "}
-          <Link href="/legal/privacy">Политику конфиденциальности</Link>.
+          <Link href="/legal/privacy">Политику конфиденциальности</Link> и{" "}
+          <Link href="/legal/community-guidelines">Правила сообщества и порядок обжалования</Link>.
         </p>
       </section>
 

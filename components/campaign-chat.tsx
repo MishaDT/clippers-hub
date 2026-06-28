@@ -30,10 +30,18 @@ type Progress = {
   steps: ProgressStep[];
 };
 
+function compactSystemMessages(messages: Message[]) {
+  return messages.filter((message, index) => {
+    const previous = messages[index - 1];
+    return !(message.type === "SYSTEM" && previous?.type === "SYSTEM" && previous.body === message.body);
+  });
+}
+
 export function CampaignChat({
   threadId,
   currentUserId,
   peerName,
+  peerRole,
   peerHandle,
   peerAvatar,
   campaignTitle,
@@ -44,6 +52,7 @@ export function CampaignChat({
   threadId: string;
   currentUserId: string;
   peerName: string;
+  peerRole?: "Заказчик" | "Исполнитель";
   peerHandle?: string;
   peerAvatar?: string;
   campaignTitle?: string;
@@ -61,7 +70,7 @@ export function CampaignChat({
   const [refreshing, setRefreshing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [visibleMessages, addOptimisticMessage] = useOptimistic(
-    messages,
+    compactSystemMessages(messages),
     (current, next: Message) => [...current, next]
   );
 
@@ -85,7 +94,7 @@ export function CampaignChat({
           {peerAvatar ? <img src={peerAvatar} alt="" /> : <span className="chat-peer-fallback">{peerName.slice(0, 2).toUpperCase()}</span>}
           <span>
             <h2>{peerName}</h2>
-            <em>{peerHandle || "Участник заказа"}</em>
+            <em>{peerRole ? `${peerRole} · ${peerHandle || ""}` : peerHandle || "Участник заказа"}</em>
           </span>
         </div>
         <button

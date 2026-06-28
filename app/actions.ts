@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -18,6 +19,7 @@ import { createPaymentIntent } from "@/lib/payments";
 import { syncMockViews } from "@/lib/social-sync";
 import { notifyModerators } from "@/lib/video-checks";
 import { canUseRoleMode, getActiveRoleMode, ROLE_MODE_COOKIE, type RoleMode } from "@/lib/role-mode";
+import { assertAccountActive, moderateText, reportContent } from "@/lib/moderation";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -81,6 +83,7 @@ export async function switchRoleAction(formData: FormData) {
 
 export async function createCampaignAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user);
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
 
   const budget = parseRubToCents(formData.get("budget"));
@@ -98,6 +101,19 @@ export async function createCampaignAction(formData: FormData) {
     .toUpperCase()
     .slice(0, 8) || "CPV";
   const trackingPrefix = `ch_${trackingBase}_${randomBytes(5).toString("hex").toUpperCase()}`;
+
+  const campaignPolicy = await moderateText({
+    text: [
+      formData.get("title"),
+      formData.get("description"),
+      formData.get("requiredTags"),
+      formData.get("bans")
+    ].map((value) => String(value || "")).join("\n"),
+    contentType: "CAMPAIGN",
+    authorId: user.id,
+    context: "PUBLIC"
+  });
+  if (campaignPolicy.action !== "ALLOW") redirect("/campaigns/new?error=moderation");
 
   const campaign = await prisma.campaign.create({
     data: {
@@ -151,6 +167,7 @@ export async function createCampaignAction(formData: FormData) {
 
 export async function joinCampaignAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user);
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const campaignId = String(formData.get("campaignId"));
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -159,7 +176,8 @@ export async function joinCampaignAction(formData: FormData) {
   if (existing) redirect("/upload");
 
   const trackingCode = `${campaign.trackingPrefix}_${user.handle.toUpperCase().slice(0, 4)}_${randomBytes(5).toString("hex").toUpperCase()}`;
-  await prisma.$transaction(async (tx) => {
+  try {
+    await prisma.$transaction(async (tx) => {
     const submission = await tx.submission.create({
       data: {
         campaignId,
@@ -198,7 +216,30 @@ export async function joinCampaignAction(formData: FormData) {
         }
       }
     });
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      redirect("/upload");
+    }
+    throw error;
+  }
+  const thread = await prisma.chatThread.findUnique({
+    where: { campaignId_workerId: { campaignId, workerId: user.id } },
+    select: { id: true }
   });
+  if (thread) {
+    await prisma.notification.create({
+      data: {
+        userId: campaign.ownerId,
+        title: "Новый отклик на заказ",
+        body: `${user.name} взял заказ «${campaign.title}».`,
+        channel: "IN_APP",
+        priority: "NORMAL",
+        kind: "CHAT",
+        href: `/chats?thread=${thread.id}`
+      }
+    });
+  }
   revalidatePath("/upload");
   revalidatePath("/profile");
   redirect("/upload");
@@ -206,6 +247,7 @@ export async function joinCampaignAction(formData: FormData) {
 
 export async function sendChatMessageAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user);
   const threadId = String(formData.get("threadId") || "");
   const checked = validateChatMessage(String(formData.get("body") || ""));
   if (!threadId || !checked.ok) return { ok: false, error: checked.reasons[0] || "bad_message" };
@@ -218,6 +260,16 @@ export async function sendChatMessageAction(formData: FormData) {
     select: { id: true, campaignId: true, clientId: true, workerId: true }
   });
   if (!thread) return { ok: false, error: "Чат не найден или у вас нет доступа" };
+
+  const policy = await moderateText({
+    text: checked.body,
+    contentType: "CHAT_MESSAGE",
+    authorId: user.id,
+    context: "CHAT",
+    payload: { threadId }
+  });
+  if (policy.action === "BLOCK") return { ok: false, error: "Сообщение нарушает правила платформы" };
+  if (policy.action === "REVIEW") return { ok: false, error: "Сообщение отправлено модератору на проверку" };
 
   const recipientId = thread.clientId === user.id ? thread.workerId : thread.clientId;
   const now = new Date();
@@ -254,8 +306,24 @@ export async function sendChatMessageAction(formData: FormData) {
   return { ok: true };
 }
 
+export async function reportContentAction(formData: FormData) {
+  const user = await requireUser();
+  const contentType = String(formData.get("contentType") || "");
+  const entityId = String(formData.get("entityId") || "");
+  const authorId = String(formData.get("authorId") || "") || undefined;
+  const reason = String(formData.get("reason") || "Нарушение правил").trim().slice(0, 300);
+  if (!["USER", "CAMPAIGN", "SUBMISSION", "CHAT_MESSAGE", "AVATAR"].includes(contentType) || !entityId) {
+    redirect("/support");
+  }
+  await reportContent({ reporterId: user.id, authorId, contentType, entityId, reason });
+  const returnTo = String(formData.get("returnTo") || "/profile");
+  revalidatePath(returnTo.startsWith("/") ? returnTo : "/profile");
+  redirect(`${returnTo.startsWith("/") ? returnTo : "/profile"}?reported=1`);
+}
+
 export async function submitClipAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user);
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const submissionId = String(formData.get("submissionId"));
   const postUrl = String(formData.get("postUrl") || "").trim();
@@ -488,11 +556,14 @@ export async function syncViewsAction() {
 
 export async function sendCollabInviteAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user);
   const handle = String(formData.get("handle") || "");
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
   const workerId = String(formData.get("workerId") || "");
   const message = String(formData.get("message") || "").trim().slice(0, 600);
   if (!workerId || workerId === user.id || message.length < 3) redirect(`/clippers/${handle}?error=invite`);
+  const policy = await moderateText({ text: message, contentType: "COLLAB", authorId: user.id, context: "PUBLIC" });
+  if (policy.action !== "ALLOW") redirect(`/clippers/${handle}?error=moderation`);
 
   const worker = await prisma.user.findUnique({ where: { id: workerId }, select: { id: true } });
   if (!worker) redirect("/leaderboard");
@@ -519,6 +590,7 @@ export async function sendCollabInviteAction(formData: FormData) {
 
 export async function respondCollabInviteAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user);
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const inviteId = String(formData.get("inviteId") || "");
   const accept = String(formData.get("decision") || "") === "accept";
@@ -548,11 +620,16 @@ export async function respondCollabInviteAction(formData: FormData) {
 
 export async function endorseClipperAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user);
   const handle = String(formData.get("handle") || "");
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
   const workerId = String(formData.get("workerId") || "");
   const note = String(formData.get("note") || "").trim().slice(0, 200) || null;
   if (!workerId || workerId === user.id) redirect(`/clippers/${handle}`);
+  if (note) {
+    const policy = await moderateText({ text: note, contentType: "ENDORSEMENT", authorId: user.id, context: "PUBLIC" });
+    if (policy.action !== "ALLOW") redirect(`/clippers/${handle}?error=moderation`);
+  }
 
   // Only "large" clients (by order count) may endorse.
   const orders = await prisma.campaign.count({ where: { ownerId: user.id } });

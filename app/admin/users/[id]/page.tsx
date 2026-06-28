@@ -24,7 +24,8 @@ export default async function AdminUserDetailPage({
       submissions: { orderBy: { updatedAt: "desc" }, take: 12, include: { campaign: { select: { id: true, title: true, viewThreshold: true } } } },
       transactions: { orderBy: { createdAt: "desc" }, take: 18 },
       analyticsEvents: { orderBy: { createdAt: "desc" }, take: 18 },
-      auditLogs: { orderBy: { createdAt: "desc" }, take: 12 }
+      auditLogs: { orderBy: { createdAt: "desc" }, take: 12 },
+      moderationAuthored: { orderBy: { createdAt: "desc" }, take: 30 }
     }
   });
   if (!user) notFound();
@@ -71,6 +72,27 @@ export default async function AdminUserDetailPage({
             </form>
           </Card>
         </div>
+
+        <Card className="admin-panel">
+          <div className="section-head compact">
+            <h2>Нарушения и жалобы</h2>
+            <Link href={`/admin/moderation?q=${encodeURIComponent(user.email)}`}>Открыть очередь</Link>
+          </div>
+          <div className="admin-dense-list always">
+            {user.moderationAuthored.map((item) => (
+              <details className="admin-dense-row" key={item.id}>
+                <summary><span>{item.category}</span><b>{item.status}</b><em>{item.severity}</em></summary>
+                <div className="admin-dense-details">
+                  <p><b>Источник:</b> {item.contentType} · {item.source}</p>
+                  <p><b>Фрагмент:</b> {item.excerpt || "не сохранён"}</p>
+                  <p><b>Решение:</b> {item.resolution || "ожидает проверки"}</p>
+                  <p><b>Дата:</b> {fullDate(item.createdAt)}</p>
+                </div>
+              </details>
+            ))}
+            {!user.moderationAuthored.length ? <p className="muted">Нарушений и жалоб нет.</p> : null}
+          </div>
+        </Card>
 
         <Card className="admin-panel danger-panel">
           <div className="section-head compact"><h2>Опасная зона</h2></div>

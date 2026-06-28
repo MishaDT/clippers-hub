@@ -151,8 +151,9 @@ export default async function ProfilePage() {
             </div>
           </div>
           <Link className="btn btn-ghost" href="/settings/account">
-            <Settings size={17} /> Логотип и настройки
+            <Settings size={17} /> Аккаунт
           </Link>
+          <Link className="btn btn-ghost" href="/settings/profile">Редактировать профиль</Link>
         </div>
 
         {canSwitchMode ? (

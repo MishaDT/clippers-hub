@@ -202,3 +202,48 @@ export async function adminDeleteUserAction(formData: FormData) {
   revalidatePath("/admin/users");
   redirect("/admin/users?deleted=1");
 }
+
+export async function adminResolveModerationAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const caseId = clean(formData.get("caseId"));
+  const decision = clean(formData.get("decision"));
+  const note = clean(formData.get("note")).slice(0, 300);
+  const moderationCase = await prisma.moderationCase.findUniqueOrThrow({ where: { id: caseId } });
+  const now = new Date();
+  const userUpdate =
+    decision === "restrict7" ? { accountStatus: "RESTRICTED" as const, restrictedUntil: new Date(now.getTime() + 7 * 86400000), restrictionReason: note || moderationCase.category }
+    : decision === "restrict30" ? { accountStatus: "RESTRICTED" as const, restrictedUntil: new Date(now.getTime() + 30 * 86400000), restrictionReason: note || moderationCase.category }
+    : decision === "freeze" ? { accountStatus: "FROZEN" as const, restrictedUntil: null, restrictionReason: note || moderationCase.category }
+    : decision === "ban" ? { accountStatus: "BANNED" as const, restrictedUntil: null, restrictionReason: note || moderationCase.category }
+    : null;
+
+  await prisma.$transaction(async (tx) => {
+    if (userUpdate && moderationCase.authorId) {
+      await tx.user.update({ where: { id: moderationCase.authorId }, data: userUpdate });
+    }
+    if (decision === "remove" && moderationCase.contentType === "CAMPAIGN" && moderationCase.entityId) {
+      await tx.campaign.updateMany({ where: { id: moderationCase.entityId }, data: { status: "PAUSED", moderationStatus: "REMOVED" } });
+    }
+    await tx.moderationCase.update({
+      where: { id: caseId },
+      data: {
+        status: decision === "approve" ? "APPROVED" : decision === "dismiss" ? "DISMISSED" : "ACTIONED",
+        reviewerId: admin.id,
+        resolution: `${decision}${note ? `: ${note}` : ""}`,
+        reviewedAt: now
+      }
+    });
+    await tx.auditLog.create({
+      data: {
+        userId: admin.id,
+        action: "ADMIN_MODERATION_DECISION",
+        entity: "ModerationCase",
+        entityId: caseId,
+        metadata: stringify({ decision, note, authorId: moderationCase.authorId })
+      }
+    });
+  });
+  revalidatePath("/admin/moderation");
+  if (moderationCase.authorId) revalidatePath(`/admin/users/${moderationCase.authorId}`);
+  redirect("/admin/moderation?saved=1");
+}
