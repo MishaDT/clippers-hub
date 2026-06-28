@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Check, Clock3, MessageCircle, ShieldCheck, Sparkles, Target, Users, WalletCards } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, Clock3, Flame, MessageCircle, ShieldCheck, Sparkles, Target, Users, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { CampaignChat } from "@/components/campaign-chat";
 import { joinCampaignAction } from "@/app/actions";
@@ -25,8 +25,8 @@ function coverFor(id: string) {
   return covers[hash % covers.length];
 }
 
-function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+function clientAvatar(handle: string, avatar: string | null) {
+  return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "client")}&backgroundColor=transparent`;
 }
 
 function taskList(description: string) {
@@ -81,8 +81,9 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       viewThreshold: true,
       deadline: true,
       niche: true,
+      visibility: true,
       trackingPrefix: true,
-      owner: { select: { id: true, name: true, handle: true } },
+      owner: { select: { id: true, name: true, handle: true, avatar: true } },
       _count: { select: { submissions: true } }
     }
   });
@@ -121,6 +122,15 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const safeSource = buildSafePreview(campaign.sourceUrl);
   const cover = coverFor(campaign.id);
   const tasks = taskList(campaign.description);
+  const urgent = daysLeft <= 2;
+  const difficulty = campaign.viewThreshold >= 15000 || urgent ? "Сложная" : campaign.viewThreshold >= 9000 ? "Средняя" : "Лёгкая";
+  const signal = campaign.visibility === "FEATURED"
+    ? { cls: "hot", Icon: Flame, text: "Топ заказ" }
+    : urgent
+      ? { cls: "urgent", Icon: Clock3, text: "Срочно" }
+      : difficulty === "Лёгкая"
+        ? { cls: "easy", Icon: Sparkles, text: "Лёгкий старт" }
+        : null;
   const progressSteps = [
     { title: "Взят", done: Boolean(submission), active: submission?.status === "ACCEPTED" },
     { title: "Ссылка", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: submission?.status === "POSTED" },
@@ -131,78 +141,94 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
   return (
     <AppShell>
-      <section className="campaign-detail-clean">
-        <Link className="detail-back" href="/campaigns"><ArrowLeft size={17} /> К заказам</Link>
+      <section className="section od">
+        <Link className="od-back" href="/campaigns"><ArrowLeft size={16} /> К заказам</Link>
 
-        <div className="detail-clean-grid">
-          <main className="detail-clean-main">
-            <div className="detail-clean-cover" style={{ backgroundImage: `linear-gradient(180deg, rgba(7,7,9,.1), rgba(7,7,9,.82)), url('${cover}')` }}>
-              <span className="campaign-pill"><Sparkles size={14} /> {campaign.niche || "Видео"}</span>
-              <b>до {rub(expected)}</b>
+        <div className="od-grid">
+          <div className="od-hero">
+            <div className="od-cover" style={{ backgroundImage: `linear-gradient(180deg, rgba(7,7,9,.05), rgba(7,7,9,.8)), url('${cover}')` }}>
+              <span className="od-cover-chip"><Sparkles size={13} /> {campaign.niche || "Видео"}</span>
+              <span className="od-cover-pay">до {rub(expected)}</span>
             </div>
-
-            <div className="detail-clean-title">
+            <div className="od-headline">
               <h1>{campaign.title}</h1>
               <p>{campaign.description}</p>
+              <div className="od-chips">
+                {signal ? <span className={`od-chip od-chip--${signal.cls}`}><signal.Icon size={13} /> {signal.text}</span> : null}
+                <span className="od-chip"><Clock3 size={13} /> {daysLeft} дн</span>
+                <span className="od-chip"><Target size={13} /> цель {compactNumber(campaign.viewThreshold)}</span>
+                <span className="od-chip"><Users size={13} /> {campaign._count.submissions} откликов</span>
+                <span className={`od-chip od-chip--diff-${difficulty === "Сложная" ? "hard" : difficulty === "Лёгкая" ? "easy" : "mid"}`}>{difficulty}</span>
+              </div>
             </div>
+          </div>
 
-            <section className="campaign-owner clean">
-              <span className="owner-avatar">{initials(campaign.owner.name)}</span>
-              <div>
-                <b>{campaign.owner.name}</b>
-                <span>Заказ {campaign.trackingPrefix}</span>
+          <aside className="od-aside">
+            <div className="od-apply">
+              <span className="od-apply-label"><WalletCards size={15} /> Оплата за результат</span>
+              <strong className="od-apply-sum">{rub(expected)}</strong>
+              <div className="od-apply-metrics">
+                <div><b>{compactNumber(campaign.viewThreshold)}</b><em>цель просмотров</em></div>
+                <div><b>{rub(campaign.cpmRateCents)}</b><em>за 1000</em></div>
+                <div><b>{daysLeft} дн</b><em>до дедлайна</em></div>
+                <div><b>{campaign._count.submissions}</b><em>откликов</em></div>
               </div>
-              {safeSource ? <a href={safeSource.url} target="_blank" rel="noreferrer">Источник <ArrowUpRight size={15} /></a> : null}
+
+              {!currentUser ? (
+                <Link className="btn btn-primary od-apply-btn" href="/login">Войти, чтобы откликнуться</Link>
+              ) : mode === "client" ? (
+                isOwner
+                  ? <Link className="btn btn-primary od-apply-btn" href="/campaigns">Все мои кампании</Link>
+                  : <span className="od-apply-muted">Кампания другого заказчика</span>
+              ) : submission ? (
+                <Link className="btn btn-primary od-apply-btn" href="/upload">Выложить работу</Link>
+              ) : (
+                <form action={joinCampaignAction}>
+                  <input type="hidden" name="campaignId" value={campaign.id} />
+                  <button className="btn btn-primary od-apply-btn" type="submit">Откликнуться</button>
+                </form>
+              )}
+
+              <ul className="od-apply-notes">
+                <li><ShieldCheck size={14} /> {mode === "client" ? "Оплата списывается только после проверки просмотров." : "Выплата начисляется после проверки просмотров."}</li>
+                <li><Clock3 size={14} /> Статистика обновляется автоматически.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div className="od-body">
+            <section className="od-block od-client-block">
+              <div className="od-client">
+                <img src={clientAvatar(campaign.owner.handle, campaign.owner.avatar)} alt="" loading="lazy" />
+                <div className="od-client-id">
+                  <strong>{campaign.owner.name}</strong>
+                  <span>Заказ {campaign.trackingPrefix}</span>
+                </div>
+                {safeSource ? (
+                  <a className="od-source" href={safeSource.url} target="_blank" rel="noreferrer">Источник <ArrowUpRight size={15} /></a>
+                ) : null}
+              </div>
             </section>
 
-            <section className="campaign-panel">
-              <h2>Что сделать</h2>
-              <div className="task-list">
+            <section className="od-block">
+              <h2 className="od-h2">Что сделать</h2>
+              <ul className="od-tasks">
                 {tasks.map((task) => (
-                  <div key={task}><Check size={17} /> <span>{task}</span></div>
+                  <li key={task}><Check size={16} /> <span>{task}</span></li>
                 ))}
-              </div>
+              </ul>
             </section>
 
-            <section className="campaign-panel">
-              <h2>Правила</h2>
-              <div className="rule-grid compact-rules">
+            <section className="od-block">
+              <h2 className="od-h2">Правила</h2>
+              <div className="od-rules">
                 <div><b>Площадки</b><span>{platforms.length ? platforms.join(", ") : "TikTok, Shorts, Reels, VK"}</span></div>
                 <div><b>Теги</b><span>{rules.requiredTags?.length ? rules.requiredTags.join(", ") : "#reelpay"}</span></div>
                 <div><b>Нельзя</b><span>{rules.bans?.slice(0, 3).join(", ") || "NSFW, оскорбления, политика"}</span></div>
                 <div><b>Watermark</b><span>{rules.watermarkBonus ? "Нужен ReelPay watermark" : "Не обязателен"}</span></div>
               </div>
             </section>
-          </main>
-
-          <aside className="campaign-action clean">
-            <div className="action-card">
-              <span className="action-label">Оплата за результат</span>
-              <strong>{rub(expected)}</strong>
-              <div className="action-metrics">
-                <span><b>{compactNumber(campaign.viewThreshold)}</b><em>цель</em></span>
-                <span><b>{rub(campaign.cpmRateCents)}</b><em>за 1000</em></span>
-                <span><b>{daysLeft} дн.</b><em>срок</em></span>
-                <span><b>{campaign._count.submissions}</b><em>откликов</em></span>
-              </div>
-
-              {mode === "client" ? (
-                isOwner
-                  ? <Link className="btn btn-primary" href="/campaigns">Все мои кампании</Link>
-                  : <span className="muted">Кампания другого заказчика</span>
-              ) : submission ? (
-                <Link className="btn btn-primary" href="/upload">Выложить работу</Link>
-              ) : (
-                <form action={joinCampaignAction}>
-                  <input type="hidden" name="campaignId" value={campaign.id} />
-                  <button className="join-main" type="submit">Откликнуться</button>
-                </form>
-              )}
-
-              <small><ShieldCheck size={14} /> {mode === "client" ? "Оплата списывается только после проверки просмотров." : "Выплата начисляется после проверки просмотров."}</small>
-              <small><Clock3 size={14} /> Статистика обновляется автоматически.</small>
-            </div>
-          </aside>
+          </div>
         </div>
 
         {submission && (mode === "worker" || isOwner) ? (
