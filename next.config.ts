@@ -33,6 +33,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   typedRoutes: false,
   outputFileTracingRoot: path.join(process.cwd()),
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "3mb"
+    }
+  },
   images: {
     unoptimized: true
   },

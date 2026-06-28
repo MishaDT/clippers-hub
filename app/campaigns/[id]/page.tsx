@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Check, Clock3, Flame, MessageCircle, ShieldCheck, Sparkles, Target, Users, WalletCards } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, CircleAlert, Clock3, Megaphone, MessageCircle, ShieldCheck, Sparkles, Target, Users, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/ui";
+import { UserAvatar } from "@/components/user-avatar";
 import { CampaignChat } from "@/components/campaign-chat";
 import { joinCampaignAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -10,10 +11,6 @@ import { parseJson } from "@/lib/json";
 import { compactNumber, expectedPayout, rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
-
-function clientAvatar(handle: string, avatar: string | null) {
-  return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "client")}&backgroundColor=transparent`;
-}
 
 function taskList(description: string) {
   const tasks = ["Выбрать 3-5 сильных моментов", "Сделать вертикальный ролик 9:16", "Добавить субтитры и цепляющий первый кадр"];
@@ -66,8 +63,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       cpmRateCents: true,
       viewThreshold: true,
       deadline: true,
+      createdAt: true,
       niche: true,
       visibility: true,
+      remainingBudgetCents: true,
       trackingPrefix: true,
       owner: { select: { id: true, name: true, handle: true, avatar: true } },
       _count: { select: { submissions: true } }
@@ -108,13 +107,14 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const safeSource = buildSafePreview(campaign.sourceUrl);
   const tasks = taskList(campaign.description);
   const urgent = daysLeft <= 2;
-  const difficulty = campaign.viewThreshold >= 15000 || urgent ? "Сложная" : campaign.viewThreshold >= 9000 ? "Средняя" : "Лёгкая";
   const signal = campaign.visibility === "FEATURED"
-    ? { cls: "hot", Icon: Flame, text: "Топ заказ" }
+    ? { cls: "hot", Icon: Megaphone, text: "Продвижение" }
+    : campaign.remainingBudgetCents < expected
+      ? { cls: "urgent", Icon: CircleAlert, text: "Мало бюджета" }
     : urgent
-      ? { cls: "urgent", Icon: Clock3, text: "Срочно" }
-      : difficulty === "Лёгкая"
-        ? { cls: "easy", Icon: Sparkles, text: "Лёгкий старт" }
+      ? { cls: "urgent", Icon: Clock3, text: `${daysLeft} дн. до дедлайна` }
+      : Date.now() - campaign.createdAt.getTime() <= 48 * 60 * 60 * 1000
+        ? { cls: "easy", Icon: Sparkles, text: "Новый заказ" }
         : null;
   const progressSteps = [
     { title: "Взят", done: Boolean(submission), active: submission?.status === "ACCEPTED" },
@@ -140,7 +140,6 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                 <span className="od-chip"><Clock3 size={13} /> {daysLeft} дн</span>
                 <span className="od-chip"><Target size={13} /> цель {compactNumber(campaign.viewThreshold)}</span>
                 <span className="od-chip"><Users size={13} /> {campaign._count.submissions} откликов</span>
-                <span className={`od-chip od-chip--diff-${difficulty === "Сложная" ? "hard" : difficulty === "Лёгкая" ? "easy" : "mid"}`}>{difficulty}</span>
               </div>
             </div>
           </div>
@@ -181,7 +180,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           <div className="od-body">
             <section className="od-block od-client-block">
               <div className="od-client">
-                <img src={clientAvatar(campaign.owner.handle, campaign.owner.avatar)} alt="" loading="lazy" />
+                <UserAvatar
+                  avatar={campaign.owner.avatar}
+                  name={campaign.owner.name}
+                  handle={campaign.owner.handle}
+                  size={44}
+                />
                 <div className="od-client-id">
                   <strong>{campaign.owner.name}</strong>
                   <span>Заказ {campaign.trackingPrefix}</span>

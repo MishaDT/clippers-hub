@@ -12,9 +12,16 @@ const CATEGORIES = [
   ["business", "Бизнес"]
 ] as const;
 
-const DIFFICULTIES = ["Любая", "Лёгкая", "Средняя", "Сложная"] as const;
+const DEADLINES = [
+  ["any", "Любой срок"],
+  ["3", "До 3 дней"],
+  ["7", "До 7 дней"],
+  ["later", "Больше 7 дней"]
+] as const;
 const SORTS = [
+  ["promoted", "Сначала продвижение"],
   ["featured", "Сначала новые"],
+  ["rate", "Выше ставка"],
   ["pay", "Выше оплата"],
   ["deadline", "Ближе срок"]
 ] as const;
@@ -22,7 +29,7 @@ const SORTS = [
 type CampaignFiltersProps = {
   query: string;
   category: string;
-  difficulty: string;
+  deadline: string;
   sort: string;
   resultCount: number;
 };
@@ -31,15 +38,15 @@ function labelFor(items: readonly (readonly string[])[], value: string) {
   return items.find(([key]) => key === value)?.[1] || value;
 }
 
-export function CampaignFilters({ query, category, difficulty, sort, resultCount }: CampaignFiltersProps) {
+export function CampaignFilters({ query, category, deadline, sort, resultCount }: CampaignFiltersProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [draft, setDraft] = useState({ category, difficulty, sort });
+  const [draft, setDraft] = useState({ category, deadline, sort });
 
   useEffect(() => {
-    setDraft({ category, difficulty, sort });
-  }, [category, difficulty, sort]);
+    setDraft({ category, deadline, sort });
+  }, [category, deadline, sort]);
 
   useEffect(() => {
     if (!open) return;
@@ -52,12 +59,12 @@ export function CampaignFilters({ query, category, difficulty, sort, resultCount
     const next = new URLSearchParams();
     const nextQuery = values.q === undefined ? query : values.q;
     const nextCategory = values.category ?? draft.category;
-    const nextDifficulty = values.difficulty ?? draft.difficulty;
+    const nextDeadline = values.deadline ?? draft.deadline;
     const nextSort = values.sort ?? draft.sort;
     if (nextQuery) next.set("q", nextQuery);
     if (nextCategory !== "all") next.set("category", nextCategory);
-    if (nextDifficulty !== "Любая") next.set("difficulty", nextDifficulty);
-    if (nextSort !== "featured") next.set("sort", nextSort);
+    if (nextDeadline !== "any") next.set("deadline", nextDeadline);
+    if (nextSort !== "promoted") next.set("sort", nextSort);
     const search = next.toString();
     return search ? `/campaigns?${search}` : "/campaigns";
   }
@@ -74,14 +81,14 @@ export function CampaignFilters({ query, category, difficulty, sort, resultCount
   }
 
   function removeFilter(key: keyof typeof draft) {
-    const reset = key === "category" ? "all" : key === "difficulty" ? "Любая" : "featured";
+    const reset = key === "category" ? "all" : key === "deadline" ? "any" : "promoted";
     startTransition(() => router.push(urlWith({ ...draft, [key]: reset })));
   }
 
   const activeFilters = [
     category !== "all" ? { key: "category" as const, label: labelFor(CATEGORIES, category) } : null,
-    difficulty !== "Любая" ? { key: "difficulty" as const, label: difficulty } : null,
-    sort !== "featured" ? { key: "sort" as const, label: labelFor(SORTS, sort) } : null
+    deadline !== "any" ? { key: "deadline" as const, label: labelFor(DEADLINES, deadline) } : null,
+    sort !== "promoted" ? { key: "sort" as const, label: labelFor(SORTS, sort) } : null
   ].filter(Boolean) as Array<{ key: keyof typeof draft; label: string }>;
 
   return (
@@ -140,11 +147,11 @@ export function CampaignFilters({ query, category, difficulty, sort, resultCount
             </fieldset>
 
             <fieldset>
-              <legend>Сложность</legend>
+              <legend>Срок до дедлайна</legend>
               <div className="campaign-filter-options">
-                {DIFFICULTIES.map((item) => (
-                  <button className={draft.difficulty === item ? "active" : ""} type="button" onClick={() => setDraft({ ...draft, difficulty: item })} key={item}>
-                    {item}{draft.difficulty === item ? <Check size={15} /> : null}
+                {DEADLINES.map(([key, label]) => (
+                  <button className={draft.deadline === key ? "active" : ""} type="button" onClick={() => setDraft({ ...draft, deadline: key })} key={key}>
+                    {label}{draft.deadline === key ? <Check size={15} /> : null}
                   </button>
                 ))}
               </div>
@@ -162,7 +169,7 @@ export function CampaignFilters({ query, category, difficulty, sort, resultCount
             </fieldset>
 
             <footer>
-              <button type="button" onClick={() => setDraft({ category: "all", difficulty: "Любая", sort: "featured" })}>Сбросить</button>
+              <button type="button" onClick={() => setDraft({ category: "all", deadline: "any", sort: "promoted" })}>Сбросить</button>
               <button className="apply" type="button" onClick={apply}>
                 Применить{resultCount ? ` · ${resultCount}` : ""}
               </button>

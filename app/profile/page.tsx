@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { switchRoleAction } from "@/app/actions";
 import { AppShell, Card, Tag } from "@/components/ui";
+import { UserAvatar } from "@/components/user-avatar";
 import { requireUser } from "@/lib/auth";
 import { compactNumber, rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -142,11 +143,7 @@ export default async function ProfilePage() {
       <section className="section profile-screen">
         <div className="profile-main">
           <div className="profile-person">
-            <img
-              className="pf-avatar"
-              src={user.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(user.handle)}`}
-              alt=""
-            />
+            <UserAvatar avatar={user.avatar} name={user.name} handle={user.handle} size={72} />
             <div>
               <h1>{user.name}</h1>
               <p className="muted">@{user.handle}</p>
@@ -154,7 +151,7 @@ export default async function ProfilePage() {
             </div>
           </div>
           <Link className="btn btn-ghost" href="/settings/account">
-            <Settings size={17} /> Настройки
+            <Settings size={17} /> Логотип и настройки
           </Link>
         </div>
 
@@ -259,10 +256,11 @@ export default async function ProfilePage() {
               <Card className="stack-list">
                 {data.topClips.length ? data.topClips.map((clip) => (
                   <div className="pay-row" key={clip.id}>
-                    <img
-                      className="pf-ava"
-                      src={clip.worker.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(clip.worker.handle)}`}
-                      alt=""
+                    <UserAvatar
+                      avatar={clip.worker.avatar}
+                      name={clip.worker.handle}
+                      handle={clip.worker.handle}
+                      size={40}
                     />
                     <div><strong>@{clip.worker.handle}</strong><p>{clip.campaign.title}</p></div>
                     <span>{compactNumber(clip.currentViews)}</span>

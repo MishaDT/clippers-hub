@@ -1,0 +1,140 @@
+.marketplace {
+  width: min(1180px, 100%);
+}
+
+.signalRules {
+  margin: -2px 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.signalRules summary {
+  width: fit-content;
+  color: var(--soft);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.signalRules p {
+  max-width: 780px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--primary);
+  color: var(--muted);
+  line-height: 1.5;
+  background: rgba(255, 255, 255, .025);
+}
+
+.marketplace :global(.mk-grid) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.marketplace :global(.mk-card) {
+  min-height: 260px;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #111115;
+  box-shadow: none;
+}
+
+.marketplace :global(.mk-card:hover) {
+  transform: translateY(-2px);
+}
+
+.marketplace :global(.mk-title) {
+  min-height: 42px;
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.marketplace :global(.mk-desc) {
+  min-height: 39px;
+}
+
+.marketplace :global(.mk-payline) {
+  margin-top: auto;
+  padding: 11px 12px;
+  border-radius: 8px;
+  background: rgba(201, 243, 29, .055);
+}
+
+.marketplace :global(.mk-pay b) {
+  font-size: 21px;
+  letter-spacing: 0;
+}
+
+.marketplace :global(.mk-meta) {
+  min-height: 24px;
+  gap: 7px 12px;
+}
+
+.marketplace :global(.mk-signal--new) {
+  color: #b8eaf2;
+  border: 1px solid rgba(71, 215, 208, .26);
+  background: rgba(71, 215, 208, .09);
+}
+
+@media (max-width: 1050px) {
+  .marketplace :global(.mk-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .marketplace {
+    padding-top: 4px;
+  }
+
+  .marketplace :global(.mk-grid) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .marketplace :global(.mk-card) {
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .marketplace :global(.mk-title),
+  .marketplace :global(.mk-desc) {
+    min-height: 0;
+  }
+
+  .marketplace :global(.mk-head) {
+    display: grid;
+    gap: 12px;
+  }
+
+  .marketplace :global(.mk-stats) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .marketplace :global(.mk-stat) {
+    min-width: 0;
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 8px 4px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 10px;
+  }
+
+  .marketplace :global(.mk-stat b) {
+    font-size: 14px;
+  }
+
+  .marketplace :global(.mk-leaders) {
+    width: 100%;
+    justify-content: center;
+    border-radius: 8px;
+  }
+
+  .signalRules p {
+    font-size: 11px;
+  }
+}

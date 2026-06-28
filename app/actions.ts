@@ -88,7 +88,8 @@ export async function createCampaignAction(formData: FormData) {
   const platforms = formData.getAll("platforms").map(String).filter((item) => ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"].includes(item));
   const deadlineDays = Math.max(1, Number(formData.get("deadlineDays") || 7));
   const sourcePlatform = String(formData.get("sourcePlatform") || "TWITCH");
-  const visibility = String(formData.get("visibility") || "PUBLIC");
+  const requestedVisibility = String(formData.get("visibility") || "PUBLIC");
+  const visibility = user.role === "ADMIN" && requestedVisibility === "FEATURED" ? "FEATURED" : "PUBLIC";
   const cleanSourcePlatform = (["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK", "TWITCH"].includes(sourcePlatform) ? sourcePlatform : "TWITCH") as "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "VK" | "TWITCH";
   const sourceUrlCheck = validatePublicMediaUrl(String(formData.get("sourceUrl") || ""), cleanSourcePlatform);
   if (!sourceUrlCheck.ok) redirect(`/campaigns/new?error=source_url&reason=${encodeURIComponent(sourceUrlCheck.reasons[0] || "bad_url")}`);
@@ -122,7 +123,7 @@ export async function createCampaignAction(formData: FormData) {
       totalBudgetCents: budget || 5000000,
       remainingBudgetCents: budget || 5000000,
       status: "ACTIVE",
-      visibility: (["PUBLIC", "FEATURED", "PRIVATE_INVITE"].includes(visibility) ? visibility : "PUBLIC") as "PUBLIC",
+      visibility,
       trackingPrefix,
       deadline: new Date(Date.now() + deadlineDays * 86400000),
       language: String(formData.get("language") || "ru"),

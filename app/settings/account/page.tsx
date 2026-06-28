@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { isConfigured, type ProviderId } from "@/lib/oauth";
 import { prisma } from "@/lib/prisma";
 import { unlinkAccountProviderAction } from "./actions";
+import { AvatarUpload } from "./avatar-upload";
 import styles from "./settings.module.css";
 
 const providers: Array<{ id: ProviderId; label: string }> = [
@@ -14,8 +15,13 @@ const providers: Array<{ id: ProviderId; label: string }> = [
   { id: "yandex", label: "Яндекс" }
 ];
 
-export default async function AccountSettingsPage() {
+export default async function AccountSettingsPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireUser();
+  const params = await searchParams;
   const accounts = await prisma.oAuthAccount.findMany({
     where: { userId: user.id },
     select: { id: true, provider: true, createdAt: true },
@@ -33,6 +39,14 @@ export default async function AccountSettingsPage() {
             <p className="lead">Вход, привязанные аккаунты и управление данными.</p>
           </div>
         </div>
+
+        {params.avatar === "updated" ? <p className={styles.success}>Логотип профиля обновлён.</p> : null}
+        {params.avatar === "removed" ? <p className={styles.success}>Логотип удалён. Используются инициалы.</p> : null}
+        {params.avatar === "invalid" ? <p className={styles.error}>Файл не прошёл проверку. Выберите обычный JPG, PNG или WebP до 2 МБ.</p> : null}
+
+        <Card className={styles.card}>
+          <AvatarUpload avatar={user.avatar} name={user.name} handle={user.handle} />
+        </Card>
 
         <Card className={styles.card}>
           <div className={styles.cardTitle}>

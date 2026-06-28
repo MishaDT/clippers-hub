@@ -13,6 +13,23 @@
   width: fit-content;
 }
 
+.success,
+.error {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(34, 197, 94, .24);
+  border-radius: 8px;
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, .08);
+  font-size: 13px;
+}
+
+.error {
+  border-color: rgba(248, 113, 113, .26);
+  color: #fecaca;
+  background: rgba(248, 113, 113, .08);
+}
+
 .heading h1,
 .heading p {
   margin-bottom: 0;
@@ -22,6 +39,91 @@
   display: grid;
   gap: 16px;
   padding: 20px;
+}
+
+.avatarEditor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatarPreview {
+  position: relative;
+  width: 84px;
+  height: 84px;
+}
+
+.avatarPreview > img {
+  width: 84px;
+  height: 84px;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatarPreview > span {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #0f0f12;
+  border-radius: 50%;
+  color: #090a07;
+  background: var(--primary);
+}
+
+.avatarForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatarForm strong,
+.avatarForm p {
+  display: block;
+  margin: 0;
+}
+
+.avatarForm p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.fileButton {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  color: var(--soft);
+  background: rgba(255, 255, 255, .04);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fileButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.fileError {
+  grid-column: 1 / -1;
+  color: #fca5a5 !important;
+  font-size: 12px !important;
 }
 
 .cardTitle {
@@ -107,5 +209,18 @@
 
   .deleteForm {
     grid-template-columns: 1fr;
+  }
+
+  .avatarEditor {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+  }
+
+  .avatarForm {
+    grid-template-columns: 1fr;
+  }
+
+  .avatarEditor > form:last-child {
+    grid-column: 1 / -1;
   }
 }

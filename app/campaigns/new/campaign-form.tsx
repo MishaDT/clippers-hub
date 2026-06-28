@@ -52,7 +52,6 @@ export function CampaignForm() {
   const [bans, setBans] = useState("NSFW, политика, оскорбления, чужие логотипы крупным планом");
   const [platforms, setPlatforms] = useState<string[]>(["TIKTOK", "YOUTUBE", "INSTAGRAM"]);
   const [watermarkBonus, setWatermarkBonus] = useState(true);
-  const [featured, setFeatured] = useState(false);
 
   const estimate = useMemo(() => {
     const payout = Math.max(0, Math.round((viewThreshold / 1000) * cpm * 0.89 * 100));
@@ -186,22 +185,12 @@ export function CampaignForm() {
             ))}
           </div>
 
-          <div className="order-grid-2">
-            <label className="order-field">
-              <span>Срок</span>
-              <select name="deadlineDays" value={deadlineDays} onChange={(event) => setDeadlineDays(Number(event.target.value))}>
-                {deadlineOptions.map((days) => <option value={days} key={days}>{days} дней</option>)}
-              </select>
-            </label>
-
-            <label className="order-field">
-              <span>Видимость</span>
-              <select name="visibility" value={featured ? "FEATURED" : "PUBLIC"} onChange={(event) => setFeatured(event.target.value === "FEATURED")}>
-                <option value="PUBLIC">Обычная</option>
-                <option value="FEATURED">В топ витрины</option>
-              </select>
-            </label>
-          </div>
+          <label className="order-field">
+            <span>Срок</span>
+            <select name="deadlineDays" value={deadlineDays} onChange={(event) => setDeadlineDays(Number(event.target.value))}>
+              {deadlineOptions.map((days) => <option value={days} key={days}>{days} дней</option>)}
+            </select>
+          </label>
 
           <label className="order-field">
             <span>Обязательные теги</span>
@@ -257,6 +246,7 @@ export function CampaignForm() {
 
       <input type="hidden" name="trackingPrefix" value="REELPAY" />
       <input type="hidden" name="language" value="ru" />
+      <input type="hidden" name="visibility" value="PUBLIC" />
     </form>
   );
 }

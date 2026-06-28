@@ -6,19 +6,23 @@ import {
   BriefcaseBusiness,
   CheckCircle2,
   Clock3,
+  CircleAlert,
   Eye,
-  Flame,
+  Megaphone,
   Sparkles,
+  TrendingUp,
   Trophy,
   Users
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
+import { UserAvatar } from "@/components/user-avatar";
 import { CampaignFilters } from "./campaign-filters";
 import { CampaignGuide } from "./campaign-guide";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { compactNumber, rub } from "@/lib/money";
+import styles from "./marketplace.module.css";
 
 const ACTIVE_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
 
@@ -76,16 +80,20 @@ const getCampaigns = unstable_cache(
         deadline: true,
         niche: true,
         visibility: true,
+        remainingBudgetCents: true,
         createdAt: true,
         owner: { select: { name: true, handle: true, avatar: true } },
         _count: { select: { submissions: true } }
       },
-      where: { status: { in: ["ACTIVE", "LOW_BUDGET"] } },
-      orderBy: [{ visibility: "asc" }, { createdAt: "desc" }],
+      where: {
+        status: { in: ["ACTIVE", "LOW_BUDGET"] },
+        visibility: { in: ["PUBLIC", "FEATURED"] }
+      },
+      orderBy: { createdAt: "desc" },
       take: 80
     }),
   ["campaigns-marketplace-v3"],
-  { revalidate: 30 }
+  { revalidate: 30, tags: ["campaigns"] }
 );
 
 type CampaignItem = Awaited<ReturnType<typeof getCampaigns>>[number];
@@ -103,13 +111,6 @@ function categoryMatch(campaign: CampaignItem, category: string) {
   return true;
 }
 
-function difficultyOf(campaign: CampaignItem) {
-  const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
-  if (campaign.viewThreshold >= 15000 || daysLeft <= 2) return "Сложная";
-  if (campaign.viewThreshold >= 9000) return "Средняя";
-  return "Лёгкая";
-}
-
 function timeOf(value: Date | string) {
   return value instanceof Date ? value.getTime() : new Date(value).getTime();
 }
@@ -122,8 +123,18 @@ function shortText(text: string, limit = 128) {
   return text.length > limit ? `${text.slice(0, limit).trim()}…` : text;
 }
 
-function clientAvatar(handle: string, avatar: string | null) {
-  return avatar || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(handle || "client")}&backgroundColor=transparent`;
+function deadlineMatch(daysLeft: number, deadline: string) {
+  if (deadline === "3") return daysLeft <= 3;
+  if (deadline === "7") return daysLeft <= 7;
+  if (deadline === "later") return daysLeft > 7;
+  return true;
+}
+
+function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
 }
 
 async function ClientCampaignsView({ userId }: { userId: string }) {
@@ -151,7 +162,7 @@ async function ClientCampaignsView({ userId }: { userId: string }) {
 
   return (
     <AppShell>
-      <section className="section market-screen client-campaigns">
+      <section className={`section market-screen client-campaigns ${styles.marketplace}`}>
         <div className="market-head">
           <div>
             <span className="eyebrow">Работа заказчика</span>
@@ -211,19 +222,25 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const query = normalize(params.q).toLowerCase();
   const category = normalize(params.category) || "all";
-  const sort = normalize(params.sort) || "featured";
-  const difficulty = normalize(params.difficulty) || "Любая";
+  const sort = normalize(params.sort) || "promoted";
+  const deadline = normalize(params.deadline) || "any";
   const page = Math.max(1, Number(params.page || 1));
-  const pageSize = 10;
+  const pageSize = 12;
 
   const [baseCampaigns, active] = await Promise.all([getCampaigns(), loadActiveOrder()]);
   const filtered = baseCampaigns
     .filter((campaign) => {
       const text = `${campaign.title} ${campaign.description} ${campaign.niche || ""} ${campaign.owner.name}`.toLowerCase();
-      const itemDifficulty = difficultyOf(campaign);
-      return (!query || text.includes(query)) && categoryMatch(campaign, category) && (difficulty === "Любая" || itemDifficulty === difficulty);
+      const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
+      return (!query || text.includes(query)) && categoryMatch(campaign, category) && deadlineMatch(daysLeft, deadline);
     })
     .sort((a, b) => {
+      if (sort === "promoted") {
+        const visibilityDelta = Number(b.visibility === "FEATURED") - Number(a.visibility === "FEATURED");
+        if (visibilityDelta) return visibilityDelta;
+        return timeOf(b.createdAt) - timeOf(a.createdAt);
+      }
+      if (sort === "rate") return b.cpmRateCents - a.cpmRateCents;
       if (sort === "pay") return expectedPayout(b) - expectedPayout(a);
       if (sort === "deadline") return timeOf(a.deadline) - timeOf(b.deadline);
       return timeOf(b.createdAt) - timeOf(a.createdAt);
@@ -233,14 +250,15 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const currentPage = Math.min(page, totalPages);
   const campaigns = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const topPayout = Math.max(0, ...filtered.map(expectedPayout));
+  const medianRate = median(filtered.map((campaign) => campaign.cpmRateCents));
   const quickCount = filtered.filter((campaign) => Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000) <= 3).length;
 
   const makeHref = (next: Record<string, string>) => {
     const url = new URLSearchParams();
     if (query) url.set("q", query);
     if (category !== "all") url.set("category", category);
-    if (sort !== "featured") url.set("sort", sort);
-    if (difficulty !== "Любая") url.set("difficulty", difficulty);
+    if (sort !== "promoted") url.set("sort", sort);
+    if (deadline !== "any") url.set("deadline", deadline);
     if (currentPage > 1) url.set("page", String(currentPage));
     Object.entries(next).forEach(([key, value]) => (value ? url.set(key, value) : url.delete(key)));
     const qs = url.toString();
@@ -249,7 +267,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
   return (
     <AppShell>
-      <section className="section market-screen">
+      <section className={`section market-screen ${styles.marketplace}`}>
         {active ? (
           <Link className={`active-order ao-${active.statusKey}`} href={active.href}>
             <span className="ao-glow" aria-hidden="true" />
@@ -278,7 +296,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
         <header className="mk-head">
           <div>
-            <span className="mk-eyebrow"><Flame size={14} /> Биржа заказов</span>
+            <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>
             <h1>Найди заказ, который сделаешь сегодня</h1>
             <p>Заказчик ставит цель по просмотрам — ты делаешь короткий ролик и получаешь оплату за результат.</p>
           </div>
@@ -291,10 +309,19 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           <span className="mk-stat mk-stat--urgent"><b>{quickCount}</b> срочных</span>
         </div>
 
+        <details className={styles.signalRules}>
+          <summary>Как считаются метки заказов</summary>
+          <p>
+            «Продвижение» — поднятие заказа администратором или платным бустом.
+            «Новый» — опубликован менее 48 часов назад. Процент ставки считается относительно медианы текущей выдачи.
+            Срок и остаток бюджета берутся напрямую из заказа.
+          </p>
+        </details>
+
         <CampaignFilters
           query={query}
           category={category}
-          difficulty={difficulty}
+          deadline={deadline}
           sort={sort}
           resultCount={filtered.length}
         />
@@ -303,30 +330,40 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           <div className="mk-grid">
             {campaigns.map((campaign) => {
               const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
-              const diff = difficultyOf(campaign);
               const payout = expectedPayout(campaign);
               const cpm = Math.round(campaign.cpmRateCents / 100);
               const urgent = daysLeft <= 2;
+              const newCampaign = Date.now() - timeOf(campaign.createdAt) <= 48 * 60 * 60 * 1000;
+              const rateDelta = medianRate > 0 ? Math.round((campaign.cpmRateCents / medianRate - 1) * 100) : 0;
               const signal = campaign.visibility === "FEATURED"
-                ? { cls: "hot", icon: Flame, text: "Топ заказ" }
+                ? { cls: "hot", icon: Megaphone, text: "Продвижение", title: "Заказ поднят в выдаче через продвижение" }
+                : campaign.remainingBudgetCents < payout
+                  ? { cls: "urgent", icon: CircleAlert, text: "Мало бюджета", title: "Остатка бюджета может не хватить на полную выплату" }
                 : urgent
-                  ? { cls: "urgent", icon: Clock3, text: "Срочно" }
-                  : topPayout > 0 && payout >= topPayout * 0.7
-                    ? { cls: "pay", icon: Sparkles, text: "Выгодный" }
-                    : null;
+                  ? { cls: "urgent", icon: Clock3, text: `${daysLeft} дн.`, title: "Короткий срок до дедлайна" }
+                  : rateDelta >= 25
+                    ? { cls: "pay", icon: TrendingUp, text: `Ставка +${rateDelta}%`, title: "Сравнение с медианной ставкой текущей выдачи" }
+                    : newCampaign
+                      ? { cls: "new", icon: Sparkles, text: "Новый", title: "Опубликован меньше 48 часов назад" }
+                      : null;
               const SignalIcon = signal?.icon;
               return (
                 <Link className="mk-card" href={`/campaigns/${campaign.id}`} key={campaign.id}>
                   <div className="mk-card-top">
                     <div className="mk-client">
-                      <img src={clientAvatar(campaign.owner.handle, campaign.owner.avatar)} alt="" loading="lazy" />
+                      <UserAvatar
+                        avatar={campaign.owner.avatar}
+                        name={campaign.owner.name}
+                        handle={campaign.owner.handle}
+                        size={38}
+                      />
                       <div>
                         <strong>{campaign.owner.name}</strong>
                         <span>{campaign.niche || "Видео"}</span>
                       </div>
                     </div>
                     {signal && SignalIcon ? (
-                      <span className={`mk-signal mk-signal--${signal.cls}`}><SignalIcon size={12} /> {signal.text}</span>
+                      <span className={`mk-signal mk-signal--${signal.cls}`} title={signal.title}><SignalIcon size={12} /> {signal.text}</span>
                     ) : null}
                   </div>
                   <h2 className="mk-title">{campaign.title}</h2>
@@ -342,7 +379,6 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                     <span><Eye size={14} /> {compactNumber(campaign.viewThreshold)}</span>
                     <span className={urgent ? "warn" : ""}><Clock3 size={14} /> {daysLeft} дн</span>
                     <span><Users size={14} /> {campaign._count.submissions}</span>
-                    <span className={`mk-diff mk-diff--${diff === "Сложная" ? "hard" : diff === "Лёгкая" ? "easy" : "mid"}`}>{diff}</span>
                   </div>
                 </Link>
               );
