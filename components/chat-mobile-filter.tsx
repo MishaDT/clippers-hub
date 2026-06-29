@@ -17,6 +17,7 @@ export function ChatMobileFilter({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const activeCount = [...roleItems.slice(1), ...statusItems.slice(1)].filter((item) => item.active).length;
 
   const close = useCallback(() => {
     if (history.state?.reelpayChatFilters) history.back();
@@ -68,6 +69,8 @@ export function ChatMobileFilter({
     <div className="chat-mobile-filter">
       <button className="chat-mobile-filter-trigger" type="button" aria-label="Фильтры" aria-expanded={open} onClick={toggle}>
         <SlidersHorizontal size={18} />
+        <span>Фильтры</span>
+        {activeCount ? <b>{activeCount}</b> : null}
       </button>
       {open ? (
         <div className="chat-filter-layer" role="presentation" onPointerDown={(event) => {

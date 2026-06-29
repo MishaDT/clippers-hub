@@ -17,6 +17,7 @@ export function ChatThreadMenu({ threadId, archived }: { threadId: string; archi
           title={archived ? "Вернуть из архива" : "В архив"}
         >
           {archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+          <span>{archived ? "Вернуть из архива" : "В архив"}</span>
         </button>
       </form>
       <form
@@ -30,6 +31,7 @@ export function ChatThreadMenu({ threadId, archived }: { threadId: string; archi
         <input type="hidden" name="threadId" value={threadId} />
         <button type="submit" className="danger" aria-label="Удалить у себя" title="Удалить у себя">
           <Trash2 size={16} />
+          <span>Удалить у себя</span>
         </button>
       </form>
       </div>

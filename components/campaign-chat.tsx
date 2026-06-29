@@ -146,6 +146,7 @@ export function CampaignChat({
             window.setTimeout(() => setRefreshing(false), 700);
           }}
           aria-label="Обновить чат"
+          title="Обновить чат"
         >
           <RefreshCw size={17} />
         </button>
@@ -154,7 +155,7 @@ export function CampaignChat({
       {campaignTitle && campaignHref ? (
         <Link className="chat-order-link" href={campaignHref} prefetch>
           <span><small>Заказ</small><b>{campaignTitle}</b></span>
-          <ArrowUpRight size={18} />
+          <strong className="chat-order-action">Открыть заказ <ArrowUpRight size={17} /></strong>
         </Link>
       ) : null}
 

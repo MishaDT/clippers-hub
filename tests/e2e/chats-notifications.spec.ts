@@ -24,8 +24,7 @@ test("mobile chat filters open, apply and close without reload", async ({ page, 
   await expect(page.getByPlaceholder("Напишите сообщение")).toBeVisible();
   await page.getByRole("link", { name: /Все чаты/ }).click();
 
-  await trigger.click();
-  await page.getByRole("button", { name: /Коллабы/ }).click();
+  await page.locator(".chat-type-tabs").getByRole("link", { name: /Коллабы/ }).click();
   await expect(page).toHaveURL(/type=collabs/);
   await expect(page.getByRole("dialog", { name: "Фильтры чатов" })).toHaveCount(0);
 });
