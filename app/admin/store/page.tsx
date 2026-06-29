@@ -1,10 +1,89 @@
-import { PackagePlus, ShoppingBag } from "lucide-react";
+import { Boxes, ChevronDown, Gift, Link2, PackagePlus, ShoppingBag } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
-import { Card, Tag } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { adminSaveStoreOfferAction, adminSetStoreOfferActiveAction, adminUpdateRedemptionAction } from "@/app/admin/store/actions";
 
 export const dynamic = "force-dynamic";
+
+const kindLabels: Record<string, string> = {
+  RP_REWARD: "Награда за RP",
+  PARTNER_LINK: "Партнёрская ссылка",
+  PAMPADU_WIDGET: "Витрина Pampadu"
+};
+
+function OfferFields({
+  offer
+}: {
+  offer?: {
+    id: string;
+    kind: string;
+    title: string;
+    description: string;
+    url: string | null;
+    imageUrl: string | null;
+    qrImageUrl: string | null;
+    priceRp: number;
+    stock: number | null;
+    sortOrder: number;
+    active: boolean;
+    featured: boolean;
+  };
+}) {
+  return (
+    <form className="admin-store-form" action={adminSaveStoreOfferAction}>
+      {offer ? <input type="hidden" name="id" value={offer.id} /> : null}
+      {offer ? <input type="hidden" name="existingImageUrl" value={offer.imageUrl || ""} /> : null}
+      {offer ? <input type="hidden" name="existingQrImageUrl" value={offer.qrImageUrl || ""} /> : null}
+
+      <label>
+        <span>Тип предложения</span>
+        <select name="kind" defaultValue={offer?.kind || "RP_REWARD"}>
+          <option value="RP_REWARD">Награда за RP</option>
+          <option value="PARTNER_LINK">Партнёрская ссылка</option>
+          <option value="PAMPADU_WIDGET">Витрина Pampadu</option>
+        </select>
+      </label>
+      <label className="wide">
+        <span>Ссылка</span>
+        <input name="url" type="url" defaultValue={offer?.url || ""} placeholder="https://… — данные подтянутся автоматически" />
+      </label>
+      <label>
+        <span>Название</span>
+        <input name="title" defaultValue={offer?.title || ""} placeholder="Можно оставить пустым" />
+      </label>
+      <label className="wide">
+        <span>Описание</span>
+        <textarea name="description" rows={3} defaultValue={offer?.description || ""} placeholder="Коротко опишите предложение" />
+      </label>
+
+      <div className="admin-store-number-grid wide">
+        <label><span>Цена RP</span><input name="priceRp" type="number" min="0" defaultValue={offer?.priceRp ?? 0} /></label>
+        <label><span>Остаток</span><input name="stock" type="number" min="0" defaultValue={offer?.stock ?? ""} placeholder="Без лимита" /></label>
+        <label><span>Порядок</span><input name="sortOrder" type="number" defaultValue={offer?.sortOrder ?? 0} /></label>
+      </div>
+
+      <label className="wide">
+        <span>Картинка по URL</span>
+        <input name="imageUrl" type="url" defaultValue={offer?.imageUrl?.startsWith("http") ? offer.imageUrl : ""} placeholder="https://…" />
+      </label>
+      <label className="admin-file-field">
+        <span>Загрузить картинку</span>
+        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+      </label>
+      <label className="admin-file-field">
+        <span>Свой QR, если нужен</span>
+        <input name="qrFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+      </label>
+
+      <div className="admin-store-switches wide">
+        <label className="check"><input name="active" type="checkbox" defaultChecked={offer?.active ?? true} /><span>Показывать в магазине</span></label>
+        <label className="check"><input name="featured" type="checkbox" defaultChecked={offer?.featured ?? false} /><span>Рекомендуемое</span></label>
+      </div>
+      <button className="btn btn-primary admin-store-save wide" type="submit">{offer ? "Сохранить изменения" : "Добавить предложение"}</button>
+    </form>
+  );
+}
 
 export default async function AdminStorePage() {
   const [offers, redemptions] = await Promise.all([
@@ -15,71 +94,69 @@ export default async function AdminStorePage() {
       take: 100
     })
   ]);
+  const activeCount = offers.filter((offer) => offer.active).length;
+  const pendingCount = redemptions.filter((item) => item.status === "NEW" || item.status === "CONFIRMED").length;
 
   return (
     <AdminShell>
-      <main className="admin-screen">
+      <main className="admin-screen admin-store-screen">
         <AdminPageHeader
-          eyebrow="Магазин"
-          title="Витрина и награды RP"
-          description="Добавляйте ссылки, товары и виджеты. Для публичной ссылки название и картинка подтянутся автоматически."
+          eyebrow="Магазин ReelPay"
+          title="Витрина и награды"
+          description="Добавляйте товары за RP и партнёрские ссылки. Название, описание, картинка и QR могут сформироваться автоматически."
         />
 
-        <Card className="admin-panel admin-store-editor">
-          <div className="section-head compact"><h2><PackagePlus size={18} /> Новое предложение</h2></div>
-          <form action={adminSaveStoreOfferAction}>
-            <label>Тип<select name="kind" defaultValue="RP_REWARD"><option value="RP_REWARD">Награда за RP</option><option value="PARTNER_LINK">Партнёрская ссылка</option><option value="PAMPADU_WIDGET">Виджет Pampadu</option></select></label>
-            <label className="wide">Ссылка<input name="url" type="url" placeholder="https://… — данные подтянутся автоматически" /></label>
-            <label>Название<input name="title" placeholder="Можно оставить пустым" /></label>
-            <label className="wide">Описание<textarea name="description" rows={3} placeholder="Можно оставить пустым" /></label>
-            <label>Цена RP<input name="priceRp" type="number" min="0" defaultValue="0" /></label>
-            <label>Остаток<input name="stock" type="number" min="0" placeholder="Пусто = без лимита" /></label>
-            <label>Порядок<input name="sortOrder" type="number" defaultValue="0" /></label>
-            <label>Картинка URL<input name="imageUrl" type="url" /></label>
-            <label>Загрузить картинку<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /></label>
-            <label>Свой QR<input name="qrFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /></label>
-            <label className="check"><input name="active" type="checkbox" defaultChecked /> Активно</label>
-            <label className="check"><input name="featured" type="checkbox" /> Рекомендуемое</label>
-            <button className="btn btn-primary" type="submit">Добавить</button>
-          </form>
-        </Card>
+        <section className="admin-store-summary" aria-label="Сводка магазина">
+          <Card><Boxes size={19} /><span><b>{offers.length}</b><small>всего предложений</small></span></Card>
+          <Card><Gift size={19} /><span><b>{activeCount}</b><small>показываются сейчас</small></span></Card>
+          <Card><ShoppingBag size={19} /><span><b>{pendingCount}</b><small>заявок требуют внимания</small></span></Card>
+        </section>
+
+        <details className="admin-store-card admin-store-create">
+          <summary>
+            <span className="admin-store-summary-icon"><PackagePlus size={20} /></span>
+            <span><small>Новое предложение</small><strong>Добавить товар или партнёрскую ссылку</strong></span>
+            <ChevronDown size={19} />
+          </summary>
+          <div className="admin-store-card-body"><OfferFields /></div>
+        </details>
+
+        <section className="admin-store-section-head">
+          <div><small>Каталог</small><h2>Предложения магазина</h2></div>
+          <span>{offers.length} шт.</span>
+        </section>
 
         <section className="admin-store-list">
           {offers.map((offer) => (
-            <Card className="admin-panel" key={offer.id}>
-              <div className="admin-store-offer-head">
-                <div><small>{offer.kind}</small><h2>{offer.title}</h2><p>{offer.description}</p></div>
-                <Tag tone={offer.active ? "good" : "soft"}>{offer.active ? "Активно" : "Скрыто"}</Tag>
+            <details className="admin-store-card admin-store-offer" key={offer.id}>
+              <summary>
+                <span className="admin-store-summary-icon">{offer.kind === "RP_REWARD" ? <Gift size={19} /> : <Link2 size={19} />}</span>
+                <span className="admin-store-offer-copy">
+                  <small>{kindLabels[offer.kind] || offer.kind}</small>
+                  <strong>{offer.title}</strong>
+                  <em>{offer.priceRp ? `${offer.priceRp} RP` : "Партнёрское предложение"}{offer.stock !== null ? ` · остаток ${offer.stock}` : ""}</em>
+                </span>
+                <span className={`admin-store-state ${offer.active ? "active" : ""}`}>{offer.active ? "Активно" : "Скрыто"}</span>
+                <ChevronDown size={19} />
+              </summary>
+              <div className="admin-store-card-body">
+                <p className="admin-store-description">{offer.description}</p>
+                <OfferFields offer={offer} />
+                <form className="admin-store-visibility" action={adminSetStoreOfferActiveAction}>
+                  <input type="hidden" name="id" value={offer.id} />
+                  <input type="hidden" name="active" value={offer.active ? "0" : "1"} />
+                  <button className="btn btn-small btn-ghost" type="submit">{offer.active ? "Скрыть из магазина" : "Показывать в магазине"}</button>
+                </form>
               </div>
-              <form className="admin-store-edit" action={adminSaveStoreOfferAction}>
-                <input type="hidden" name="id" value={offer.id} />
-                <input type="hidden" name="existingImageUrl" value={offer.imageUrl || ""} />
-                <input type="hidden" name="existingQrImageUrl" value={offer.qrImageUrl || ""} />
-                <label>Тип<select name="kind" defaultValue={offer.kind}><option value="RP_REWARD">Награда за RP</option><option value="PARTNER_LINK">Партнёрская ссылка</option><option value="PAMPADU_WIDGET">Виджет Pampadu</option></select></label>
-                <label>Название<input name="title" defaultValue={offer.title} /></label>
-                <label className="wide">Ссылка<input name="url" type="url" defaultValue={offer.url || ""} /></label>
-                <label className="wide">Описание<textarea name="description" rows={2} defaultValue={offer.description} /></label>
-                <label>Цена RP<input name="priceRp" type="number" min="0" defaultValue={offer.priceRp} /></label>
-                <label>Остаток<input name="stock" type="number" min="0" defaultValue={offer.stock ?? ""} /></label>
-                <label>Порядок<input name="sortOrder" type="number" defaultValue={offer.sortOrder} /></label>
-                <label>Картинка URL<input name="imageUrl" type="url" defaultValue={offer.imageUrl?.startsWith("http") ? offer.imageUrl : ""} /></label>
-                <label>Новая картинка<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /></label>
-                <label>Новый QR<input name="qrFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /></label>
-                <label className="check"><input name="active" type="checkbox" defaultChecked={offer.active} /> Активно</label>
-                <label className="check"><input name="featured" type="checkbox" defaultChecked={offer.featured} /> Рекомендуемое</label>
-                <button className="btn" type="submit">Сохранить</button>
-              </form>
-              <form action={adminSetStoreOfferActiveAction}>
-                <input type="hidden" name="id" value={offer.id} />
-                <input type="hidden" name="active" value={offer.active ? "0" : "1"} />
-                <button className="btn btn-small btn-ghost" type="submit">{offer.active ? "Скрыть" : "Включить"}</button>
-              </form>
-            </Card>
+            </details>
           ))}
         </section>
 
-        <Card className="admin-panel">
-          <div className="section-head compact"><h2><ShoppingBag size={18} /> Заявки за RP</h2></div>
+        <Card className="admin-panel admin-store-orders">
+          <div className="admin-store-section-head">
+            <div><small>Покупки</small><h2><ShoppingBag size={18} /> Заявки за RP</h2></div>
+            <span>{redemptions.length}</span>
+          </div>
           <div className="admin-store-redemptions">
             {redemptions.length ? redemptions.map((item) => (
               <article key={item.id}>
@@ -91,7 +168,7 @@ export default async function AdminStorePage() {
                   <button type="submit">Сохранить</button>
                 </form>
               </article>
-            )) : <p className="muted">Заявок пока нет.</p>}
+            )) : <div className="admin-store-empty"><ShoppingBag size={24} /><strong>Заявок пока нет</strong><span>Новые покупки за RP появятся здесь.</span></div>}
           </div>
         </Card>
       </main>

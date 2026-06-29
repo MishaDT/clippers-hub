@@ -199,8 +199,8 @@ export default async function ProfilePage() {
             </div>
           </div>
           <div className="profile-edit-actions">
-            <Link href="/settings/profile" aria-label="Редактировать профиль"><SquarePen size={18} /></Link>
-            <Link href="/settings/account" aria-label="Настройки аккаунта"><Settings size={18} /></Link>
+            <Link href="/settings/profile" aria-label="Редактировать профиль"><SquarePen size={18} /><span>Редактировать</span></Link>
+            <Link href="/settings/account" aria-label="Настройки аккаунта"><Settings size={18} /><span>Настройки</span></Link>
           </div>
         </header>
 
@@ -293,15 +293,15 @@ export default async function ProfilePage() {
             </section>
 
             <ProfileDisclosure storageKey="worker-history" title="Последние выплаты" summary="История операций">
-              <Card className="stack-list">
+              <Card className="stack-list profile-payments">
                 {data.payouts.length ? data.payouts.map((payment) => (
-                  <div className="pay-row" key={payment.id}>
-                    <CheckCircle2 color={payment.status === "COMPLETED" ? "#22c55e" : "#f59e0b"} />
+                  <div className={`pay-row pay-${payment.status.toLowerCase()}`} key={payment.id}>
+                    <span className="pay-status-icon"><CheckCircle2 size={19} /></span>
                     <div>
                       <strong>{payment.type === "WITHDRAWAL" ? "Вывод средств" : "Оплата работы"}</strong>
                       <p>{payment.createdAt.toLocaleDateString("ru-RU")} · {payment.status === "COMPLETED" ? "Выполнено" : payment.status === "PENDING" ? "Ожидает" : "Проверяется"}</p>
                     </div>
-                    <span>{rub(payment.netCents)}</span>
+                    <b>{rub(payment.netCents)}</b>
                   </div>
                 )) : <p className="muted">Выплат пока нет.</p>}
               </Card>
