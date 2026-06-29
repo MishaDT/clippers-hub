@@ -56,7 +56,7 @@ async function loadWorker(userId: string) {
         id: true,
         currentViews: true,
         status: true,
-        campaign: { select: { title: true, viewThreshold: true } }
+        campaign: { select: { id: true, title: true, viewThreshold: true } }
       },
       orderBy: { updatedAt: "desc" },
       take: 5
@@ -242,18 +242,33 @@ export default async function ProfilePage() {
               <Card><WalletCards color="#c084fc" /><span>Доступно</span><strong>{rub(user.balanceCents)}</strong></Card>
             </section>
 
-            <section className="section-list">
-              <div className="section-head compact"><h2>Текущие работы</h2><Link href="/campaigns">Все заказы</Link></div>
-              <Card className="stack-list">
+            <section className="section-list profile-work-section">
+              <div className="section-head compact profile-work-head">
+                <div>
+                  <span className="eyebrow">Рабочая зона</span>
+                  <h2>Текущие работы</h2>
+                </div>
+                <Link href="/campaigns">Все заказы <ArrowRight size={15} /></Link>
+              </div>
+              <Card className="profile-work-list">
                 {data.submissions.length ? data.submissions.map((submission) => (
-                  <div className="progress-row" key={submission.id}>
-                    <div>
+                  <Link className="profile-work-row" href={`/campaigns/${submission.campaign.id}`} key={submission.id}>
+                    <span className="profile-work-icon"><Film size={19} /></span>
+                    <div className="profile-work-main">
                       <strong>{submission.campaign.title}</strong>
-                      <p>{compactNumber(submission.currentViews)} просмотров</p>
-                      <i style={{ width: `${Math.min(100, Math.round((submission.currentViews / Math.max(submission.campaign.viewThreshold, 1)) * 100))}%` }} />
+                      <div className="profile-work-meta">
+                        <span><Eye size={14} /> {compactNumber(submission.currentViews)} просмотров</span>
+                        <span>{Math.min(100, Math.round((submission.currentViews / Math.max(submission.campaign.viewThreshold, 1)) * 100))}% цели</span>
+                      </div>
+                      <span className="profile-work-progress" aria-hidden="true">
+                        <i style={{ width: `${Math.min(100, Math.round((submission.currentViews / Math.max(submission.campaign.viewThreshold, 1)) * 100))}%` }} />
+                      </span>
                     </div>
-                    <span>{submissionLabels[submission.status] || submission.status}</span>
-                  </div>
+                    <span className={`profile-work-status status-${submission.status.toLowerCase()}`}>
+                      {submissionLabels[submission.status] || submission.status}
+                    </span>
+                    <ArrowRight className="profile-work-arrow" size={17} />
+                  </Link>
                 )) : <p className="muted">Активных работ пока нет.</p>}
               </Card>
             </section>
