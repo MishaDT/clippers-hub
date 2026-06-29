@@ -155,7 +155,7 @@ async function main() {
   const submissions = [];
   for (let i = 0; i < 120; i++) {
     const campaign = campaigns[i % campaigns.length];
-    const worker = workers[i % workers.length];
+    const worker = workers[Math.floor(i / campaigns.length) % workers.length];
     const platform = platforms[i % platforms.length];
     const views = Math.floor(1800 + ((i * 74113) % 1400000));
     const likes = Math.floor(views * (0.035 + (i % 6) * 0.006));
@@ -185,6 +185,23 @@ async function main() {
     });
     submissions.push(submission);
   }
+
+  const comboCampaign = campaigns[0];
+  await prisma.chatThread.create({
+    data: {
+      kind: "CAMPAIGN",
+      campaignId: comboCampaign.id,
+      clientId: comboCampaign.ownerId,
+      workerId: createdUsers.studio_both.id,
+      messages: {
+        create: {
+          senderId: createdUsers.studio_both.id,
+          type: "SYSTEM",
+          body: "Заказ взят. Здесь можно обсудить детали работы."
+        }
+      }
+    }
+  });
 
   const transactions = [];
   for (const campaign of campaigns) {

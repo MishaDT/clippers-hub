@@ -20,12 +20,13 @@ async function main() {
     ? await prisma.$queryRaw`
         SELECT id, "userId", kind, title, href, "occurrenceCount"
         FROM "Notification"
-        WHERE "groupKey" IS NULL
+        WHERE "groupKey" IS NULL AND "archivedAt" IS NULL
         ORDER BY "lastOccurredAt" DESC, "createdAt" DESC
       `
     : await prisma.$queryRaw`
         SELECT id, "userId", kind, title, href, 1 AS "occurrenceCount"
         FROM "Notification"
+        WHERE "archivedAt" IS NULL
         ORDER BY "createdAt" DESC
       `;
   const groups = new Map();

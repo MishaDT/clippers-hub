@@ -7,10 +7,9 @@ export default async function globalSetup() {
   if (parsed.searchParams.get("schema") !== "reelpay_e2e") {
     throw new Error("E2E is blocked: DATABASE_URL must use the reelpay_e2e schema.");
   }
-  execFileSync("npx", ["prisma", "db", "push", "--skip-generate", "--accept-data-loss"], {
+  execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "db", "push", "--skip-generate", "--force-reset"], {
     stdio: "inherit",
-    env: process.env,
-    shell: process.platform === "win32"
+    env: process.env
   });
   execFileSync("node", ["prisma/seed.js"], { stdio: "inherit", env: process.env });
 }
