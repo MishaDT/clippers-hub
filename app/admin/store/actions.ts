@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/admin";
 import { stringify } from "@/lib/json";
 import { prisma } from "@/lib/prisma";
 import { fetchStoreMetadata, safeHttpsUrl } from "@/lib/store";
+import { syncPampaduCatalog } from "@/lib/pampadu-catalog";
 
 const kinds = ["RP_REWARD", "PARTNER_LINK", "PAMPADU_WIDGET"] as const;
 const statuses = ["NEW", "CONFIRMED", "FULFILLED", "CANCELLED"] as const;
@@ -28,6 +29,8 @@ export async function adminSaveStoreOfferAction(formData: FormData) {
   const id = text(formData.get("id"), 80);
   const kindInput = text(formData.get("kind"), 30);
   const kind = kinds.includes(kindInput as (typeof kinds)[number]) ? kindInput : "RP_REWARD";
+  const category = text(formData.get("category"), 60) || null;
+  const provider = text(formData.get("provider"), 140) || null;
   const url = safeHttpsUrl(formData.get("url"));
   let title = text(formData.get("title"), 120);
   let description = text(formData.get("description"), 600);
@@ -54,6 +57,8 @@ export async function adminSaveStoreOfferAction(formData: FormData) {
   const stock = stockRaw === "" ? null : Math.max(0, Math.min(1_000_000, Number(stockRaw) || 0));
   const data = {
     kind,
+    category,
+    provider,
     title,
     description,
     url,
@@ -75,6 +80,19 @@ export async function adminSaveStoreOfferAction(formData: FormData) {
   revalidatePath("/leaderboard");
   revalidatePath("/admin/store");
   redirect("/admin/store?saved=1");
+}
+
+export async function adminImportPampaduCatalogAction() {
+  const admin = await requireAdmin();
+  try {
+    const count = await syncPampaduCatalog(admin.id);
+    revalidatePath("/store");
+    revalidatePath("/admin/store");
+    redirect(`/admin/store?imported=${count}`);
+  } catch (error) {
+    if (error && typeof error === "object" && "digest" in error) throw error;
+    redirect("/admin/store?importError=1");
+  }
 }
 
 export async function adminSetStoreOfferActiveAction(formData: FormData) {

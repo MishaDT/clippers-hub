@@ -1,8 +1,9 @@
-import { Boxes, ChevronDown, Gift, Link2, PackagePlus, ShoppingBag } from "lucide-react";
+import { Boxes, ChevronDown, Download, Gift, Link2, PackagePlus, RefreshCw, ShoppingBag } from "lucide-react";
+import Link from "next/link";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
-import { adminSaveStoreOfferAction, adminSetStoreOfferActiveAction, adminUpdateRedemptionAction } from "@/app/admin/store/actions";
+import { adminImportPampaduCatalogAction, adminSaveStoreOfferAction, adminSetStoreOfferActiveAction, adminUpdateRedemptionAction } from "@/app/admin/store/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ function OfferFields({
   offer?: {
     id: string;
     kind: string;
+    category: string | null;
+    provider: string | null;
     title: string;
     description: string;
     url: string | null;
@@ -43,6 +46,20 @@ function OfferFields({
           <option value="PARTNER_LINK">Партнёрская ссылка</option>
           <option value="PAMPADU_WIDGET">Витрина Pampadu</option>
         </select>
+      </label>
+      <label>
+        <span>Категория</span>
+        <select name="category" defaultValue={offer?.category || ""}>
+          <option value="">Без категории</option>
+          <option value="DEBIT_CARD">Дебетовая карта</option>
+          <option value="CREDIT_CARD">Кредитная карта</option>
+          <option value="BUSINESS_ACCOUNT">РКО для бизнеса</option>
+          <option value="OTHER">Другое</option>
+        </select>
+      </label>
+      <label>
+        <span>Банк или партнёр</span>
+        <input name="provider" defaultValue={offer?.provider || ""} placeholder="Например, Т-Банк" />
       </label>
       <label className="wide">
         <span>Ссылка</span>
@@ -85,7 +102,12 @@ function OfferFields({
   );
 }
 
-export default async function AdminStorePage() {
+export default async function AdminStorePage({
+  searchParams
+}: {
+  searchParams: Promise<{ imported?: string; importError?: string; saved?: string; edit?: string }>;
+}) {
+  const params = await searchParams;
   const [offers, redemptions] = await Promise.all([
     prisma.storeOffer.findMany({ orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] }),
     prisma.storeRedemption.findMany({
@@ -96,6 +118,7 @@ export default async function AdminStorePage() {
   ]);
   const activeCount = offers.filter((offer) => offer.active).length;
   const pendingCount = redemptions.filter((item) => item.status === "NEW" || item.status === "CONFIRMED").length;
+  const importedCount = offers.filter((offer) => offer.source === "PAMPADU").length;
 
   return (
     <AdminShell>
@@ -106,11 +129,27 @@ export default async function AdminStorePage() {
           description="Добавляйте товары за RP и партнёрские ссылки. Название, описание, картинка и QR могут сформироваться автоматически."
         />
 
+        {params.imported ? <p className="admin-store-alert good">Импортировано и обновлено предложений: {params.imported}.</p> : null}
+        {params.importError ? <p className="admin-store-alert bad">Не удалось получить предложения Pampadu. Попробуйте обновить каталог позже.</p> : null}
+
         <section className="admin-store-summary" aria-label="Сводка магазина">
           <Card><Boxes size={19} /><span><b>{offers.length}</b><small>всего предложений</small></span></Card>
           <Card><Gift size={19} /><span><b>{activeCount}</b><small>показываются сейчас</small></span></Card>
           <Card><ShoppingBag size={19} /><span><b>{pendingCount}</b><small>заявок требуют внимания</small></span></Card>
         </section>
+
+        <Card className="admin-store-import">
+          <span className="admin-store-summary-icon"><Download size={20} /></span>
+          <div>
+            <small>Автоматический импорт</small>
+            <strong>Каталог Pampadu</strong>
+            <p>Загрузит дебетовые и кредитные карты, а также РКО. Скрытые вами карточки не включатся обратно.</p>
+          </div>
+          <em>{importedCount} в базе</em>
+          <form action={adminImportPampaduCatalogAction}>
+            <button className="btn btn-primary" type="submit"><RefreshCw size={16} /> Обновить каталог</button>
+          </form>
+        </Card>
 
         <details className="admin-store-card admin-store-create">
           <summary>
@@ -127,19 +166,23 @@ export default async function AdminStorePage() {
         </section>
 
         <section className="admin-store-list">
-          {offers.map((offer) => (
-            <details className="admin-store-card admin-store-offer" key={offer.id}>
-              <summary>
+          {offers.map((offer) => {
+            const editing = params.edit === offer.id;
+            return (
+            <article className={`admin-store-card admin-store-offer ${editing ? "is-editing" : ""}`} id={`offer-${offer.id}`} key={offer.id}>
+              <div className="admin-store-offer-row">
                 <span className="admin-store-summary-icon">{offer.kind === "RP_REWARD" ? <Gift size={19} /> : <Link2 size={19} />}</span>
                 <span className="admin-store-offer-copy">
-                  <small>{kindLabels[offer.kind] || offer.kind}</small>
+                  <small>{offer.source === "PAMPADU" ? "Pampadu" : kindLabels[offer.kind] || offer.kind}{offer.category ? ` · ${offer.category}` : ""}</small>
                   <strong>{offer.title}</strong>
                   <em>{offer.priceRp ? `${offer.priceRp} RP` : "Партнёрское предложение"}{offer.stock !== null ? ` · остаток ${offer.stock}` : ""}</em>
                 </span>
                 <span className={`admin-store-state ${offer.active ? "active" : ""}`}>{offer.active ? "Активно" : "Скрыто"}</span>
-                <ChevronDown size={19} />
-              </summary>
-              <div className="admin-store-card-body">
+                <Link className="admin-store-edit-link" href={editing ? "/admin/store" : `/admin/store?edit=${offer.id}#offer-${offer.id}`}>
+                  {editing ? "Закрыть" : "Изменить"}
+                </Link>
+              </div>
+              {editing ? <div className="admin-store-card-body">
                 <p className="admin-store-description">{offer.description}</p>
                 <OfferFields offer={offer} />
                 <form className="admin-store-visibility" action={adminSetStoreOfferActiveAction}>
@@ -147,9 +190,9 @@ export default async function AdminStorePage() {
                   <input type="hidden" name="active" value={offer.active ? "0" : "1"} />
                   <button className="btn btn-small btn-ghost" type="submit">{offer.active ? "Скрыть из магазина" : "Показывать в магазине"}</button>
                 </form>
-              </div>
-            </details>
-          ))}
+              </div> : null}
+            </article>
+          )})}
         </section>
 
         <Card className="admin-panel admin-store-orders">

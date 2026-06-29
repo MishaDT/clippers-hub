@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2, Coins, ExternalLink, Package, ShoppingBag, Sparkles } from "lucide-react";
+import { CheckCircle2, Coins, Package, ShoppingBag, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/ui";
-import { PampaduWidget } from "@/components/pampadu-widget";
+import { PartnerCatalog } from "@/components/partner-catalog";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PAMPADU_URL, qrDataUrl } from "@/lib/store";
+import { parseJson } from "@/lib/json";
 import { redeemStoreOfferAction } from "@/app/store/actions";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export default async function StorePage({
   const params = await searchParams;
   const tab = params.tab === "partners" ? "partners" : "rp";
   const user = await getCurrentUser();
-  const [offers, redemptions, pampadu, partnerLinks] = await Promise.all([
+  const [offers, redemptions, partnerLinks] = await Promise.all([
     prisma.storeOffer.findMany({ where: { active: true, kind: "RP_REWARD" }, orderBy: [{ featured: "desc" }, { sortOrder: "asc" }] }),
     user ? prisma.storeRedemption.findMany({
       where: { userId: user.id },
@@ -30,15 +30,23 @@ export default async function StorePage({
       orderBy: { createdAt: "desc" },
       take: 8
     }) : Promise.resolve([]),
-    prisma.storeOffer.findFirst({ where: { active: true, kind: "PAMPADU_WIDGET" }, orderBy: [{ featured: "desc" }, { sortOrder: "asc" }] }),
     prisma.storeOffer.findMany({ where: { active: true, kind: "PARTNER_LINK", url: { not: null } }, orderBy: [{ featured: "desc" }, { sortOrder: "asc" }] })
   ]);
-  const partnerUrl = pampadu?.url || PAMPADU_URL;
-  const partnerQr = pampadu?.qrImageUrl || await qrDataUrl(partnerUrl);
-  const partnerCards = await Promise.all(partnerLinks.map(async (offer) => ({
-    ...offer,
-    qr: offer.qrImageUrl || await qrDataUrl(offer.url!)
-  })));
+  const partnerCards = partnerLinks.map((offer) => ({
+    id: offer.id,
+    title: offer.title,
+    description: offer.description,
+    url: offer.url!,
+    imageUrl: offer.source === "PAMPADU" && offer.externalId
+      ? `/api/store/partner-image/${encodeURIComponent(offer.externalId)}`
+      : offer.imageUrl,
+    provider: offer.provider,
+    category: offer.category,
+    features: parseJson<string[]>(offer.featuresJson, []),
+    licenseNumber: offer.licenseNumber,
+    disclaimer: offer.disclaimer,
+    featured: offer.featured
+  }));
   const purchase = typeof params.purchase === "string" ? params.purchase : "";
   const message = purchase === "ok"
     ? "Заявка создана. Мы свяжемся с вами по email."
@@ -72,19 +80,7 @@ export default async function StorePage({
         {message ? <p className={`store-notice ${purchase === "ok" ? "good" : "bad"}`} role="status">{message}</p> : null}
 
         {tab === "partners" ? (
-          <>
-            {partnerCards.length ? <section className="partner-link-grid">
-              {partnerCards.map((offer) => (
-                <article key={offer.id}>
-                  {offer.imageUrl ? <img className="partner-link-cover" src={offer.imageUrl} alt="" loading="lazy" /> : <span className="partner-link-cover"><Sparkles size={30} /></span>}
-                  <div><h2>{offer.title}</h2><p>{offer.description}</p></div>
-                  <img className="partner-link-qr" src={offer.qr} alt={`QR-код: ${offer.title}`} width={84} height={84} />
-                  <a href={offer.url!} target="_blank" rel="noopener noreferrer sponsored nofollow">Открыть предложение <ExternalLink size={15} /></a>
-                </article>
-              ))}
-            </section> : null}
-            <PampaduWidget url={partnerUrl} qrDataUrl={partnerQr} />
-          </>
+          <PartnerCatalog offers={partnerCards} />
         ) : (
           <>
             <section className="store-offer-grid">
