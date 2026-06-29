@@ -11873,6 +11873,124 @@ body{min-height:100dvh}.content:not(.content-immersive){min-height:calc(100dvh -
   background: #2a2e27;
   color: #f4f6ee;
 }
+.chat-thread-row > .thread-rowlink {
+  right: 42px;
+}
+.chat-thread-row > .thread-menu {
+  z-index: 20 !important;
+  pointer-events: auto;
+}
+.chat-thread-row .thread-menu-trigger {
+  position: relative;
+  z-index: 21;
+}
+
+/* Final chat stability: spacing, readable states and bounded composer. */
+.chat-sidebar > .chat-search {
+  margin-top: 9px !important;
+}
+.chat-progress-strip.is-collab {
+  gap: 9px;
+  padding: 9px 12px;
+}
+.chat-progress-strip.is-collab .chat-progress-toggle {
+  min-height: 30px;
+}
+.chat-progress-strip.is-collab .chat-progress-steps {
+  padding-top: 1px;
+}
+.chat-progress-strip.is-collab .chat-progress-steps span {
+  gap: 5px;
+}
+.chat-collab-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(201,243,29,.28);
+  border-radius: 9px;
+  background: rgba(201,243,29,.1);
+  color: #dcff50;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.chat-collab-next:hover {
+  background: rgba(201,243,29,.17);
+}
+.chat-collab-next:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+.chat-bubble.system {
+  background: #151a16;
+  border-color: rgba(201,243,29,.16);
+  color: #c5cbc6;
+}
+.chat-bubble.system p {
+  color: inherit !important;
+}
+.chat-form {
+  flex: 0 0 auto;
+  min-height: 54px;
+  max-height: 132px;
+}
+.chat-form textarea {
+  box-sizing: border-box;
+  height: 40px;
+  min-height: 40px !important;
+  max-height: 96px !important;
+  resize: none !important;
+  overflow-y: auto;
+  align-self: center;
+}
+.chat-list,
+.chat-thread-list,
+.chat-form textarea {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,243,29,.45) rgba(255,255,255,.035);
+}
+.chat-list::-webkit-scrollbar,
+.chat-thread-list::-webkit-scrollbar,
+.chat-form textarea::-webkit-scrollbar {
+  width: 7px;
+}
+.chat-list::-webkit-scrollbar-track,
+.chat-thread-list::-webkit-scrollbar-track,
+.chat-form textarea::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.025);
+  border-radius: 999px;
+}
+.chat-list::-webkit-scrollbar-thumb,
+.chat-thread-list::-webkit-scrollbar-thumb,
+.chat-form textarea::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(201,243,29,.42);
+  background-clip: padding-box;
+}
+@media (max-width: 760px) {
+  .chat-sidebar > .chat-search {
+    margin-top: 9px !important;
+  }
+  .chat-progress-strip.is-collab {
+    padding: 8px 9px;
+  }
+  .chat-progress-strip.is-collab .chat-progress-steps {
+    overflow-x: auto;
+    padding-inline: 4px;
+  }
+  .chat-progress-strip.is-collab .chat-progress-steps span {
+    min-width: 68px;
+    font-size: 9px;
+  }
+  .chat-collab-next {
+    width: 100%;
+  }
+}
 
 /* Profile v3: visual language from the approved ReelPay mockup, using real app data. */
 body:has(.profile-screen) {
@@ -12796,4 +12914,221 @@ body:has(.up-screen) {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Compact leaderboard rail and full progress hub. */
+.progress-carousel,
+.affiliate-carousel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #171a17, #0e110f);
+}
+.progress-carousel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px 6px;
+}
+.progress-carousel > header span,
+.progress-carousel > header a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 850;
+}
+.progress-carousel > header a { color: #c9f31d; }
+.progress-carousel-window { overflow: hidden; }
+.progress-carousel-track,
+.affiliate-track {
+  display: flex;
+  transition: transform .42s cubic-bezier(.22,.8,.3,1);
+}
+.progress-carousel-track > article {
+  display: grid;
+  grid-template-columns: 48px minmax(0,1fr);
+  gap: 11px;
+  min-width: 100%;
+  padding: 13px 14px 10px;
+}
+.progress-carousel-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(201,243,29,.24);
+  border-radius: 14px;
+  background: rgba(201,243,29,.1);
+  color: #dfff58;
+}
+.progress-carousel-emoji { font-size: 24px; }
+.progress-carousel-copy { display: grid; gap: 3px; min-width: 0; }
+.progress-carousel-copy small { color: #8f978f; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.progress-carousel-copy strong { overflow: hidden; color: #f6f8f4; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.progress-carousel-copy p { margin: 0; color: #9ca39d; font-size: 11px; line-height: 1.35; }
+.progress-carousel-copy em { color: #c8cec8; font-size: 10px; font-style: normal; }
+.progress-carousel-bar,
+.progress-wide-bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+}
+.progress-carousel-bar i,
+.progress-wide-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8fac16, #c9f31d);
+  box-shadow: 0 0 12px rgba(201,243,29,.28);
+}
+.progress-carousel > footer {
+  display: grid;
+  grid-template-columns: 30px 1fr 30px;
+  align-items: center;
+  padding: 3px 10px 10px;
+}
+.progress-carousel > footer > button,
+.affiliate-carousel > footer button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  background: rgba(255,255,255,.04);
+  color: #c8cec8;
+}
+.progress-carousel > footer > div {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+.progress-carousel > footer > div button {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #494f4a;
+}
+.progress-carousel > footer > div button.active {
+  width: 18px;
+  background: #c9f31d;
+}
+.affiliate-carousel {
+  background:
+    radial-gradient(circle at 90% 8%, rgba(201,243,29,.18), transparent 38%),
+    linear-gradient(145deg, #1b2410, #0d110c);
+}
+.affiliate-track > article {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-width: 100%;
+  padding: 16px;
+}
+.affiliate-eyebrow { display: flex; align-items: center; gap: 6px; color: #c9f31d; font-size: 10px; font-weight: 850; text-transform: uppercase; }
+.affiliate-carousel h3 { margin: 0; font-size: 20px; line-height: 1.1; }
+.affiliate-carousel p { margin: 0; color: #9da49d; font-size: 12px; line-height: 1.45; }
+.affiliate-carousel article > img { width: 104px; height: 104px; padding: 6px; border-radius: 12px; background: #fff; }
+.affiliate-carousel article > a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border-radius: 10px;
+  background: #c9f31d;
+  color: #0c1008;
+  font-size: 12px;
+  font-weight: 900;
+}
+.affiliate-carousel article > small { color: #7f877f; font-size: 10px; }
+.affiliate-carousel > footer { display: flex; align-items: center; justify-content: space-between; padding: 0 12px 12px; color: #8f978f; font-size: 10px; }
+
+.progress-page { width: min(1120px,100%); padding-bottom: 110px; }
+.progress-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px; color: #aeb5ae; font-size: 13px; font-weight: 750; }
+.progress-hero {
+  padding: clamp(24px,5vw,52px);
+  border: 1px solid rgba(201,243,29,.18);
+  border-radius: 24px;
+  background: radial-gradient(circle at 80% 20%, rgba(201,243,29,.15), transparent 35%), linear-gradient(145deg,#17200f,#0c100b);
+}
+.progress-hero > span { display: inline-flex; align-items: center; gap: 7px; color: #c9f31d; font-size: 12px; font-weight: 850; text-transform: uppercase; }
+.progress-hero h1 { margin: 10px 0 6px; font-size: clamp(34px,6vw,62px); line-height: .98; }
+.progress-hero p { max-width: 620px; margin: 0; color: #9fa69f; }
+.progress-summary { display: grid; grid-template-columns: minmax(0,1.7fr) minmax(240px,.7fr); gap: 14px; margin-top: 16px; }
+.progress-summary article,
+.progress-section {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  background: #121512;
+}
+.progress-current-league { display: grid; grid-template-columns: 84px 1fr; gap: 18px; padding: 22px; }
+.progress-big-emoji { display: grid; place-items: center; width: 78px; height: 78px; border-radius: 22px; background: rgba(201,243,29,.1); font-size: 42px; }
+.progress-current-league small,.progress-current-league p,.progress-current-league em,.progress-level-card em { color: #939b94; font-style: normal; }
+.progress-current-league h2 { margin: 2px 0; font-size: 26px; }
+.progress-current-league p { margin: 0 0 11px; font-size: 12px; }
+.progress-current-league em,.progress-level-card em { display: block; margin-top: 7px; font-size: 11px; }
+.progress-level-card { display: grid; align-content: center; padding: 22px; }
+.progress-level-card > span { display: flex; align-items: center; gap: 7px; color: #c9f31d; font-size: 12px; font-weight: 800; }
+.progress-level-card > strong { margin: 3px 0 9px; font-size: 48px; line-height: 1; }
+.progress-section { margin-top: 16px; padding: 20px; }
+.progress-section > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.progress-section > header small { color: #c9f31d; font-size: 10px; font-weight: 850; text-transform: uppercase; }
+.progress-section > header h2 { margin: 3px 0 0; font-size: 22px; }
+.progress-section > header > span { color: #949b95; font-size: 11px; }
+.progress-league-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.progress-league-grid article {
+  display: grid;
+  grid-template-columns: 42px 1fr 20px;
+  align-items: center;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  background: #181b18;
+  color: #6f766f;
+}
+.progress-league-grid article.active { border-color: rgba(201,243,29,.42); box-shadow: inset 0 0 24px rgba(201,243,29,.06); }
+.progress-league-grid article.reached { color: #c9f31d; }
+.progress-league-grid article > span { font-size: 26px; }
+.progress-league-grid strong,.progress-league-grid small { display: block; }
+.progress-league-grid strong { color: #f2f4f1; font-size: 13px; }
+.progress-league-grid small { color: #8d948e; font-size: 10px; }
+.progress-achievement-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.progress-achievement-grid article {
+  display: grid;
+  grid-template-columns: 44px minmax(0,1fr);
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 15px;
+  background: #181b18;
+}
+.progress-achievement-grid article.nearest { border-color: rgba(201,243,29,.38); background: linear-gradient(135deg,rgba(201,243,29,.09),#171a17); }
+.progress-achievement-grid article.done { opacity: .68; }
+.progress-achievement-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: rgba(201,243,29,.1); color: #c9f31d; }
+.progress-achievement-grid small,.progress-achievement-grid strong,.progress-achievement-grid p,.progress-achievement-grid em { display: block; }
+.progress-achievement-grid small { color: #c9f31d; font-size: 9px; text-transform: uppercase; }
+.progress-achievement-grid strong { margin-top: 2px; font-size: 15px; }
+.progress-achievement-grid p { min-height: 30px; margin: 3px 0 9px; color: #929993; font-size: 11px; line-height: 1.35; }
+.progress-achievement-grid em { margin-top: 6px; color: #a9b0aa; font-size: 10px; font-style: normal; }
+
+@media (max-width: 760px) {
+  .progress-page { padding-inline: 12px; }
+  .progress-hero { padding: 24px 18px; border-radius: 18px; }
+  .progress-summary { grid-template-columns: 1fr; }
+  .progress-current-league { grid-template-columns: 60px 1fr; padding: 16px; }
+  .progress-big-emoji { width: 58px; height: 58px; border-radius: 16px; font-size: 30px; }
+  .progress-current-league h2 { font-size: 21px; }
+  .progress-section { padding: 14px; border-radius: 16px; }
+  .progress-league-grid,.progress-achievement-grid { grid-template-columns: 1fr; }
+  .progress-section > header { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-carousel-track,.affiliate-track { transition: none; }
 }

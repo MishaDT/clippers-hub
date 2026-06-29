@@ -1,21 +1,23 @@
-import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import { BadgeCheck, ChevronDown, ChevronRight, Crown, Flame, Handshake, Play, Scissors, Sparkles, Star, Trophy } from "lucide-react";
+import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Scissors, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
 import { LeaderboardFireCanvas } from "@/components/leaderboard-fire-canvas";
 import { LeaderboardPeriodTabs } from "@/components/leaderboard-period-tabs";
 import { ReferralCard } from "@/components/referral-card";
+import { ProgressCarousel } from "@/components/progress-carousel";
+import { AffiliateCarousel } from "@/components/affiliate-carousel";
 import { PodiumFlameCanvas } from "@/components/podium-flame-canvas";
 import { LeaderboardLoadMore } from "@/components/leaderboard-load-more";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { sendCollabInviteAction } from "@/app/actions";
 import { compactNumber } from "@/lib/money";
-import { LEAGUES, leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
+import { leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { loadAffiliateOffers } from "@/lib/affiliate-offers";
 
 // Default friendly opener for a one-click collab invite from the board.
 const COLLAB_MSG = "Привет! Хочу позвать тебя на совместный клип в ReelPay. Обсудим?";
@@ -117,9 +119,7 @@ const loadLeaders = unstable_cache(
   { revalidate: 600, tags: ["leaderboard"] }
 );
 
-async function loadMyProgress() {
-  const user = await getCurrentUser();
-  if (!user) return null;
+async function loadMyProgress(user: { id: string; name: string; lifetimeViews: number; referralCode: string }) {
   const since = new Date(Date.now() - SINCE_MS);
   const [allStats, weekStats, invited, referralRewards] = await Promise.all([
     prisma.submission.aggregate({
@@ -149,16 +149,6 @@ async function loadMyProgress() {
   };
 }
 
-function leagueRange(min: number, max: number | null) {
-  return max == null ? `${compactNumber(min)}+ просмотров` : `${compactNumber(min)} – ${compactNumber(max)} просмотров`;
-}
-
-const LEAGUE_HINTS: Record<string, string> = {
-  rookie: "Вступай и начинай",
-  pro: "Покажи свой уровень",
-  legend: "Ты среди лучших"
-};
-
 function Avatar({ row, podium }: { row: Row; podium?: boolean }) {
   if (podium) {
     const tone = row.rank === 1 ? "gold" : row.rank === 3 ? "bronze" : "lime";
@@ -185,9 +175,10 @@ export default async function LeaderboardPage({
   const period: Period = rawPeriod === "all" ? "all" : "week";
   const currentUser = await getCurrentUser();
   const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
-  const [rows, me] = await Promise.all([
+  const [rows, me, affiliateOffers] = await Promise.all([
     loadLeaders(period),
-    mode === "worker" ? loadMyProgress() : Promise.resolve(null)
+    currentUser ? loadMyProgress(currentUser) : Promise.resolve(null),
+    loadAffiliateOffers()
   ]);
 
   const podium = rows.slice(0, 3);
@@ -203,8 +194,6 @@ export default async function LeaderboardPage({
     : [];
 
   // Lightweight, view-derived progress ring (real data, no fake economy).
-  const ringR = 52;
-  const ringC = 2 * Math.PI * ringR;
   const seg = 100_000;
   const level = me ? Math.floor(me.lifetimeViews / seg) + 1 : 1;
   const intoLevel = me ? me.lifetimeViews % seg : 0;
@@ -212,7 +201,13 @@ export default async function LeaderboardPage({
   const progressViews = me?.lifetimeViews || 0;
   const activeLeague = leagueForViews(progressViews);
   const upcomingLeague = nextLeague(progressViews);
-  const nextAchievement = achievements.find((item) => item.value < item.target) || achievements[achievements.length - 1];
+  const rankedAchievements = [...achievements].sort((a, b) => {
+    const aDone = a.value >= a.target;
+    const bDone = b.value >= b.target;
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    return (b.value / b.target) - (a.value / a.target);
+  });
+  const nextAchievement = rankedAchievements[0];
 
   return (
     <AppShell>
@@ -332,7 +327,7 @@ export default async function LeaderboardPage({
           </div>
 
           <aside className="leaderboard-rail">
-            {me && mode === "worker" ? (
+            {me ? (
               <section className="rail-panel referral-panel">
                 <ReferralCard code={me.referralCode} invited={me.invited} rewardRp={me.referralRewardRp} />
               </section>
@@ -345,90 +340,33 @@ export default async function LeaderboardPage({
               </Link>
             ) : null}
 
-            {mode === "worker" ? <section className="rail-panel">
-              <header className="rail-head">
-                <h3>Лиги</h3>
-                <span className="rail-link">Пороги</span>
-              </header>
-              <div className="league-list">
-                {LEAGUES.map((league) => {
-                  const active = me ? leagueForViews(me.lifetimeViews).key === league.key : false;
-                  return (
-                    <div
-                      className={`league-card league-card--${league.key} ${active ? "is-active" : ""}`}
-                      style={{ "--lg": league.color, "--lg-glow": league.glow } as CSSProperties}
-                      key={league.key}
-                    >
-                      <span className="league-emoji" aria-hidden="true">{league.emoji}</span>
-                      <div className="league-info">
-                        <strong>{league.name}</strong>
-                        <span>{leagueRange(league.min, league.max)}</span>
-                        <em>{LEAGUE_HINTS[league.key]}</em>
-                      </div>
-                      <ChevronRight size={16} />
-                    </div>
-                  );
-                })}
-              </div>
-            </section> : null}
+            <AffiliateCarousel offers={affiliateOffers} />
 
             {me ? (
-              <section className="rail-panel">
-                <header className="rail-head">
-                  <h3>Ачивки</h3>
-                </header>
-                <div className="ach-list">
-                  {achievements.map((ach) => {
-                    const pct = Math.min(100, Math.round((ach.value / ach.target) * 100));
-                    const Icon = ach.icon;
-                    return (
-                      <div className={`ach ${pct >= 100 ? "is-done" : ""}`} key={ach.title}>
-                        <span className="ach-icon"><Icon size={18} /></span>
-                        <div className="ach-info">
-                          <strong>{ach.title}</strong>
-                          <span>{ach.desc}</span>
-                          <div className="ach-bar"><i style={{ width: `${pct}%` }} /></div>
-                          <em>{ach.fmt(ach.value)} / {ach.fmt(ach.target)}</em>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
+              <ProgressCarousel
+                league={{
+                  name: activeLeague.name,
+                  emoji: activeLeague.emoji,
+                  next: upcomingLeague?.name || null,
+                  progress: Math.round(leagueProgress(progressViews) * 100),
+                  viewsLabel: `${compactNumber(progressViews)} просмотров`
+                }}
+                achievement={{
+                  title: nextAchievement?.title || "Первый шаг",
+                  description: nextAchievement?.desc || "Начни пользоваться ReelPay",
+                  progress: nextAchievement ? Math.min(100, Math.round((nextAchievement.value / nextAchievement.target) * 100)) : 0,
+                  valueLabel: nextAchievement ? `${nextAchievement.fmt(nextAchievement.value)} / ${nextAchievement.fmt(nextAchievement.target)}` : "0%"
+                }}
+                level={{
+                  value: level,
+                  progress: Math.round(ringPct * 100),
+                  currentLabel: `${compactNumber(intoLevel)} / ${compactNumber(seg)} XP`,
+                  weekLabel: `+${compactNumber(me.weekViews)} XP за неделю`
+                }}
+              />
             ) : null}
 
-            {me ? (
-              <section className="rail-panel progress-panel">
-                <header className="rail-head">
-                  <h3>Твой прогресс</h3>
-                </header>
-                <div className="progress-ring-wrap">
-                  <svg className="progress-ring" viewBox="0 0 120 120" width="132" height="132">
-                    <circle className="ring-track" cx="60" cy="60" r={ringR} />
-                    <circle
-                      className="ring-fill"
-                      cx="60"
-                      cy="60"
-                      r={ringR}
-                      style={{ strokeDasharray: ringC, strokeDashoffset: ringC * (1 - ringPct) }}
-                    />
-                  </svg>
-                  <div className="progress-center">
-                    <span>Уровень</span>
-                    <b>{level}</b>
-                  </div>
-                </div>
-                <div className="progress-meta">
-                  <strong>{compactNumber(intoLevel)} / {compactNumber(seg)} XP</strong>
-                  <span><Sparkles size={13} /> +{compactNumber(me.weekViews)} XP за неделю</span>
-                  {nextLeague(me.lifetimeViews) ? (
-                    <em>До лиги «{nextLeague(me.lifetimeViews)?.name}»: {Math.round(leagueProgress(me.lifetimeViews) * 100)}%</em>
-                  ) : (
-                    <em>Высшая лига достигнута 🏆</em>
-                  )}
-                </div>
-              </section>
-            ) : !currentUser ? (
+            {!currentUser ? (
               <section className="rail-panel">
                 <div className="rail-cta">
                   <b>Хочешь в рейтинг?</b>

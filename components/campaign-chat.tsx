@@ -4,7 +4,7 @@ import { useEffect, useOptimistic, useRef, useState, useTransition } from "react
 import { ArrowUpRight, Ban, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Link2, Pencil, RefreshCw, Send, ShieldAlert, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { deleteChatMessageAction, editChatMessageAction, sendChatMessageAction } from "@/app/actions";
+import { advanceCollabStageAction, deleteChatMessageAction, editChatMessageAction, sendChatMessageAction } from "@/app/actions";
 
 type Message = {
   id: string;
@@ -25,11 +25,13 @@ type ProgressStep = {
 };
 
 type Progress = {
+  kind?: "campaign" | "collab";
   statusLabel: string;
   views: string;
   target: string;
   fraudScore: number;
   steps: ProgressStep[];
+  canAdvance?: boolean;
 };
 
 function compactSystemMessages(messages: Message[]) {
@@ -127,6 +129,13 @@ export function CampaignChat({
     list.scrollTo({ top: list.scrollHeight, behavior: visibleMessages.length > 1 ? "smooth" : "auto" });
   }, [visibleMessages.length]);
 
+  useEffect(() => {
+    const textarea = textRef.current;
+    if (!textarea) return;
+    textarea.style.height = "40px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+  }, [body]);
+
   return (
     <section className="chat-card-v2" id="chat">
       <div className="chat-card-head">
@@ -160,18 +169,20 @@ export function CampaignChat({
       ) : null}
 
       {progress ? (
-        <div className={`chat-progress-strip ${progressOpen ? "open" : "closed"}`}>
+        <div className={`chat-progress-strip ${progressOpen ? "open" : "closed"} ${progress.kind === "collab" ? "is-collab" : ""}`}>
           <button className="chat-progress-toggle" type="button" onClick={() => setProgressOpen((value) => !value)}>
             <span><CheckCircle2 size={16} /> {progress.statusLabel}</span>
             {progressOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
           {progressOpen ? (
             <>
-              <div className="chat-progress-metrics">
-                <span><b>{progress.views}</b><em>просмотры</em></span>
-                <span><b>{progress.target}</b><em>цель</em></span>
-                <span><b>{progress.fraudScore}%</b><em>риск</em></span>
-              </div>
+              {progress.kind !== "collab" ? (
+                <div className="chat-progress-metrics">
+                  <span><b>{progress.views}</b><em>просмотры</em></span>
+                  <span><b>{progress.target}</b><em>цель</em></span>
+                  <span><b>{progress.fraudScore}%</b><em>риск</em></span>
+                </div>
+              ) : null}
               <div className="chat-progress-steps">
                 {progress.steps.map((step) => (
                   <span className={step.done ? "done" : step.active ? "active" : ""} key={step.title}>
@@ -180,6 +191,28 @@ export function CampaignChat({
                   </span>
                 ))}
               </div>
+              {progress.kind === "collab" && progress.canAdvance ? (
+                <button
+                  className="chat-collab-next"
+                  type="button"
+                  disabled={actionPending}
+                  onClick={() => {
+                    startActionTransition(async () => {
+                      const data = new FormData();
+                      data.set("threadId", threadId);
+                      const result = await advanceCollabStageAction(data);
+                      if (!result?.ok) {
+                        setError(result?.error || "Не удалось обновить этап");
+                        return;
+                      }
+                      router.refresh();
+                    });
+                  }}
+                >
+                  <CheckCircle2 size={15} />
+                  {actionPending ? "Обновляем…" : "Договорились — начать выполнение"}
+                </button>
+              ) : null}
             </>
           ) : null}
         </div>

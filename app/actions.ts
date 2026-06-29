@@ -1069,6 +1069,48 @@ export async function cancelCollabInviteAction(formData: FormData) {
   redirect(`${returnTo}?cancelled=1`);
 }
 
+export async function advanceCollabStageAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const threadId = String(formData.get("threadId") || "");
+  const marker = "Условия согласованы. Коллаб перешёл к выполнению.";
+  const thread = await prisma.chatThread.findFirst({
+    where: {
+      id: threadId,
+      kind: "COLLAB",
+      OR: [{ clientId: user.id }, { workerId: user.id }],
+      collabInvite: { status: "ACCEPTED" }
+    },
+    select: {
+      id: true,
+      clientId: true,
+      workerId: true,
+      messages: { where: { type: "SYSTEM", body: marker }, select: { id: true }, take: 1 }
+    }
+  });
+  if (!thread) return { ok: false, error: "Коллаб уже завершён или недоступен." };
+  if (thread.messages.length) return { ok: true };
+
+  const peerId = thread.clientId === user.id ? thread.workerId : thread.clientId;
+  await prisma.$transaction(async (tx) => {
+    await tx.chatMessage.create({
+      data: { threadId: thread.id, senderId: user.id, type: "SYSTEM", body: marker }
+    });
+    await tx.chatThread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } });
+    await notify({
+      userId: peerId,
+      groupKey: notificationGroup("collab-stage", thread.id),
+      title: "Коллаб перешёл к выполнению",
+      body: `${user.name} подтвердил договорённости. Можно приступать к работе.`,
+      kind: "COLLAB",
+      href: `/chats?thread=${thread.id}&type=collabs`
+    }, tx);
+  });
+  revalidatePath("/chats");
+  revalidatePath("/collabs");
+  return { ok: true };
+}
+
 export async function endCollabAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);

@@ -151,6 +151,7 @@ export default async function ChatsPage({
           client: { select: { id: true, name: true, handle: true, avatar: true } },
           worker: { select: { id: true, name: true, handle: true, avatar: true } },
           submission: { select: { status: true, currentViews: true, fraudScore: true } },
+          collabInvite: { select: { id: true, status: true } },
           messages: {
             include: { sender: { select: { id: true, name: true } } },
             orderBy: { createdAt: "asc" },
@@ -195,6 +196,10 @@ export default async function ChatsPage({
     : null;
   const selectedStatus = selectedThread?.submission?.status;
   const selectedIsCollab = selectedThread?.kind === "COLLAB";
+  const collabInExecution = Boolean(selectedThread?.messages.some(
+    (message) => message.type === "SYSTEM" && message.body === "Условия согласованы. Коллаб перешёл к выполнению."
+  ));
+  const collabCompleted = selectedThread?.collabInvite?.status === "COMPLETED";
   const progressSteps = [
     { title: "Заказ взят", done: Boolean(selectedThread?.submission), active: selectedStatus === "ACCEPTED" },
     { title: "Работа", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(selectedStatus || ""), active: selectedStatus === "POSTED" },
@@ -316,19 +321,24 @@ export default async function ChatsPage({
                 campaignTitle={selectedThread.campaign?.title || (selectedIsCollab ? "Совместный проект" : undefined)}
                 campaignHref={selectedThread.campaign ? `/campaigns/${selectedThread.campaign.id}` : undefined}
                 progress={selectedThread.campaign ? {
+                  kind: "campaign",
                   statusLabel: statusLabel(selectedStatus),
                   views: compactNumber(selectedThread.submission?.currentViews || 0),
                   target: compactNumber(selectedThread.campaign.viewThreshold),
                   fraudScore: selectedThread.submission?.fraudScore || 0,
                   steps: progressSteps
                 } : selectedIsCollab ? {
-                  statusLabel: "Коллаб принят",
+                  kind: "collab",
+                  statusLabel: collabCompleted ? "Коллаб завершён" : collabInExecution ? "Коллаб в работе" : "Коллаб принят",
                   views: "—",
                   target: "—",
                   fraudScore: 0,
+                  canAdvance: selectedThread.collabInvite?.status === "ACCEPTED" && !collabInExecution,
                   steps: [
-                    { title: "Приглашение принято", done: true, active: false },
-                    { title: "Обсуждение", done: false, active: true }
+                    { title: "Принято", done: true, active: false },
+                    { title: "Обсуждение", done: collabInExecution || collabCompleted, active: !collabInExecution && !collabCompleted },
+                    { title: "Выполнение", done: collabCompleted, active: collabInExecution && !collabCompleted },
+                    { title: "Готово", done: collabCompleted, active: false }
                   ]
                 } : undefined}
                 messages={selectedThread.messages
