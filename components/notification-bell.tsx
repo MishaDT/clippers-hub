@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/notifications/actions";
 import { formatBadgeCount } from "@/components/app-nav";
+import { occurrenceLabel } from "@/lib/notification-logic";
 import styles from "@/components/notification-bell.module.css";
 
 export type NotificationItem = {
@@ -78,7 +79,7 @@ export function NotificationBell({
                 }}
                 key={item.id}
               >
-                <span><b>{item.title}{item.occurrenceCount > 1 ? ` · ${item.occurrenceCount}` : ""}</b><time>{item.createdAt}</time></span>
+                <span><b>{item.title}</b>{item.occurrenceCount > 1 ? <em className={styles.count}>{occurrenceLabel(item.occurrenceCount)}</em> : null}<time>{item.createdAt}</time></span>
                 <p>{item.body}</p>
               </Link>
             ))}

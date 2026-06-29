@@ -4,19 +4,11 @@ import {
   ArrowRight,
   ArrowUpRight,
   BriefcaseBusiness,
-  CheckCircle2,
-  Clock3,
-  CircleAlert,
-  Eye,
-  Megaphone,
   Sparkles,
-  TrendingUp,
-  Trophy,
-  Users
+  Trophy
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { boostCampaignWithRpAction } from "@/app/actions";
-import { UserAvatar } from "@/components/user-avatar";
 import { CampaignFilters } from "./campaign-filters";
 import { CampaignGuide } from "./campaign-guide";
 import { prisma } from "@/lib/prisma";
@@ -24,7 +16,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { compactNumber, rub } from "@/lib/money";
 import styles from "./marketplace.module.css";
-import { MarketplacePagination } from "@/components/marketplace-pagination";
+import { MarketplaceBrowser, type MarketplaceCard } from "@/components/marketplace-browser";
 
 const ACTIVE_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
 
@@ -120,10 +112,6 @@ function timeOf(value: Date | string) {
 
 function expectedPayout(campaign: CampaignItem) {
   return Math.round((campaign.viewThreshold / 1000) * campaign.cpmRateCents * 0.89);
-}
-
-function shortText(text: string, limit = 128) {
-  return text.length > limit ? `${text.slice(0, limit).trim()}…` : text;
 }
 
 function deadlineMatch(daysLeft: number, deadline: string) {
@@ -238,7 +226,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const category = normalize(params.category) || "all";
   const sort = normalize(params.sort) || "promoted";
   const deadline = normalize(params.deadline) || "any";
-  const page = Math.max(1, Number(params.page || 1));
+  const initialPage = Math.max(1, Number(params.page || 1));
   const pageSize = 12;
 
   const [baseCampaigns, active] = await Promise.all([getCampaigns(), loadActiveOrder()]);
@@ -261,152 +249,93 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
       return timeOf(b.createdAt) - timeOf(a.createdAt);
     });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const campaigns = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const topPayout = Math.max(0, ...filtered.map(expectedPayout));
   const medianRate = median(filtered.map((campaign) => campaign.cpmRateCents));
   const quickCount = filtered.filter((campaign) => Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000) <= 3).length;
+  const cards: MarketplaceCard[] = filtered.map((campaign) => ({
+    id: campaign.id,
+    title: campaign.title,
+    description: campaign.description,
+    niche: campaign.niche,
+    cpmRateCents: campaign.cpmRateCents,
+    viewThreshold: campaign.viewThreshold,
+    remainingBudgetCents: campaign.remainingBudgetCents,
+    featured: campaign.visibility === "FEATURED" || Boolean(campaign.featuredUntil && timeOf(campaign.featuredUntil) > Date.now()),
+    owner: { name: campaign.owner.name, handle: campaign.owner.handle, avatar: campaign.owner.avatar },
+    submissions: campaign._count.submissions,
+    deadlineMs: timeOf(campaign.deadline),
+    createdAtMs: timeOf(campaign.createdAt)
+  }));
 
-  const makeHref = (next: Record<string, string>) => {
-    const url = new URLSearchParams();
-    if (query) url.set("q", query);
-    if (category !== "all") url.set("category", category);
-    if (sort !== "promoted") url.set("sort", sort);
-    if (deadline !== "any") url.set("deadline", deadline);
-    if (currentPage > 1) url.set("page", String(currentPage));
-    Object.entries(next).forEach(([key, value]) => (value ? url.set(key, value) : url.delete(key)));
-    const qs = url.toString();
-    return qs ? `/campaigns?${qs}` : "/campaigns";
-  };
+  // Shown only on the first page; the client browser toggles it without re-rendering.
+  const page1Top = (
+    <>
+      {active ? (
+        <Link className={`active-order ao-${active.statusKey}`} href={active.href}>
+          <span className="ao-glow" aria-hidden="true" />
+          <span className="ao-flicker" aria-hidden="true" />
+          <div className="ao-head">
+            <span className="ao-eyebrow"><Sparkles size={14} /> Твой активный заказ</span>
+            <span className="ao-status">{active.label}</span>
+          </div>
+          <h2 className="ao-title">{active.title}</h2>
+          <div className="ao-progress">
+            <div className="ao-bar"><i style={{ width: `${active.pct}%` }} /></div>
+            <span>
+              {active.status === "ACCEPTED"
+                ? "Выложи ролик, чтобы начать считать просмотры"
+                : `${compactNumber(active.views)} / ${compactNumber(active.threshold)} просмотров`}
+            </span>
+          </div>
+          <div className="ao-foot">
+            <span className="ao-payout"><b>{rub(active.payout)}</b> к выплате</span>
+            <span className="ao-cta">{active.cta} <ArrowRight size={16} /></span>
+          </div>
+        </Link>
+      ) : null}
+      <CampaignGuide variant="worker" initiallyCollapsed={Boolean(user?.marketGuideSeenAt)} persistSeen={Boolean(user)} />
+    </>
+  );
+
+  const alwaysTop = (
+    <>
+      <header className="mk-head">
+        <div>
+          <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>
+          <h1>Найди заказ, который сделаешь сегодня</h1>
+          <p>Заказчик ставит цель по просмотрам — ты делаешь короткий ролик и получаешь оплату за результат.</p>
+        </div>
+        <Link className="mk-leaders" href="/leaderboard"><Trophy size={16} /> Доска лидеров</Link>
+      </header>
+
+      <div className="mk-stats" aria-label="Статистика заказов">
+        <span className="mk-stat"><b>{filtered.length}</b> заказов</span>
+        <span className="mk-stat"><b>{rub(topPayout)}</b> макс. оплата</span>
+        <span className="mk-stat mk-stat--urgent"><b>{quickCount}</b> срочных</span>
+      </div>
+
+      <div id="orders"><CampaignFilters
+        query={query}
+        category={category}
+        deadline={deadline}
+        sort={sort}
+        resultCount={filtered.length}
+      /></div>
+    </>
+  );
 
   return (
     <AppShell>
       <section className={`section market-screen ${styles.marketplace}`}>
-        {currentPage === 1 && active ? (
-          <Link className={`active-order ao-${active.statusKey}`} href={active.href}>
-            <span className="ao-glow" aria-hidden="true" />
-            <span className="ao-flicker" aria-hidden="true" />
-            <div className="ao-head">
-              <span className="ao-eyebrow"><Sparkles size={14} /> Твой активный заказ</span>
-              <span className="ao-status">{active.label}</span>
-            </div>
-            <h2 className="ao-title">{active.title}</h2>
-            <div className="ao-progress">
-              <div className="ao-bar"><i style={{ width: `${active.pct}%` }} /></div>
-              <span>
-                {active.status === "ACCEPTED"
-                  ? "Выложи ролик, чтобы начать считать просмотры"
-                  : `${compactNumber(active.views)} / ${compactNumber(active.threshold)} просмотров`}
-              </span>
-            </div>
-            <div className="ao-foot">
-              <span className="ao-payout"><b>{rub(active.payout)}</b> к выплате</span>
-              <span className="ao-cta">{active.cta} <ArrowRight size={16} /></span>
-            </div>
-          </Link>
-        ) : null}
-
-        {currentPage === 1 ? <CampaignGuide variant="worker" initiallyCollapsed={Boolean(user?.marketGuideSeenAt)} persistSeen={Boolean(user)} /> : null}
-
-        <header className="mk-head">
-          <div>
-            <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>
-            <h1>Найди заказ, который сделаешь сегодня</h1>
-            <p>Заказчик ставит цель по просмотрам — ты делаешь короткий ролик и получаешь оплату за результат.</p>
-          </div>
-          <Link className="mk-leaders" href="/leaderboard"><Trophy size={16} /> Доска лидеров</Link>
-        </header>
-
-        <div className="mk-stats" aria-label="Статистика заказов">
-          <span className="mk-stat"><b>{filtered.length}</b> заказов</span>
-          <span className="mk-stat"><b>{rub(topPayout)}</b> макс. оплата</span>
-          <span className="mk-stat mk-stat--urgent"><b>{quickCount}</b> срочных</span>
-        </div>
-
-        <div id="orders"><CampaignFilters
-          query={query}
-          category={category}
-          deadline={deadline}
-          sort={sort}
-          resultCount={filtered.length}
-        /></div>
-
-        {campaigns.length ? (
-          <div className="mk-grid">
-            {campaigns.map((campaign) => {
-              const daysLeft = Math.max(1, Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000));
-              const payout = expectedPayout(campaign);
-              const cpm = Math.round(campaign.cpmRateCents / 100);
-              const urgent = daysLeft <= 2;
-              const newCampaign = Date.now() - timeOf(campaign.createdAt) <= 48 * 60 * 60 * 1000;
-              const rateDelta = medianRate > 0 ? Math.round((campaign.cpmRateCents / medianRate - 1) * 100) : 0;
-              const signal = campaign.visibility === "FEATURED" || Boolean(campaign.featuredUntil && timeOf(campaign.featuredUntil) > Date.now())
-                ? { cls: "hot", icon: Megaphone, text: "Продвижение", title: "Заказ поднят в выдаче через продвижение" }
-                : campaign.remainingBudgetCents < payout
-                  ? { cls: "urgent", icon: CircleAlert, text: "Мало бюджета", title: "Остатка бюджета может не хватить на полную выплату" }
-                : urgent
-                  ? { cls: "urgent", icon: Clock3, text: `${daysLeft} дн.`, title: "Короткий срок до дедлайна" }
-                  : rateDelta >= 25
-                    ? { cls: "pay", icon: TrendingUp, text: `Ставка +${rateDelta}%`, title: "Сравнение с медианной ставкой текущей выдачи" }
-                    : newCampaign
-                      ? { cls: "new", icon: Sparkles, text: "Новый", title: "Опубликован меньше 48 часов назад" }
-                      : null;
-              const SignalIcon = signal?.icon;
-              return (
-                <Link className="mk-card" href={`/campaigns/${campaign.id}`} key={campaign.id}>
-                  <div className="mk-card-top">
-                    <div className="mk-client">
-                      <UserAvatar
-                        avatar={campaign.owner.avatar}
-                        name={campaign.owner.name}
-                        handle={campaign.owner.handle}
-                        size={38}
-                      />
-                      <div>
-                        <strong>{campaign.owner.name}</strong>
-                        <span>{campaign.niche || "Видео"}</span>
-                      </div>
-                    </div>
-                    {signal && SignalIcon ? (
-                      <span className={`mk-signal mk-signal--${signal.cls}`} title={signal.title}><SignalIcon size={12} /> {signal.text}</span>
-                    ) : null}
-                  </div>
-                  <h2 className="mk-title">{campaign.title}</h2>
-                  <p className="mk-desc">{shortText(campaign.description, 120)}</p>
-                  <div className="mk-payline">
-                    <div className="mk-pay">
-                      <b>{rub(payout)}</b>
-                      <em>за результат · {cpm} ₽ / 1000</em>
-                    </div>
-                    <span className="mk-go">Открыть <ArrowRight size={15} /></span>
-                  </div>
-                  <div className="mk-meta">
-                    <span><Eye size={14} /> {compactNumber(campaign.viewThreshold)}</span>
-                    <span className={urgent ? "warn" : ""}><Clock3 size={14} /> {daysLeft} дн</span>
-                    <span><Users size={14} /> {campaign._count.submissions}</span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="mk-empty">
-            <CheckCircle2 size={28} />
-            <b>Подходящих заказов нет</b>
-            <p>Попробуй убрать фильтр или написать запрос проще.</p>
-            <Link className="btn btn-primary" href="/campaigns">Сбросить фильтры</Link>
-          </div>
-        )}
-
-        {totalPages > 1 ? (
-          <MarketplacePagination
-            page={currentPage}
-            totalPages={totalPages}
-            previousHref={makeHref({ page: String(Math.max(1, currentPage - 1)) })}
-            nextHref={makeHref({ page: String(Math.min(totalPages, currentPage + 1)) })}
-          />
-        ) : null}
+        <MarketplaceBrowser
+          cards={cards}
+          medianRate={medianRate}
+          pageSize={pageSize}
+          basePath="/campaigns"
+          initialPage={initialPage}
+          page1Top={page1Top}
+          alwaysTop={alwaysTop}
+        />
       </section>
     </AppShell>
   );

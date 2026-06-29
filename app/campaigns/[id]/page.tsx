@@ -132,13 +132,15 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       : Date.now() - campaign.createdAt.getTime() <= 48 * 60 * 60 * 1000
         ? { cls: "easy", Icon: Sparkles, text: "Новый заказ" }
         : null;
+  const videoCheck = submission?.videoChecks[0];
+  const trackingActive = ["VERIFIED", "POSTED"].includes(submission?.status || "");
+  const linkDone = ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || "");
   const progressSteps = [
     { key: "accepted", title: "Заказ взят", done: Boolean(submission), active: false, detail: "Условия доступны" },
-    { key: "link", title: "Ссылка", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: submission?.status === "ACCEPTED", detail: submission?.status === "ACCEPTED" ? "Опубликуйте ролик" : "Ссылка принята", href: "/upload" },
-    { key: "tracking", title: "Трекинг", done: ["THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: ["VERIFIED", "POSTED"].includes(submission?.status || ""), detail: ["VERIFIED", "POSTED"].includes(submission?.status || "") ? "Считаем просмотры" : "После проверки ссылки" },
-    { key: "payout", title: "Выплата", done: submission?.status === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(submission?.status || ""), detail: submission?.status === "PAID" ? "Деньги зачислены" : "После цели и проверки" }
+    { key: "link", title: "Ссылка", done: linkDone, active: submission?.status === "ACCEPTED", detail: submission?.status === "ACCEPTED" ? "Опубликуйте ролик" : "Ссылка принята", href: "/upload", metric: `Watermark: ${videoCheckStatus(videoCheck?.status)}` },
+    { key: "tracking", title: "Трекинг", done: ["THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: trackingActive, detail: trackingActive ? "Считаем просмотры" : "После проверки ссылки", metric: linkDone ? `${compactNumber(submission?.currentViews || 0)} просмотров · ${compactNumber(submission?.currentLikes || 0)} лайков` : "Трекинг начнётся после ссылки" },
+    { key: "payout", title: "Выплата", done: submission?.status === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(submission?.status || ""), detail: submission?.status === "PAID" ? "Деньги зачислены" : "После цели и проверки", metric: submission ? `Риск проверки ${submission.fraudScore}%` : undefined }
   ];
-  const videoCheck = submission?.videoChecks[0];
 
   return (
     <AppShell>
@@ -250,10 +252,6 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
             submissionId={submission.id}
             status={submissionStatus(submission.status)}
             steps={progressSteps}
-            views={compactNumber(submission.currentViews)}
-            likes={compactNumber(submission.currentLikes)}
-            fraudScore={submission.fraudScore}
-            watermark={videoCheckStatus(videoCheck?.status)}
           />
         ) : null}
 

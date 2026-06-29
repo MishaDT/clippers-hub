@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Eye, Heart, Link2, LockKeyhole, Radar, ShieldCheck, WalletCards } from "lucide-react";
+import { Check, Link2, LockKeyhole, Radar, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type JourneyStep = {
@@ -10,6 +10,7 @@ type JourneyStep = {
   done: boolean;
   active: boolean;
   detail: string;
+  metric?: string;
   href?: string;
 };
 
@@ -18,19 +19,11 @@ const ICONS = { accepted: Check, link: Link2, tracking: Radar, payout: WalletCar
 export function WorkspaceJourney({
   submissionId,
   status,
-  steps,
-  views,
-  likes,
-  fraudScore,
-  watermark
+  steps
 }: {
   submissionId: string;
   status: string;
   steps: JourneyStep[];
-  views: string;
-  likes: string;
-  fraudScore: number;
-  watermark: string;
 }) {
   const [unlocked, setUnlocked] = useState<string | null>(null);
 
@@ -59,17 +52,15 @@ export function WorkspaceJourney({
                 {locked ? <LockKeyhole size={19} /> : step.done ? <Check size={20} /> : <Icon size={20} />}
                 {unlocked === step.key ? <i className="lock-shards" aria-hidden="true" /> : null}
               </div>
-              <div className="journey-copy"><b>{step.title}</b><small>{step.detail}</small></div>
+              <div className="journey-copy">
+                <b>{step.title}</b>
+                <small>{step.detail}</small>
+                {step.metric ? <em className="journey-metric">{step.metric}</em> : null}
+              </div>
               {step.active && step.href ? <Link className="journey-cta" href={step.href}>Продолжить</Link> : null}
             </div>
           );
         })}
-      </div>
-      <div className="journey-metrics">
-        <span><Eye size={16} /><b>{views}</b><small>{views === "0" ? "Трекинг начнётся после ссылки" : "просмотров"}</small></span>
-        <span><Heart size={16} /><b>{likes}</b><small>{likes === "0" ? "Появятся после синхронизации" : "лайков"}</small></span>
-        <span><ShieldCheck size={16} /><b>{fraudScore}%</b><small>{fraudScore ? "риск проверки" : "Нарушений не найдено"}</small></span>
-        <span><Radar size={16} /><b>{watermark}</b><small>{watermark === "Не запускалась" ? "После отправки ссылки" : "watermark"}</small></span>
       </div>
     </section>
   );

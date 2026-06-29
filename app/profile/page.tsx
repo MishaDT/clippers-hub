@@ -121,6 +121,7 @@ async function loadClient(userId: string) {
       select: {
         id: true,
         currentViews: true,
+        status: true,
         worker: { select: { handle: true, avatar: true } },
         campaign: { select: { title: true } }
       },
@@ -331,7 +332,7 @@ export default async function ProfilePage() {
                       handle={clip.worker.handle}
                       size={40}
                     />
-                    <div><strong>@{clip.worker.handle}</strong><p>{clip.campaign.title}</p></div>
+                    <div><strong>@{clip.worker.handle}</strong><p>{clip.campaign.title} · {submissionLabels[clip.status] || clip.status}</p></div>
                     <span>{compactNumber(clip.currentViews)}</span>
                   </div>
                 ))}

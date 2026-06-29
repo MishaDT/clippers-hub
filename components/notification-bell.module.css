@@ -102,6 +102,22 @@
   font-size: 13px;
 }
 
+.item .count {
+  align-self: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(220, 255, 65, 0.16);
+  color: #c8ef4b;
+  font-size: 10px;
+  font-weight: 800;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.item time {
+  margin-left: auto;
+}
+
 .item time,
 .item p {
   color: #99999f;
