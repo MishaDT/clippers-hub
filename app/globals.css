@@ -5461,8 +5461,7 @@ h1, .brand-word { font-weight: 850; }
   display: flex;
   align-items: center;
   gap: 9px;
-  margin
-  margin: 0 14px;
+  margin: 9px 14px 0;
   padding: 0 12px;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 13px;
