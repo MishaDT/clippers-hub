@@ -68,7 +68,7 @@ export function CampaignChat({
   const listRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [body, setBody] = useState("");
-  const [progressOpen, setProgressOpen] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [warnUrl, setWarnUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
