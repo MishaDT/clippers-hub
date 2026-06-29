@@ -219,6 +219,7 @@ export default async function ProfilePage() {
 
         {canSwitchMode ? (
           <form className="role-switch" action={switchRoleAction}>
+            <input type="hidden" name="returnTo" value="/profile" />
             <button className={mode === "worker" ? "active" : ""} name="mode" value="worker" type="submit">
               <Zap size={18} /> Исполнитель
             </button>
@@ -270,7 +271,7 @@ export default async function ProfilePage() {
               </div>
               <Card className="profile-work-list">
                 {data.submissions.length ? data.submissions.map((submission) => (
-                  <Link className="profile-work-row" href={`/campaigns/${submission.campaign.id}`} key={submission.id}>
+                  <Link className="profile-work-row" href={`/campaigns/${submission.campaign.id}?returnTo=${encodeURIComponent("/profile")}`} key={submission.id}>
                     <span className="profile-work-icon"><Film size={19} /></span>
                     <div className="profile-work-main">
                       <strong>{submission.campaign.title}</strong>
@@ -298,7 +299,7 @@ export default async function ProfilePage() {
                     <CheckCircle2 color={payment.status === "COMPLETED" ? "#22c55e" : "#f59e0b"} />
                     <div>
                       <strong>{payment.type === "WITHDRAWAL" ? "Вывод средств" : "Оплата работы"}</strong>
-                      <p>{payment.createdAt.toLocaleDateString("ru-RU")}</p>
+                      <p>{payment.createdAt.toLocaleDateString("ru-RU")} · {payment.status === "COMPLETED" ? "Выполнено" : payment.status === "PENDING" ? "Ожидает" : "Проверяется"}</p>
                     </div>
                     <span>{rub(payment.netCents)}</span>
                   </div>
@@ -328,7 +329,7 @@ export default async function ProfilePage() {
               <Card className="stack-list"><h3>Активные</h3>
                 {data.campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET", "PAUSED"].includes(campaign.status)).length ? data.campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET", "PAUSED"].includes(campaign.status)).map((campaign) => (
                   <div className="campaign-mini" key={campaign.id}>
-                    <strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong>
+                    <strong><Link href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`}>{campaign.title}</Link></strong>
                     <span>{campaign._count.submissions} роликов · {rub(campaign.remainingBudgetCents)} осталось</span>
                     <Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : "good"}>
                       {campaignLabels[campaign.status] || campaign.status}
@@ -339,7 +340,7 @@ export default async function ProfilePage() {
               <Card className="stack-list"><h3>Завершённые</h3>
                 {data.campaigns.filter((campaign) => campaign.status === "COMPLETED").length ? data.campaigns.filter((campaign) => campaign.status === "COMPLETED").map((campaign) => (
                   <div className="campaign-mini" key={campaign.id}>
-                    <strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong>
+                    <strong><Link href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`}>{campaign.title}</Link></strong>
                     <span>{campaign._count.submissions} роликов</span>
                     <Tag>{campaignLabels[campaign.status]}</Tag>
                   </div>

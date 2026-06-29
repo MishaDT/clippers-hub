@@ -72,6 +72,7 @@ model User {
   messageAudits          ChatMessageEdit[] @relation("MessageEditor")
   rpTransactions         RpTransaction[]
   recurringRewardClaims  RecurringRewardClaim[]
+  storeRedemptions       StoreRedemption[]
 
   @@index([role, createdAt])
   @@index([createdAt])
@@ -514,6 +515,50 @@ model RecurringRewardClaim {
 
   @@unique([userId, code, periodKey])
   @@index([userId, periodKey])
+}
+
+model StoreOffer {
+  id           String            @id @default(cuid())
+  kind         String            @default("RP_REWARD")
+  title        String
+  description  String
+  url          String?
+  imageUrl     String?
+  qrImageUrl   String?
+  priceRp      Int               @default(0)
+  stock        Int?
+  active       Boolean           @default(true)
+  featured     Boolean           @default(false)
+  sortOrder    Int               @default(0)
+  metadataJson String            @default("{}")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  redemptions  StoreRedemption[]
+
+  @@index([active, sortOrder])
+  @@index([kind, active])
+}
+
+model StoreRedemption {
+  id              String     @id @default(cuid())
+  userId          String
+  offerId         String
+  costRp          Int
+  purchasedRpUsed Int        @default(0)
+  status          String     @default("NEW")
+  contactEmail    String
+  adminNote       String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  fulfilledAt     DateTime?
+  refundedAt      DateTime?
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offer StoreOffer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([offerId, createdAt])
 }
 
 model LeaderboardSnapshot {

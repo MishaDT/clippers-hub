@@ -23,6 +23,7 @@ import { getCurrentUser, canManageClient } from "@/lib/auth";
 import { canEndorse } from "@/lib/leagues";
 import { compactNumber } from "@/lib/money";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { safeReturnTo } from "@/lib/navigation";
 
 const PLATFORM_LABEL: Record<string, string> = {
   TIKTOK: "TikTok",
@@ -68,10 +69,11 @@ export default async function ClipperPortfolioPage({
   searchParams
 }: {
   params: Promise<{ handle: string }>;
-  searchParams: Promise<{ invited?: string; endorsed?: string; error?: string }>;
+  searchParams: Promise<{ invited?: string; endorsed?: string; error?: string; returnTo?: string }>;
 }) {
   const { handle } = await params;
-  const { invited, endorsed, error } = await searchParams;
+  const { invited, endorsed, error, returnTo: rawReturnTo } = await searchParams;
+  const returnTo = safeReturnTo(rawReturnTo, "/leaderboard");
 
   const user = await prisma.user.findUnique({
     where: { handle },
@@ -175,8 +177,8 @@ export default async function ClipperPortfolioPage({
   return (
     <AppShell>
       <section className="section cp">
-        <Link className="cp-back" href="/leaderboard">
-          <ArrowLeft size={16} /> К доске лидеров
+        <Link className="cp-back" href={returnTo}>
+          <ArrowLeft size={16} /> Назад
         </Link>
 
         {/* HERO */}

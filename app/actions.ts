@@ -26,6 +26,7 @@ import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@
 import { scanContent } from "@/lib/content-policy";
 import { isSafeRussianReport, normalizeRussianReport, reportReasonLabel } from "@/lib/report-reasons";
 import { notificationGroup, notify } from "@/lib/notifications";
+import { safeReturnTo } from "@/lib/navigation";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -80,7 +81,8 @@ export async function deleteAccountAction(formData: FormData) {
 export async function switchRoleAction(formData: FormData) {
   const user = await requireUser();
   const mode = String(formData.get("mode")) as RoleMode;
-  if (!["client", "worker"].includes(mode) || !canUseRoleMode(user.role, mode)) redirect("/profile");
+  const returnTo = safeReturnTo(formData.get("returnTo"), "/profile");
+  if (!["client", "worker"].includes(mode) || !canUseRoleMode(user.role, mode)) redirect(returnTo);
   (await cookies()).set(ROLE_MODE_COOKIE, mode, {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -88,8 +90,8 @@ export async function switchRoleAction(formData: FormData) {
     maxAge: 60 * 60 * 24 * 365
   });
   await prisma.user.update({ where: { id: user.id }, data: { preferredRoleMode: mode } });
-  revalidatePath("/profile");
-  redirect("/campaigns");
+  revalidatePath(returnTo);
+  redirect(returnTo);
 }
 
 export async function createCampaignAction(formData: FormData) {

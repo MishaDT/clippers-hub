@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, CheckCircle2, CircleAlert, Clock3, Eye, Megaphone, Sparkles, TrendingUp, Users } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
@@ -48,6 +49,9 @@ export function MarketplaceBrowser({
   page1Top: ReactNode;
   alwaysTop: ReactNode;
 }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnTo = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
   const totalPages = Math.max(1, Math.ceil(cards.length / pageSize));
 
   const readPage = useCallback(() => {
@@ -105,7 +109,7 @@ export function MarketplaceBrowser({
                       : null;
             const SignalIcon = signal?.Icon;
             return (
-              <Link className="mk-card" href={`/campaigns/${card.id}`} key={card.id}>
+              <Link className="mk-card" href={`/campaigns/${card.id}?returnTo=${encodeURIComponent(returnTo)}`} key={card.id}>
                 <div className="mk-card-top">
                   <div className="mk-client">
                     <UserAvatar avatar={card.owner.avatar} name={card.owner.name} handle={card.owner.handle} size={38} />

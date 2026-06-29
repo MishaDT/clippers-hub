@@ -319,7 +319,7 @@ export default async function ChatsPage({
                 peerHandle={`@${selectedPeer.handle}`}
                 peerAvatar={avatarFor(selectedPeer.handle, selectedPeer.avatar)}
                 campaignTitle={selectedThread.campaign?.title || (selectedIsCollab ? "Совместный проект" : undefined)}
-                campaignHref={selectedThread.campaign ? `/campaigns/${selectedThread.campaign.id}` : undefined}
+                campaignHref={selectedThread.campaign ? `/campaigns/${selectedThread.campaign.id}?returnTo=${encodeURIComponent(hrefWith({ thread: selectedThread.id, q: query, status, page: currentPage, role: roleFilter, view, type: typeFilter }))}` : undefined}
                 progress={selectedThread.campaign ? {
                   kind: "campaign",
                   statusLabel: statusLabel(selectedStatus),

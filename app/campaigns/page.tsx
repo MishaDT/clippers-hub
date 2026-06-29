@@ -22,10 +22,10 @@ const ACTIVE_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SET
 
 const ACTIVE_META: Record<string, { label: string; cta: string; href: (id: string) => string }> = {
   ACCEPTED: { label: "Заказ взят — выложи ролик", cta: "Выложить ролик", href: () => "/upload" },
-  POSTED: { label: "На проверке", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` },
-  VERIFIED: { label: "Подтверждён — набираем просмотры", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` },
-  THRESHOLD_MET: { label: "Цель достигнута — расчёт", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` },
-  SETTLING: { label: "Идёт расчёт выплаты", cta: "Открыть заказ", href: (id) => `/campaigns/${id}` }
+  POSTED: { label: "На проверке", cta: "Открыть заказ", href: (id) => `/campaigns/${id}?returnTo=%2Fcampaigns` },
+  VERIFIED: { label: "Подтверждён — набираем просмотры", cta: "Открыть заказ", href: (id) => `/campaigns/${id}?returnTo=%2Fcampaigns` },
+  THRESHOLD_MET: { label: "Цель достигнута — расчёт", cta: "Открыть заказ", href: (id) => `/campaigns/${id}?returnTo=%2Fcampaigns` },
+  SETTLING: { label: "Идёт расчёт выплаты", cta: "Открыть заказ", href: (id) => `/campaigns/${id}?returnTo=%2Fcampaigns` }
 };
 
 // The clipper's current in-progress order, pinned at the top of the home screen.
@@ -184,7 +184,7 @@ async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: nu
               const boostable = ["ACTIVE", "LOW_BUDGET"].includes(campaign.status);
               return (
                 <article className="client-campaign-row" key={campaign.id}>
-                  <Link className="client-campaign-main" href={`/campaigns/${campaign.id}`} aria-label={`Открыть ${campaign.title}`} />
+                  <Link className="client-campaign-main" href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/campaigns")}`} aria-label={`Открыть ${campaign.title}`} />
                   <div>
                     <strong>{campaign.title}</strong>
                     <span>{promoted ? `Featured до ${campaign.featuredUntil?.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : campaign.status === "ACTIVE" ? "Активна" : campaign.status === "LOW_BUDGET" ? "Заканчивается бюджет" : "Не активна"}</span>

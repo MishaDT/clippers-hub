@@ -6,6 +6,7 @@ const links = [
   ["/help", "Помощь"],
   ["/safety", "Безопасность"],
   ["/support", "Поддержка"],
+  ["/store", "Магазин"],
   ["/legal/terms", "Условия"],
   ["/legal/privacy", "Конфиденциальность"],
   ["/legal/cookies", "Cookie"]

@@ -12,6 +12,7 @@ import { parseJson } from "@/lib/json";
 import { compactNumber, expectedPayout, rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { safeReturnTo } from "@/lib/navigation";
 
 function shortDate(value: Date) {
   return value.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -40,8 +41,10 @@ function videoCheckStatus(status?: string) {
   return labels[status || ""] || "Не запускалась";
 }
 
-export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CampaignPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> }) {
   const { id } = await params;
+  const query = await searchParams;
+  const returnTo = safeReturnTo(query.returnTo, "/campaigns");
   const currentUser = await getCurrentUser();
   const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
   const campaign = await prisma.campaign.findUnique({
@@ -145,7 +148,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   return (
     <AppShell>
       <section className="section od">
-        <Link className="od-back" href="/campaigns"><ArrowLeft size={16} /> К заказам</Link>
+        <Link className="od-back" href={returnTo}><ArrowLeft size={16} /> Назад</Link>
 
         <div className="od-grid">
           <div className="od-hero">
@@ -260,13 +263,6 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
             threadId={chatThread.id}
             currentUserId={currentUser.id}
             peerName={currentUser.id === chatThread.clientId ? chatThread.worker.name : chatThread.client.name}
-            progress={{
-              statusLabel: submissionStatus(submission?.status),
-              views: compactNumber(submission?.currentViews || 0),
-              target: compactNumber(campaign.viewThreshold),
-              fraudScore: submission?.fraudScore || 0,
-              steps: progressSteps
-            }}
             messages={chatThread.messages.map((message) => {
               const meta = parseJson<{ urls?: string[] }>(message.metadataJson, {});
               return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Sparkles, Star, Trophy } from "lucide-react";
 
@@ -28,6 +28,9 @@ type Props = {
 
 export function ProgressCarousel({ league, achievement, level }: Props) {
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [cycle, setCycle] = useState(0);
+  const [pageVisible, setPageVisible] = useState(true);
   const touchStart = useRef<number | null>(null);
   const slides = [
     {
@@ -58,7 +61,27 @@ export function ProgressCarousel({ league, achievement, level }: Props) {
       footer: level.currentLabel
     }
   ];
-  const move = (direction: number) => setActive((current) => (current + direction + slides.length) % slides.length);
+  const select = (index: number) => {
+    setActive((index + slides.length) % slides.length);
+    setCycle((value) => value + 1);
+  };
+  const move = (direction: number) => {
+    setActive((current) => (current + direction + slides.length) % slides.length);
+    setCycle((value) => value + 1);
+  };
+
+  useEffect(() => {
+    const onVisibility = () => setPageVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    onVisibility();
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (paused || !pageVisible || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setTimeout(() => setActive((current) => (current + 1) % slides.length), 10000);
+    return () => window.clearTimeout(timer);
+  }, [active, cycle, pageVisible, paused, slides.length]);
 
   return (
     <section
@@ -70,6 +93,12 @@ export function ProgressCarousel({ league, achievement, level }: Props) {
         const delta = event.changedTouches[0].clientX - touchStart.current;
         if (Math.abs(delta) > 42) move(delta < 0 ? 1 : -1);
         touchStart.current = null;
+      }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
       }}
     >
       <header>
@@ -99,7 +128,7 @@ export function ProgressCarousel({ league, achievement, level }: Props) {
             <button
               className={active === index ? "active" : ""}
               type="button"
-              onClick={() => setActive(index)}
+              onClick={() => select(index)}
               aria-label={`Открыть: ${slide.eyebrow}`}
               aria-current={active === index}
               key={slide.key}

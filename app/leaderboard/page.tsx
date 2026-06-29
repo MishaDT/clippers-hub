@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Scissors, Sparkles, Star, Trophy } from "lucide-react";
+import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Scissors, ShoppingBag, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
 import { LeaderboardFireCanvas } from "@/components/leaderboard-fire-canvas";
 import { LeaderboardPeriodTabs } from "@/components/leaderboard-period-tabs";
 import { ReferralCard } from "@/components/referral-card";
 import { ProgressCarousel } from "@/components/progress-carousel";
-import { AffiliateCarousel } from "@/components/affiliate-carousel";
 import { PodiumFlameCanvas } from "@/components/podium-flame-canvas";
 import { LeaderboardLoadMore } from "@/components/leaderboard-load-more";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +16,6 @@ import { sendCollabInviteAction } from "@/app/actions";
 import { compactNumber } from "@/lib/money";
 import { leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
 import { getActiveRoleMode } from "@/lib/role-mode";
-import { loadAffiliateOffers } from "@/lib/affiliate-offers";
 
 // Default friendly opener for a one-click collab invite from the board.
 const COLLAB_MSG = "Привет! Хочу позвать тебя на совместный клип в ReelPay. Обсудим?";
@@ -74,27 +72,16 @@ const loadLeaders = unstable_cache(
       orderBy: { _sum: { currentViews: "desc" } },
       take: 50
     });
-    const estimatedWeek = period === "week"
-      && recentGroups.filter((group) => (group._sum.currentViews || 0) > 0).length < 3;
-    const groups = estimatedWeek
-      ? await prisma.submission.groupBy({
-        by: ["workerId"],
-        _sum: { currentViews: true },
-        _count: { _all: true },
-        orderBy: { _sum: { currentViews: "desc" } },
-        take: 50
-      })
-      : recentGroups;
+    const groups = recentGroups;
 
     const ids = groups.map((group) => group.workerId);
-    if (ids.length === 0) return [];
     const users = await prisma.user.findMany({
-      where: { id: { in: ids } },
+      where: ids.length ? { id: { in: ids } } : { id: "__none__" },
       select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true }
     });
     const byId = new Map(users.map((user) => [user.id, user]));
 
-    return groups
+    const rows = groups
       .map((group, index) => {
         const user = byId.get(group.workerId);
         const handle = user?.handle ?? "";
@@ -106,16 +93,34 @@ const loadLeaders = unstable_cache(
           avatar: avatarFor(handle, user?.avatar ?? null),
           verified: user?.kycStatus === "VERIFIED",
           lifetimeViews: user?.lifetimeViews ?? 0,
-          views: estimatedWeek
-            ? Math.max(1_000, Math.round((group._sum.currentViews ?? 0) * (0.045 + (index % 4) * 0.006)))
-            : group._sum.currentViews ?? 0,
-          clips: estimatedWeek ? Math.max(1, Math.min(7, Math.ceil(group._count._all / 3))) : group._count._all,
+          views: group._sum.currentViews ?? 0,
+          clips: group._count._all,
           cover: coverFor(handle || group.workerId)
         };
-      })
-      .filter((row) => row.views > 0);
+      });
+    if (period === "week" && rows.length < 10) {
+      const fallback = await prisma.user.findMany({
+        where: { id: { notIn: rows.map((row) => row.id) }, submissions: { some: {} } },
+        select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true },
+        orderBy: { lifetimeViews: "desc" },
+        take: 10 - rows.length
+      });
+      rows.push(...fallback.map((user, index) => ({
+        rank: rows.length + index + 1,
+        id: user.id,
+        name: user.name,
+        handle: user.handle,
+        avatar: avatarFor(user.handle, user.avatar),
+        verified: user.kycStatus === "VERIFIED",
+        lifetimeViews: user.lifetimeViews,
+        views: 0,
+        clips: 0,
+        cover: coverFor(user.handle || user.id)
+      })));
+    }
+    return rows.map((row, index) => ({ ...row, rank: index + 1 }));
   },
-  ["leaderboard-v5"],
+  ["leaderboard-v6"],
   { revalidate: 600, tags: ["leaderboard"] }
 );
 
@@ -175,10 +180,9 @@ export default async function LeaderboardPage({
   const period: Period = rawPeriod === "all" ? "all" : "week";
   const currentUser = await getCurrentUser();
   const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
-  const [rows, me, affiliateOffers] = await Promise.all([
+  const [rows, me] = await Promise.all([
     loadLeaders(period),
-    currentUser ? loadMyProgress(currentUser) : Promise.resolve(null),
-    loadAffiliateOffers()
+    currentUser ? loadMyProgress(currentUser) : Promise.resolve(null)
   ]);
 
   const podium = rows.slice(0, 3);
@@ -262,7 +266,7 @@ export default async function LeaderboardPage({
                       const pos = row.rank === 1 ? "first" : row.rank === 2 ? "second" : "third";
                       return (
                         <li className={`podium-card podium-card--${pos}`} key={row.id}>
-                          <Link className="podium-cardlink" href={`/clippers/${row.handle}`} aria-label={`Профиль ${row.name}`} prefetch />
+                          <Link className="podium-cardlink" href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(`/leaderboard?period=${period}`)}`} aria-label={`Профиль ${row.name}`} prefetch />
                           <span className="podium-top-light" aria-hidden="true" />
                           {row.rank === 1 ? <div className="podium-crown" aria-hidden="true"><Crown /></div> : null}
                           <Avatar row={row} podium />
@@ -278,12 +282,15 @@ export default async function LeaderboardPage({
                           </div>
                           <div className="podium-clips">{row.clips} клипов</div>
                           {mode === "client" && row.id !== currentUser?.id ? (
-                            <form className="podium-invite" action={sendCollabInviteAction}>
-                              <input type="hidden" name="workerId" value={row.id} />
-                              <input type="hidden" name="handle" value={row.handle} />
-                              <input type="hidden" name="message" value={COLLAB_MSG} />
-                              <button type="submit"><Handshake size={14} /> Пригласить</button>
-                            </form>
+                            <div className="podium-actions">
+                              <Link href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(`/leaderboard?period=${period}`)}`}>Профиль</Link>
+                              <form className="podium-invite" action={sendCollabInviteAction}>
+                                <input type="hidden" name="workerId" value={row.id} />
+                                <input type="hidden" name="handle" value={row.handle} />
+                                <input type="hidden" name="message" value={COLLAB_MSG} />
+                                <button type="submit"><Handshake size={14} /> Пригласить</button>
+                              </form>
+                            </div>
                           ) : row.id === currentUser?.id ? <span className="podium-self">Ваше место</span> : null}
                         </li>
                       );
@@ -321,27 +328,12 @@ export default async function LeaderboardPage({
                   </article>
                 </section> : null}
 
-                {rest.length > 0 ? <LeaderboardLoadMore rows={rest} clientMode={mode === "client"} currentUserId={currentUser?.id} /> : null}
+                {rest.length > 0 ? <LeaderboardLoadMore rows={rest} clientMode={mode === "client"} currentUserId={currentUser?.id} returnTo={`/leaderboard?period=${period}`} /> : null}
               </>
             )}
           </div>
 
           <aside className="leaderboard-rail">
-            {me ? (
-              <section className="rail-panel referral-panel">
-                <ReferralCard code={me.referralCode} invited={me.invited} rewardRp={me.referralRewardRp} />
-              </section>
-            ) : null}
-
-            {currentUser ? (
-              <Link className="rail-link-panel" href="/collabs">
-                <span><Handshake size={16} /> Мои коллабы</span>
-                <ChevronRight size={16} />
-              </Link>
-            ) : null}
-
-            <AffiliateCarousel offers={affiliateOffers} />
-
             {me ? (
               <ProgressCarousel
                 league={{
@@ -364,6 +356,26 @@ export default async function LeaderboardPage({
                   weekLabel: `+${compactNumber(me.weekViews)} XP за неделю`
                 }}
               />
+            ) : null}
+
+            <Link className="store-rail-card" href="/store?tab=partners">
+              <span><ShoppingBag size={15} /> Магазин ReelPay</span>
+              <strong>Награды и предложения</strong>
+              <p>Трать RP или открой витрину Pampadu.</p>
+              <em>Открыть магазин <ChevronRight size={15} /></em>
+            </Link>
+
+            {me ? (
+              <section className="rail-panel referral-panel">
+                <ReferralCard code={me.referralCode} invited={me.invited} rewardRp={me.referralRewardRp} />
+              </section>
+            ) : null}
+
+            {currentUser ? (
+              <Link className="rail-link-panel" href="/collabs">
+                <span><Handshake size={16} /> Мои коллабы</span>
+                <ChevronRight size={16} />
+              </Link>
             ) : null}
 
             {!currentUser ? (
