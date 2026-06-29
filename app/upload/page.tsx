@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Send } from "lucide-react";
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -60,7 +61,7 @@ export default async function UploadPage({
     <AppShell>
       <section className="section up-screen">
         <div className="up-head">
-          <span className="up-eyebrow">Сдача работы</span>
+          <span className="up-eyebrow"><Send size={15} /> Сдача работы</span>
           <h1>Выложить работу</h1>
           <p>Опубликуй ролик с кодом заказа в описании и вставь ссылку — мы подтвердим, что клип твой, начнём считать просмотры и начислим выплату после проверки.</p>
         </div>
