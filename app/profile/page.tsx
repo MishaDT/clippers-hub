@@ -171,13 +171,31 @@ export default async function ProfilePage() {
   return (
     <AppShell>
       <section className="section profile-screen">
-        <header className="profile-overview">
+        <header className="profile-overview profile-hero">
           <div className="profile-person">
-            <UserAvatar avatar={user.avatar} name={user.name} handle={user.handle} size={72} />
-            <div>
-              <h1>{user.name}</h1>
+            <span className="profile-avatar-stage">
+              <UserAvatar avatar={user.avatar} name={user.name} handle={user.handle} size={88} />
+            </span>
+            <div className="profile-identity">
+              <div className="profile-name-line">
+                <h1>{user.name}</h1>
+                <Tag>{mode === "client" ? "Заказчик" : "Клипмейкер"}</Tag>
+              </div>
               <p className="muted">@{user.handle}</p>
-              <Tag>{mode === "client" ? "Заказчик" : "Исполнитель"}</Tag>
+              <div className="profile-hero-stats">
+                <span className="profile-role-label">
+                  {mode === "client" ? <BriefcaseBusiness size={15} /> : <Zap size={15} />}
+                  {mode === "client" ? "Заказчик" : "Исполнитель"}
+                </span>
+                <span>
+                  <b>{compactNumber(data.views)}</b>
+                  <small>просмотров</small>
+                </span>
+                <span>
+                  <b>{mode === "worker" && "earningsCents" in data ? rub(data.earningsCents) : "campaignCount" in data ? data.campaignCount : 0}</b>
+                  <small>{mode === "worker" ? "заработано" : "кампаний"}</small>
+                </span>
+              </div>
             </div>
           </div>
           <div className="profile-edit-actions">
