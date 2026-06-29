@@ -24,6 +24,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { compactNumber, rub } from "@/lib/money";
 import styles from "./marketplace.module.css";
+import { MarketplacePagination } from "@/components/marketplace-pagination";
 
 const ACTIVE_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
 
@@ -282,7 +283,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   return (
     <AppShell>
       <section className={`section market-screen ${styles.marketplace}`}>
-        {active ? (
+        {currentPage === 1 && active ? (
           <Link className={`active-order ao-${active.statusKey}`} href={active.href}>
             <span className="ao-glow" aria-hidden="true" />
             <span className="ao-flicker" aria-hidden="true" />
@@ -306,7 +307,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           </Link>
         ) : null}
 
-        <CampaignGuide variant="worker" initiallyCollapsed={Boolean(user?.marketGuideSeenAt) || currentPage > 1} persistSeen={Boolean(user)} />
+        {currentPage === 1 ? <CampaignGuide variant="worker" initiallyCollapsed={Boolean(user?.marketGuideSeenAt)} persistSeen={Boolean(user)} /> : null}
 
         <header className="mk-head">
           <div>
@@ -399,11 +400,12 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         )}
 
         {totalPages > 1 ? (
-          <div className="mk-pages">
-            <Link className={currentPage <= 1 ? "disabled" : ""} href={`${makeHref({ page: String(Math.max(1, currentPage - 1)) })}#orders`}>Назад</Link>
-            <span>{currentPage} / {totalPages}</span>
-            <Link className={currentPage >= totalPages ? "disabled" : ""} href={`${makeHref({ page: String(Math.min(totalPages, currentPage + 1)) })}#orders`}>Дальше</Link>
-          </div>
+          <MarketplacePagination
+            page={currentPage}
+            totalPages={totalPages}
+            previousHref={makeHref({ page: String(Math.max(1, currentPage - 1)) })}
+            nextHref={makeHref({ page: String(Math.min(totalPages, currentPage + 1)) })}
+          />
         ) : null}
       </section>
     </AppShell>

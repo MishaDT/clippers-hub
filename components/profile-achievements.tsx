@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Check, Film, Flame, Lock, Megaphone, Play, Scissors, Sparkles, Star, Trophy, Users } from "lucide-react";
 import { claimAchievementAction } from "@/app/actions";
 
@@ -23,7 +22,7 @@ type Item = {
 };
 
 export function ProfileAchievements({ items }: { items: Item[] }) {
-  const router = useRouter();
+  const [visibleItems, setVisibleItems] = useState(items);
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -32,15 +31,18 @@ export function ProfileAchievements({ items }: { items: Item[] }) {
     startTransition(async () => {
       const data = new FormData();
       data.set("code", code);
-      await claimAchievementAction(data);
+      const result = await claimAchievementAction(data);
+      if (result.ok && result.claimed) {
+        setVisibleItems((current) => current.map((item) => item.code === code ? { ...item, claimed: true } : item));
+        window.dispatchEvent(new CustomEvent("rp-balance", { detail: result.rpBalance }));
+      }
       setBusy(null);
-      router.refresh();
     });
   };
 
   return (
     <div className="ach-grid">
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const Icon = ICONS[item.icon] || Sparkles;
         const claimable = item.done && !item.claimed;
         return (

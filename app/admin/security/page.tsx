@@ -14,21 +14,28 @@ function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
-export default async function AdminSecurityPage() {
+export default async function AdminSecurityPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const page = Math.max(1, Number(params.page || 1));
+  const pageSize = 25;
   const day = daysAgo(1);
   const week = daysAgo(7);
-  const [riskySubmissions, videoChecks, repeatedDevices, oauthLogins, recentSecurityEvents] = await Promise.all([
+  const riskWhere = { OR: [{ fraudScore: { gte: 50 } }, { status: "REJECTED" as const }] };
+  const checkWhere = { status: { in: ["PENDING", "NEEDS_REVIEW", "FAILED"] } };
+  const [riskySubmissions, riskTotal, videoChecks, checkTotal, repeatedDevices, oauthLogins, recentSecurityEvents] = await Promise.all([
     prisma.submission.findMany({
-      where: { OR: [{ fraudScore: { gte: 50 } }, { status: "REJECTED" }] },
+      where: riskWhere,
       include: {
         worker: { select: { email: true, handle: true, trustScore: true } },
         campaign: { select: { id: true, title: true, viewThreshold: true } }
       },
       orderBy: [{ fraudScore: "desc" }, { updatedAt: "desc" }],
-      take: 60
+      skip: (page - 1) * pageSize,
+      take: pageSize
     }),
+    prisma.submission.count({ where: riskWhere }),
     prisma.videoCheck.findMany({
-      where: { status: { in: ["PENDING", "NEEDS_REVIEW", "FAILED"] } },
+      where: checkWhere,
       include: {
         submission: {
           include: {
@@ -38,8 +45,10 @@ export default async function AdminSecurityPage() {
         }
       },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      take: 60
+      skip: (page - 1) * pageSize,
+      take: pageSize
     }),
+    prisma.videoCheck.count({ where: checkWhere }),
     prisma.analyticsEvent.groupBy({
       by: ["ipHash"],
       where: { ipHash: { not: null }, createdAt: { gte: day } },
@@ -57,6 +66,7 @@ export default async function AdminSecurityPage() {
   ]);
 
   const repeatedHigh = repeatedDevices.filter((item) => item._count.ipHash >= 20);
+  const totalPages = Math.max(1, Math.ceil(Math.max(riskTotal, checkTotal) / pageSize));
   const checks = [
     { label: "Google OAuth", ok: isConfigured("google"), detail: "соц-вход" },
     { label: "VK ID OAuth", ok: isConfigured("vk"), detail: "RU-вход" },
@@ -174,6 +184,11 @@ export default async function AdminSecurityPage() {
             </div>
           </Card>
         </div>
+        {totalPages > 1 ? <div className="admin-pagination">
+          <Link className={page <= 1 ? "disabled" : ""} href={`/admin/security?page=${Math.max(1, page - 1)}`}>Назад</Link>
+          <span>{page} / {totalPages}</span>
+          <Link className={page >= totalPages ? "disabled" : ""} href={`/admin/security?page=${Math.min(totalPages, page + 1)}`}>Дальше</Link>
+        </div> : null}
       </div>
     </AdminShell>
   );

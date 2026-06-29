@@ -70,6 +70,13 @@ export default async function WalletPage({
   const reserved = campaignBudget?._sum.remainingBudgetCents || 0;
   const spent = Math.max(0, (campaignBudget?._sum.totalBudgetCents || 0) - reserved);
   const totalPages = Math.max(1, Math.ceil(totalTransactions / pageSize));
+  const transactionGroups = transactions.reduce<Array<{ date: string; items: typeof transactions }>>((groups, item) => {
+    const date = item.createdAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+    const current = groups.at(-1);
+    if (current?.date === date) current.items.push(item);
+    else groups.push({ date, items: [item] });
+    return groups;
+  }, []);
 
   return (
     <AppShell hideFooter>
@@ -153,20 +160,25 @@ export default async function WalletPage({
             <Tag tone="soft">{totalTransactions}</Tag>
           </div>
           <div className="pay-list">
-            {transactions.length ? transactions.map((transaction) => (
-              <div className="pay-row wallet-row" key={transaction.id}>
-                <span>{transaction.status === "COMPLETED" ? "✓" : "…"}</span>
-                <div>
-                  <strong>{transactionLabels[transaction.type] || transaction.type}</strong>
-                  <small>{transaction.createdAt.toLocaleString("ru-RU")}</small>
-                </div>
-                <div>
-                  <b>{rub(transaction.netCents)}</b>
-                  <Tag tone={transaction.status === "COMPLETED" ? "good" : "warn"}>
-                    {transaction.status === "COMPLETED" ? "Готово" : "В обработке"}
-                  </Tag>
-                </div>
-              </div>
+            {transactionGroups.length ? transactionGroups.map((group) => (
+              <section className="wallet-date-group" key={group.date}>
+                <h3>{group.date}</h3>
+                {group.items.map((transaction) => (
+                  <div className="pay-row wallet-row" key={transaction.id}>
+                    <span>{transaction.status === "COMPLETED" ? "✓" : "…"}</span>
+                    <div>
+                      <strong>{transactionLabels[transaction.type] || transaction.type}</strong>
+                      <small>{transaction.createdAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</small>
+                    </div>
+                    <div>
+                      <b>{rub(transaction.netCents)}</b>
+                      <Tag tone={transaction.status === "COMPLETED" ? "good" : "warn"}>
+                        {transaction.status === "COMPLETED" ? "Готово" : "В обработке"}
+                      </Tag>
+                    </div>
+                  </div>
+                ))}
+              </section>
             )) : <p className="muted">Операций пока нет.</p>}
           </div>
           {totalPages > 1 ? (

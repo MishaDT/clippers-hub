@@ -1,15 +1,11 @@
 import Link from "next/link";
-import { ArrowDown, ArrowLeft, ArrowUp, Check, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseJson } from "@/lib/json";
 import { SPECIALTIES } from "@/lib/profile-rules";
-import {
-  movePortfolioPinAction,
-  pinPortfolioAction,
-  removePortfolioPinAction,
-  updateProfileAction
-} from "./actions";
+import { updateProfileAction } from "./actions";
+import { PortfolioManager } from "@/components/portfolio-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +33,10 @@ export default async function ProfileSettingsPage({
     },
     include: { campaign: { select: { title: true } } },
     orderBy: { currentViews: "desc" },
-    take: 50
+    take: 6
   });
   const selected = parseJson<string[]>(user.specialtiesJson, []);
   const socialLinks = parseJson<string[]>(user.socialLinksJson, []);
-  const pinnedIds = new Set(user.portfolioPins.map((pin) => pin.submissionId));
 
   return (
     <main className="settings-page profile-settings">
@@ -64,23 +59,8 @@ export default async function ProfileSettingsPage({
       </form>
 
       <section className="settings-card">
-        <div className="settings-section-head"><div><h2>Витрина работ</h2><p>Заказчики видят здесь до шести роликов. Без ручного закрепления показываются самые просматриваемые.</p></div><Link href={`/clippers/${user.handle}`}><ExternalLink size={16} /> Открыть профиль</Link></div>
-        <div className="portfolio-manage">
-          {user.portfolioPins.map((pin, index) => (
-            <article key={pin.id}>
-              <span>{index + 1}</span><div><b>{pin.submission.campaign.title}</b><small>{pin.submission.currentViews.toLocaleString("ru-RU")} просмотров</small></div>
-              <form action={movePortfolioPinAction}><input type="hidden" name="pinId" value={pin.id} /><button name="direction" value="up" aria-label="Поднять"><ArrowUp size={16} /></button><button name="direction" value="down" aria-label="Опустить"><ArrowDown size={16} /></button></form>
-              <form action={removePortfolioPinAction}><input type="hidden" name="pinId" value={pin.id} /><button aria-label="Убрать"><Trash2 size={16} /></button></form>
-            </article>
-          ))}
-          {!user.portfolioPins.length ? <p className="muted">Сейчас витрина заполняется автоматически лучшими подтверждёнными роликами.</p> : null}
-        </div>
-        {user.portfolioPins.length < 6 ? <div className="portfolio-available">
-          <h3>Закрепить работу вручную</h3>
-          {submissions.filter((item) => !pinnedIds.has(item.id)).slice(0, 12).map((item) => (
-            <form action={pinPortfolioAction} key={item.id}><input type="hidden" name="submissionId" value={item.id} /><span><b>{item.campaign.title}</b><small>{item.currentViews.toLocaleString("ru-RU")} просмотров</small></span><button className="btn btn-ghost btn-small">Добавить</button></form>
-          ))}
-        </div> : null}
+        <div className="settings-section-head"><Link href={`/clippers/${user.handle}`}><ExternalLink size={16} /> Открыть публичный профиль</Link></div>
+        <PortfolioManager initialPins={user.portfolioPins} automatic={submissions} />
       </section>
     </main>
   );

@@ -10,12 +10,13 @@ import { stringify } from "@/lib/json";
 import { prisma } from "@/lib/prisma";
 import { supportCategories, supportPriorities, supportStatuses } from "@/lib/support";
 import { moderateText } from "@/lib/moderation";
+import { notificationGroup, notify } from "@/lib/notifications";
 
 function cleanSubject(value: FormDataEntryValue | null) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 120);
 }
 
-async function notifyAdmins(title: string, body: string, href: string) {
+async function notifyAdmins(title: string, body: string, href: string, threadId: string) {
   const configuredEmails = String(process.env.ADMIN_EMAILS || "")
     .split(",")
     .map((email) => email.trim().toLowerCase())
@@ -30,17 +31,15 @@ async function notifyAdmins(title: string, body: string, href: string) {
     select: { id: true }
   });
   if (!admins.length) return;
-  await prisma.notification.createMany({
-    data: admins.map(({ id }) => ({
+  await Promise.all(admins.map(({ id }) => notify({
       userId: id,
+      groupKey: notificationGroup("support-thread", threadId),
       title,
       body,
-      channel: "IN_APP",
       priority: "HIGH",
       kind: "SUPPORT",
       href
-    }))
-  });
+    })));
 }
 
 export async function createSupportThreadAction(formData: FormData) {
@@ -77,7 +76,7 @@ export async function createSupportThreadAction(formData: FormData) {
     payload: { threadId: thread.id }
   });
 
-  await notifyAdmins("Новое обращение", subject, `/admin/support?thread=${thread.id}`);
+  await notifyAdmins("Новое обращение", subject, `/admin/support?thread=${thread.id}`, thread.id);
   revalidatePath("/support");
   revalidatePath("/admin/support");
   redirect(`/support?thread=${thread.id}`);
@@ -95,24 +94,24 @@ export async function sendSupportMessageAction(formData: FormData) {
   });
   if (!thread) return { ok: false, error: "Обращение не найдено" };
 
-  await prisma.$transaction([
-    prisma.supportMessage.create({
+  await prisma.$transaction(async (tx) => {
+    await tx.supportMessage.create({
       data: {
         threadId,
         senderId: user.id,
         body: checked.body,
         metadataJson: stringify({ urls: checked.urls })
       }
-    }),
-    prisma.supportThread.update({
+    });
+    await tx.supportThread.update({
       where: { id: threadId },
       data: {
         status: thread.assignedToId ? "IN_PROGRESS" : "OPEN",
         requesterReadAt: new Date(),
         updatedAt: new Date()
       }
-    })
-  ]);
+    });
+  });
   await moderateText({
     text: checked.body,
     contentType: "SUPPORT_MESSAGE",
@@ -121,7 +120,7 @@ export async function sendSupportMessageAction(formData: FormData) {
     payload: { threadId }
   });
 
-  await notifyAdmins("Ответ в поддержке", checked.body.slice(0, 90), `/admin/support?thread=${threadId}`);
+  await notifyAdmins("Ответ в поддержке", checked.body.slice(0, 90), `/admin/support?thread=${threadId}`, threadId);
   revalidatePath("/support");
   revalidatePath("/admin/support");
   return { ok: true };
@@ -162,16 +161,16 @@ export async function adminReplySupportAction(formData: FormData) {
   });
   if (!thread) return { ok: false, error: "Обращение не найдено" };
 
-  await prisma.$transaction([
-    prisma.supportMessage.create({
+  await prisma.$transaction(async (tx) => {
+    await tx.supportMessage.create({
       data: {
         threadId,
         senderId: admin.id,
         body: checked.body,
         metadataJson: stringify({ urls: checked.urls })
       }
-    }),
-    prisma.supportThread.update({
+    });
+    await tx.supportThread.update({
       where: { id: threadId },
       data: {
         assignedToId: admin.id,
@@ -179,19 +178,17 @@ export async function adminReplySupportAction(formData: FormData) {
         adminReadAt: new Date(),
         updatedAt: new Date()
       }
-    }),
-    prisma.notification.create({
-      data: {
-        userId: thread.requesterId,
-        title: "Ответ поддержки",
-        body: checked.body.slice(0, 120),
-        channel: "IN_APP",
-        priority: "HIGH",
-        kind: "SUPPORT",
-        href: `/support?thread=${threadId}`
-      }
-    })
-  ]);
+    });
+    await notify({
+      userId: thread.requesterId,
+      groupKey: notificationGroup("support-reply", threadId),
+      title: "Ответ поддержки",
+      body: checked.body.slice(0, 120),
+      priority: "HIGH",
+      kind: "SUPPORT",
+      href: `/support?thread=${threadId}`
+    }, tx);
+  });
   revalidatePath("/support");
   revalidatePath("/admin/support");
   return { ok: true };

@@ -4,6 +4,7 @@ import type { Prisma, User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { scanContent } from "@/lib/content-policy";
 import { stringify } from "@/lib/json";
+import { notificationGroup, notify } from "@/lib/notifications";
 
 export async function assertAccountActive(user: Pick<User, "id" | "accountStatus" | "restrictedUntil">) {
   if (user.accountStatus === "BANNED" || user.accountStatus === "FROZEN") throw new Error("Аккаунт ограничен модерацией");
@@ -38,17 +39,15 @@ export async function createModerationCase(input: {
   });
   const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
   if (admins.length) {
-    await prisma.notification.createMany({
-      data: admins.map(({ id }) => ({
+    await Promise.all(admins.map(({ id }) => notify({
         userId: id,
+        groupKey: notificationGroup("moderation", moderationCase.id),
         title: "Новый случай модерации",
         body: `${input.contentType}: ${input.category}`,
-        channel: "IN_APP",
         priority: input.severity === "CRITICAL" ? "HIGH" : "NORMAL",
         kind: "MODERATION",
         href: `/admin/moderation?case=${moderationCase.id}`
-      }))
-    });
+      })));
   }
   return moderationCase;
 }

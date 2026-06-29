@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, Check, CircleAlert, Clock3, Megaphone, Message
 import { AppShell } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
 import { CampaignChat } from "@/components/campaign-chat";
+import { WorkspaceJourney } from "@/components/workspace-journey";
 import { joinCampaignAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -132,10 +133,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         ? { cls: "easy", Icon: Sparkles, text: "Новый заказ" }
         : null;
   const progressSteps = [
-    { title: "Взят", done: Boolean(submission), active: submission?.status === "ACCEPTED" },
-    { title: "Ссылка", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: submission?.status === "POSTED" },
-    { title: "Трекинг", done: ["THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: ["VERIFIED", "POSTED"].includes(submission?.status || "") },
-    { title: "Выплата", done: submission?.status === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(submission?.status || "") }
+    { key: "accepted", title: "Заказ взят", done: Boolean(submission), active: false, detail: "Условия доступны" },
+    { key: "link", title: "Ссылка", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: submission?.status === "ACCEPTED", detail: submission?.status === "ACCEPTED" ? "Опубликуйте ролик" : "Ссылка принята", href: "/upload" },
+    { key: "tracking", title: "Трекинг", done: ["THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: ["VERIFIED", "POSTED"].includes(submission?.status || ""), detail: ["VERIFIED", "POSTED"].includes(submission?.status || "") ? "Считаем просмотры" : "После проверки ссылки" },
+    { key: "payout", title: "Выплата", done: submission?.status === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(submission?.status || ""), detail: submission?.status === "PAID" ? "Деньги зачислены" : "После цели и проверки" }
   ];
   const videoCheck = submission?.videoChecks[0];
 
@@ -245,26 +246,15 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         </div>
 
         {submission && (mode === "worker" || isOwner) ? (
-          <section className="workspace-card">
-            <div className="workspace-head">
-              <div>
-                <span>Рабочая зона</span>
-                <h2>{submissionStatus(submission.status)}</h2>
-              </div>
-              <Link className="btn" href="/chats"><MessageCircle size={16} /> Все чаты</Link>
-            </div>
-            <div className="workspace-progress">
-              {progressSteps.map((step) => (
-                <span className={step.done ? "done" : step.active ? "active" : ""} key={step.title}>{step.title}</span>
-              ))}
-            </div>
-            <div className="workspace-stats">
-              <span><b>{compactNumber(submission.currentViews)}</b><em>просмотры</em></span>
-              <span><b>{compactNumber(submission.currentLikes)}</b><em>лайки</em></span>
-              <span><b>{submission.fraudScore}%</b><em>риск проверки</em></span>
-              <span><b>{videoCheckStatus(videoCheck?.status)}</b><em>watermark</em></span>
-            </div>
-          </section>
+          <WorkspaceJourney
+            submissionId={submission.id}
+            status={submissionStatus(submission.status)}
+            steps={progressSteps}
+            views={compactNumber(submission.currentViews)}
+            likes={compactNumber(submission.currentLikes)}
+            fraudScore={submission.fraudScore}
+            watermark={videoCheckStatus(videoCheck?.status)}
+          />
         ) : null}
 
         {chatThread && currentUser ? (

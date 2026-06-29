@@ -16,7 +16,7 @@ import { ReadStateTracker } from "@/components/read-state-tracker";
 
 const loadAdminAlerts = unstable_cache(
   (userId: string) => prisma.notification.count({
-    where: { userId, readAt: null, priority: "HIGH" }
+    where: { userId, readAt: null, archivedAt: null, priority: "HIGH" }
   }),
   ["admin-alert-count-v1"],
   { revalidate: 15, tags: ["admin-alerts"] }
@@ -44,9 +44,9 @@ export async function AppShell({
         getUnreadSummary(user.id),
         prisma.notification.findMany({
           where: { userId: user.id, archivedAt: null },
-          orderBy: { createdAt: "desc" },
+          orderBy: { lastOccurredAt: "desc" },
           take: 6,
-          select: { id: true, title: true, body: true, href: true, readAt: true, createdAt: true }
+          select: { id: true, title: true, body: true, href: true, readAt: true, occurrenceCount: true, lastOccurredAt: true }
         })
       ])
     : [0, { chats: 0, support: 0, chatBadge: 0, notifications: 0 }, []];
@@ -70,7 +70,7 @@ export async function AppShell({
         <div className="top-actions">
           {user ? (
             <>
-              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span></Link> : null}
+              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span>{adminAlerts ? <b className="admin-alert-badge" title={`${adminAlerts} важных событий`}>{adminAlerts > 99 ? "99+" : adminAlerts}</b> : null}</Link> : null}
               <NotificationBell
                 unread={unread.notifications}
                 items={notifications.map((item) => ({
@@ -79,10 +79,10 @@ export async function AppShell({
                   body: item.body,
                   href: item.href,
                   read: Boolean(item.readAt),
-                  createdAt: item.createdAt.toLocaleString("ru-RU", { day: "2-digit", month: "short" })
+                  occurrenceCount: item.occurrenceCount,
+                  createdAt: item.lastOccurredAt.toLocaleString("ru-RU", { day: "2-digit", month: "short" })
                 }))}
               />
-              {isAdmin && adminAlerts ? <Link className="role-pill admin-bell" href="/admin/security" aria-label="Важные события">{adminAlerts}</Link> : null}
               <Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>
               <form action={logoutAction}>
                 <button className="btn btn-small btn-ghost" type="submit">Выйти</button>

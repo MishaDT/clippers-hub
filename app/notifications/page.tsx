@@ -48,7 +48,7 @@ export default async function NotificationsPage({
   const page = Math.min(requestedPage, totalPages);
   const items = await prisma.notification.findMany({
     where,
-    orderBy: { createdAt: "desc" },
+    orderBy: { lastOccurredAt: "desc" },
     skip: (page - 1) * pageSize,
     take: pageSize
   });
@@ -80,7 +80,7 @@ export default async function NotificationsPage({
           {items.map((item) => (
             <article className={`notification-row ${item.readAt ? "" : "unread"}`} key={item.id}>
               <Link className="notification-main" href={item.href || "/profile"}>
-                <span><b>{item.title}</b><time>{item.createdAt.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</time></span>
+                <span><b>{item.title}{item.occurrenceCount > 1 ? ` · ${item.occurrenceCount}` : ""}</b><time>{item.lastOccurredAt.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</time></span>
                 <p>{item.body}</p>
               </Link>
               <span className="notification-actions">

@@ -13,7 +13,10 @@ import {
   WalletCards,
   Zap
 } from "lucide-react";
-import { claimRecurringRewardAction, switchRoleAction } from "@/app/actions";
+import { switchRoleAction } from "@/app/actions";
+import { ProfileRpBalance } from "@/components/profile-rp-balance";
+import { WeeklyRewards } from "@/components/weekly-rewards";
+import { ProfileDisclosure } from "@/components/profile-disclosure";
 import { AppShell, Card, Tag } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
 import { ProfileAchievements } from "@/components/profile-achievements";
@@ -190,7 +193,7 @@ export default async function ProfilePage() {
           </Link>
           <div>
             <Coins size={20} />
-            <span><small>Бонусы ReelPay</small><b>{formatRp(user.rpBalance)}</b></span>
+            <span><small>Бонусы ReelPay</small><ProfileRpBalance initial={user.rpBalance} /></span>
             <em>1 RP = 1 ₽ внутри сервиса</em>
           </div>
         </section>
@@ -206,29 +209,23 @@ export default async function ProfilePage() {
           </form>
         ) : null}
 
+        <ProfileDisclosure storageKey="rewards" title="Награды и задания" summary="Достижения и RP" defaultOpen={RECURRING_REWARDS.some((reward) => (achievementStats[reward.metric] || 0) >= reward.target && !weeklyClaimed.has(reward.code))}>
         <section className="profile-achievements">
           <div className="section-head compact">
             <div><span className="eyebrow">Награды</span><h2>Достижения</h2></div>
             <span className="profile-rp-hint"><Trophy size={15} /> RP нельзя вывести</span>
           </div>
           <ProfileAchievements items={achievementItems} />
-          <div className="weekly-rewards">
+          <div className="weekly-rewards-wrap">
             <div className="section-head compact"><div><h3>Задания недели</h3><p className="muted">До 120 RP, обновление в понедельник по Москве.</p></div></div>
-            {RECURRING_REWARDS.map((reward) => {
-              const value = achievementStats[reward.metric] || 0;
-              const done = value >= reward.target;
-              const claimed = weeklyClaimed.has(reward.code);
-              return (
-                <form action={claimRecurringRewardAction} key={reward.code}>
-                  <input type="hidden" name="code" value={reward.code} />
-                  <span><b>{reward.title}</b><small>{Math.min(value, reward.target).toLocaleString("ru-RU")} / {reward.target.toLocaleString("ru-RU")}</small></span>
-                  <em>+{reward.reward} RP</em>
-                  <button className="btn btn-small" disabled={!done || claimed}>{claimed ? "Получено" : done ? "Забрать" : "В процессе"}</button>
-                </form>
-              );
-            })}
+            <WeeklyRewards items={RECURRING_REWARDS.map((reward) => ({
+              ...reward,
+              value: achievementStats[reward.metric] || 0,
+              claimed: weeklyClaimed.has(reward.code)
+            }))} />
           </div>
         </section>
+        </ProfileDisclosure>
 
         {mode === "worker" && "earningsCents" in data ? (
           <>
@@ -260,8 +257,7 @@ export default async function ProfilePage() {
               </Card>
             </section>
 
-            <section className="section-list">
-              <div className="section-head compact"><h2>Последние выплаты</h2><Link href="/wallet">Вся история</Link></div>
+            <ProfileDisclosure storageKey="worker-history" title="Последние выплаты" summary="История операций">
               <Card className="stack-list">
                 {data.payouts.length ? data.payouts.map((payment) => (
                   <div className="pay-row" key={payment.id}>
@@ -274,7 +270,7 @@ export default async function ProfilePage() {
                   </div>
                 )) : <p className="muted">Выплат пока нет.</p>}
               </Card>
-            </section>
+            </ProfileDisclosure>
           </>
         ) : null}
 
@@ -318,18 +314,16 @@ export default async function ProfilePage() {
               </div>
             </section>
 
-            <section className="section-list">
-              <div className="section-head compact"><h2>Бюджет</h2><Link href="/wallet">Подробнее</Link></div>
+            <ProfileDisclosure storageKey="client-budget" title="Бюджет" summary={`Осталось ${rub(data.remainingBudget)}`}>
               <div className="grid grid-2">
                 <Card><span className="muted">Использовано</span><h2>{rub(data.spentBudget)}</h2></Card>
                 <Card><span className="muted">Осталось в кампаниях</span><h2>{rub(data.remainingBudget)}</h2></Card>
               </div>
-            </section>
+            </ProfileDisclosure>
 
-            <section className="section-list">
-              <div className="section-head compact"><h2>Лучшие ролики</h2></div>
+            {data.topClips.some((clip) => clip.currentViews > 0) ? <ProfileDisclosure storageKey="client-clips" title="Ролики по моим заказам" summary="Лучшие по просмотрам">
               <Card className="stack-list">
-                {data.topClips.length ? data.topClips.map((clip) => (
+                {data.topClips.filter((clip) => clip.currentViews > 0).map((clip) => (
                   <div className="pay-row" key={clip.id}>
                     <UserAvatar
                       avatar={clip.worker.avatar}
@@ -340,9 +334,9 @@ export default async function ProfilePage() {
                     <div><strong>@{clip.worker.handle}</strong><p>{clip.campaign.title}</p></div>
                     <span>{compactNumber(clip.currentViews)}</span>
                   </div>
-                )) : <p className="muted">Ролики появятся после первых публикаций.</p>}
+                ))}
               </Card>
-            </section>
+            </ProfileDisclosure> : null}
           </>
         ) : null}
       </section>

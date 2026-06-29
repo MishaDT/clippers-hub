@@ -25,6 +25,7 @@ import { assertAccountActive, moderateText, reportContent } from "@/lib/moderati
 import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@/lib/rp";
 import { scanContent } from "@/lib/content-policy";
 import { isSafeRussianReport, normalizeRussianReport, reportReasonLabel } from "@/lib/report-reasons";
+import { notificationGroup, notify } from "@/lib/notifications";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -252,16 +253,13 @@ export async function joinCampaignAction(formData: FormData) {
     select: { id: true }
   });
   if (thread) {
-    await prisma.notification.create({
-      data: {
-        userId: campaign.ownerId,
-        title: "Новый отклик на заказ",
-        body: `${user.name} взял заказ «${campaign.title}».`,
-        channel: "IN_APP",
-        priority: "NORMAL",
-        kind: "CHAT",
-        href: `/chats?thread=${thread.id}`
-      }
+    await notify({
+      userId: campaign.ownerId,
+      groupKey: notificationGroup("campaign-join", `${campaignId}:${user.id}`),
+      title: "Новый отклик на заказ",
+      body: `${user.name} взял заказ «${campaign.title}».`,
+      kind: "CAMPAIGN",
+      href: `/chats?thread=${thread.id}`
     });
   }
   revalidatePath("/upload");
@@ -295,7 +293,6 @@ export async function sendChatMessageAction(formData: FormData) {
   if (policy.action === "BLOCK") return { ok: false, error: "Сообщение нарушает правила платформы" };
   if (policy.action === "REVIEW") return { ok: false, error: "Сообщение отправлено модератору на проверку" };
 
-  const recipientId = thread.clientId === user.id ? thread.workerId : thread.clientId;
   const now = new Date();
   await prisma.$transaction([
     prisma.chatMessage.create({
@@ -312,17 +309,6 @@ export async function sendChatMessageAction(formData: FormData) {
       where: { threadId_userId: { threadId, userId: user.id } },
       create: { threadId, userId: user.id, lastReadAt: now },
       update: { lastReadAt: now }
-    }),
-    prisma.notification.create({
-      data: {
-        userId: recipientId,
-        title: "Новое сообщение",
-        body: checked.body.slice(0, 120),
-        channel: "IN_APP",
-        priority: "NORMAL",
-        kind: "CHAT",
-        href: `/chats?thread=${threadId}${thread.kind === "COLLAB" ? "&type=collabs" : ""}`
-      }
     })
   ]);
   if (thread.campaignId) revalidatePath(`/campaigns/${thread.campaignId}`);
@@ -493,14 +479,19 @@ export async function claimAchievementAction(formData: FormData) {
       });
       return true;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    if (!claimed) return { ok: true, already: true, reward: 0 };
+    if (!claimed) {
+      const account = await prisma.user.findUnique({ where: { id: user.id }, select: { rpBalance: true } });
+      return { ok: true, already: true, claimed: true, rewardRp: 0, rpBalance: account?.rpBalance || 0 };
+    }
   } catch (error) {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
-    return { ok: true, already: true, reward: 0 };
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { rpBalance: true } });
+    return { ok: true, already: true, claimed: true, rewardRp: 0, rpBalance: account?.rpBalance || 0 };
   }
   revalidatePath("/profile");
   revalidatePath("/leaderboard");
-  return { ok: true, reward: def.reward };
+  const account = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { rpBalance: true } });
+  return { ok: true, claimed: true, rewardRp: def.reward, rpBalance: account.rpBalance };
 }
 
 export async function boostCampaignWithRpAction(formData: FormData) {
@@ -640,15 +631,15 @@ export async function claimRecurringRewardAction(formData: FormData) {
   await assertAccountActive(user);
   const code = String(formData.get("code") || "");
   const reward = RECURRING_REWARDS.find((item) => item.code === code);
-  if (!reward) redirect("/profile?reward=invalid");
+  if (!reward) return { ok: false, error: "Награда не найдена" };
   const stats = await loadAchievementStats(user);
-  if ((stats[reward.metric] || 0) < reward.target) redirect("/profile?reward=locked");
+  if ((stats[reward.metric] || 0) < reward.target) return { ok: false, error: "Условие ещё не выполнено" };
   const periodKey = moscowWeekKey();
   const claimed = await prisma.recurringRewardClaim.aggregate({
     where: { userId: user.id, periodKey },
     _sum: { rewardRp: true }
   });
-  if ((claimed._sum.rewardRp || 0) + reward.reward > WEEKLY_RP_CAP) redirect("/profile?reward=limit");
+  if ((claimed._sum.rewardRp || 0) + reward.reward > WEEKLY_RP_CAP) return { ok: false, error: "Недельный лимит уже достигнут" };
   try {
     await prisma.$transaction([
       prisma.recurringRewardClaim.create({ data: { userId: user.id, code, periodKey, rewardRp: reward.reward } }),
@@ -664,12 +655,16 @@ export async function claimRecurringRewardAction(formData: FormData) {
       })
     ]);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") redirect("/profile?reward=already");
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const account = await prisma.user.findUnique({ where: { id: user.id }, select: { rpBalance: true } });
+      return { ok: true, claimed: true, already: true, rewardRp: 0, rpBalance: account?.rpBalance || 0 };
+    }
     throw error;
   }
   revalidatePath("/profile");
   revalidatePath("/wallet");
-  redirect("/profile?reward=claimed");
+  const account = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { rpBalance: true } });
+  return { ok: true, claimed: true, rewardRp: reward.reward, rpBalance: account.rpBalance };
 }
 
 export async function markMarketGuideSeenAction() {
@@ -809,14 +804,14 @@ export async function submitClipAction(formData: FormData) {
     });
   }
 
-  await prisma.notification.create({
-    data: {
-      userId: user.id,
-      title: status === "REJECTED" ? "Работа требует проверки" : "Работа отправлена",
-      body: status === "REJECTED" ? "Ссылка получила высокий fraud score и ушла на ручную проверку." : "Ссылка отправлена на проверку и трекинг просмотров.",
-      channel: "in-app",
-      priority: status === "REJECTED" ? "HIGH" : "MED"
-    }
+  await notify({
+    userId: user.id,
+    groupKey: notificationGroup("submission-status", submission.id),
+    title: status === "REJECTED" ? "Работа требует проверки" : "Работа отправлена",
+    body: status === "REJECTED" ? "Ссылка получила высокий fraud score и ушла на ручную проверку." : "Ссылка отправлена на проверку и трекинг просмотров.",
+    priority: status === "REJECTED" ? "HIGH" : "NORMAL",
+    kind: "SUBMISSION",
+    href: `/campaigns/${submission.campaignId}`
   });
 
   await prisma.auditLog.create({
@@ -960,16 +955,13 @@ export async function sendCollabInviteAction(formData: FormData) {
   });
   if (!existing) {
     const invite = await prisma.collabInvite.create({ data: { clientId: user.id, workerId, message } });
-    await prisma.notification.create({
-      data: {
-        userId: workerId,
-        title: "Приглашение на коллаб",
-        body: `${user.name} зовёт на совместный клип`,
-        channel: "IN_APP",
-        priority: "NORMAL",
-        kind: "COLLAB",
-        href: `/collabs?invite=${invite.id}`
-      }
+    await notify({
+      userId: workerId,
+      groupKey: notificationGroup("collab-invite", invite.id),
+      title: "Приглашение на коллаб",
+      body: `${user.name} зовёт на совместный клип`,
+      kind: "COLLAB",
+      href: `/collabs?invite=${invite.id}`
     });
   }
   revalidatePath(`/clippers/${handle}`);
@@ -1018,17 +1010,14 @@ export async function respondCollabInviteAction(formData: FormData) {
           }
         }
       });
-      await tx.notification.create({
-        data: {
-          userId: invite.clientId,
-          title: "Коллаб принят",
-          body: `${user.name} принял приглашение. Обсуждение уже открыто.`,
-          channel: "IN_APP",
-          priority: "NORMAL",
-          kind: "COLLAB",
-          href: `/chats?thread=${created.id}&type=collabs`
-        }
-      });
+      await notify({
+        userId: invite.clientId,
+        groupKey: notificationGroup("collab-response", invite.id),
+        title: "Коллаб принят",
+        body: `${user.name} принял приглашение. Обсуждение уже открыто.`,
+        kind: "COLLAB",
+        href: `/chats?thread=${created.id}&type=collabs`
+      }, tx);
       return created;
     });
     revalidatePath("/collabs");
@@ -1036,23 +1025,20 @@ export async function respondCollabInviteAction(formData: FormData) {
     redirect(`/chats?thread=${thread?.id}&type=collabs`);
   }
 
-  await prisma.$transaction([
-    prisma.collabInvite.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.collabInvite.update({
       where: { id: invite.id },
       data: { status: "DECLINED", respondedAt: new Date() }
-    }),
-    prisma.notification.create({
-      data: {
-        userId: invite.clientId,
-        title: "Коллаб отклонён",
-        body: `${user.name} отклонил приглашение`,
-        channel: "IN_APP",
-        priority: "NORMAL",
-        kind: "COLLAB",
-        href: "/collabs"
-      }
-    })
-  ]);
+    });
+    await notify({
+      userId: invite.clientId,
+      groupKey: notificationGroup("collab-response", invite.id),
+      title: "Коллаб отклонён",
+      body: `${user.name} отклонил приглашение`,
+      kind: "COLLAB",
+      href: "/collabs"
+    }, tx);
+  });
   revalidatePath("/collabs");
   redirect("/collabs");
 }
@@ -1112,17 +1098,14 @@ export async function endCollabAction(formData: FormData) {
         }
       });
     }
-    await tx.notification.create({
-      data: {
-        userId: peerId,
-        title: "Коллаб завершён",
-        body: `${user.name} завершил совместный проект`,
-        channel: "IN_APP",
-        priority: "NORMAL",
-        kind: "COLLAB",
-        href: invite.chatThread ? `/chats?thread=${invite.chatThread.id}&type=collabs` : "/collabs"
-      }
-    });
+    await notify({
+      userId: peerId,
+      groupKey: notificationGroup("collab-completed", invite.id),
+      title: "Коллаб завершён",
+      body: `${user.name} завершил совместный проект`,
+      kind: "COLLAB",
+      href: invite.chatThread ? `/chats?thread=${invite.chatThread.id}&type=collabs` : "/collabs"
+    }, tx);
   });
   revalidatePath("/collabs");
   revalidatePath("/chats");
@@ -1151,14 +1134,14 @@ export async function endorseClipperAction(formData: FormData) {
     update: { note },
     create: { clientId: user.id, workerId, note }
   });
-  await prisma.notification.create({
-    data: {
-      userId: workerId,
-      title: "Вас рекомендуют",
-      body: `${user.name} рекомендует вас как клиппера`,
-      channel: "IN_APP",
-      priority: "HIGH"
-    }
+  await notify({
+    userId: workerId,
+    groupKey: notificationGroup("endorsement", user.id),
+    title: "Вас рекомендуют",
+    body: `${user.name} рекомендует вас как клиппера`,
+    priority: "HIGH",
+    kind: "ENDORSEMENT",
+    href: `/clippers/${handle}`
   });
   revalidatePath(`/clippers/${handle}`);
   redirect(`/clippers/${handle}?endorsed=1`);

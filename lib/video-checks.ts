@@ -3,6 +3,7 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import { validatePublicMediaUrl } from "@/lib/content-safety";
 import { parseJson, stringify } from "@/lib/json";
+import { notificationGroup, notify } from "@/lib/notifications";
 
 type PrismaTx = PrismaClient | Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
@@ -61,15 +62,15 @@ export async function notifyModerators(
   });
   if (!admins.length) return;
 
-  await prisma.notification.createMany({
-    data: admins.map((admin) => ({
+  await Promise.all(admins.map((admin) => notify({
       userId: admin.id,
+      groupKey: notificationGroup("video-check", payload.entityId),
       title: payload.title,
       body: payload.body,
-      channel: "in-app",
-      priority: "HIGH"
-    }))
-  });
+      priority: "HIGH",
+      kind: "MODERATION",
+      href: `/admin/moderation?videoCheck=${payload.entityId}`
+    }, prisma)));
   await prisma.auditLog.create({
     data: {
       action: "MODERATION_NOTIFY",

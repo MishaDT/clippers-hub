@@ -1,7 +1,23 @@
 import { defineConfig, devices } from "@playwright/test";
+import { loadEnvConfig } from "@next/env";
+
+loadEnvConfig(process.cwd());
+
+function testDatabaseUrl() {
+  if (process.env.DATABASE_URL_TEST) return process.env.DATABASE_URL_TEST;
+  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL_TEST is required for E2E.");
+  const url = new URL(process.env.DATABASE_URL);
+  url.searchParams.set("schema", "reelpay_e2e");
+  return url.toString();
+}
+
+const e2eDatabaseUrl = testDatabaseUrl();
+process.env.DATABASE_URL = e2eDatabaseUrl;
+process.env.DIRECT_URL = e2eDatabaseUrl;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.ts",
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
@@ -16,7 +32,11 @@ export default defineConfig({
     command: "node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000",
     url: "http://localhost:3000",
     reuseExistingServer: true,
-    timeout: 60_000
+    timeout: 60_000,
+    env: {
+      DATABASE_URL: e2eDatabaseUrl,
+      DIRECT_URL: e2eDatabaseUrl
+    }
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 950 } } },

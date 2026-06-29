@@ -17,6 +17,8 @@
     "db:studio": "prisma studio",
     "db:backfill-collabs": "node scripts/backfill-collab-chats.js",
     "db:backfill-referrals": "node scripts/backfill-referral-rewards.js",
+    "db:cleanup-notifications": "node scripts/cleanup-notification-duplicates.js",
+    "db:cleanup-notifications:apply": "node scripts/cleanup-notification-duplicates.js --apply",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "test:providers": "node --experimental-strip-types --test tests/view-providers.test.mts",

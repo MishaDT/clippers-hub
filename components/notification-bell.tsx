@@ -13,6 +13,7 @@ export type NotificationItem = {
   body: string;
   href: string | null;
   read: boolean;
+  occurrenceCount: number;
   createdAt: string;
 };
 
@@ -77,7 +78,7 @@ export function NotificationBell({
                 }}
                 key={item.id}
               >
-                <span><b>{item.title}</b><time>{item.createdAt}</time></span>
+                <span><b>{item.title}{item.occurrenceCount > 1 ? ` · ${item.occurrenceCount}` : ""}</b><time>{item.createdAt}</time></span>
                 <p>{item.body}</p>
               </Link>
             ))}

@@ -418,22 +418,26 @@ model Transaction {
 }
 
 model Notification {
-  id        String    @id @default(cuid())
-  userId    String
-  title     String
-  body      String
-  channel   String
-  priority  String
-  kind      String    @default("GENERAL")
-  href      String?
-  readAt    DateTime?
-  archivedAt DateTime?
-  createdAt DateTime  @default(now())
+  id             String    @id @default(cuid())
+  userId         String
+  groupKey       String?
+  title          String
+  body           String
+  channel        String
+  priority       String
+  kind           String    @default("GENERAL")
+  href           String?
+  occurrenceCount Int      @default(1)
+  readAt         DateTime?
+  archivedAt     DateTime?
+  lastOccurredAt DateTime  @default(now())
+  createdAt      DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, groupKey])
   @@index([userId, readAt, priority])
-  @@index([userId, archivedAt, createdAt])
+  @@index([userId, archivedAt, lastOccurredAt])
 }
 
 enum SupportCategory {
