@@ -46,6 +46,9 @@ export function validateChatMessage(raw: string) {
 export function buildSafePreview(urlValue: string) {
   try {
     const url = new URL(urlValue);
+    // Only ever build a link preview for real web URLs. Without this a stored value like
+    // `javascript:...` or `data:...` would be rendered as an <a href> and execute on click.
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
     const platform = detectPlatformFromUrl(urlValue);
     return {
       url: url.toString(),

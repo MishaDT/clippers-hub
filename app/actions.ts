@@ -181,7 +181,7 @@ export async function createCampaignAction(formData: FormData) {
             subtitles: String(formData.get("subtitles") || "required").slice(0, 30),
             cta: String(formData.get("cta") || "").trim().slice(0, 180),
             mustInclude: String(formData.get("mustInclude") || "").trim().slice(0, 400),
-            exampleUrls: String(formData.get("exampleUrls") || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 3),
+            exampleUrls: String(formData.get("exampleUrls") || "").split(/\r?\n/).map((item) => item.trim()).filter((item) => /^https?:\/\//i.test(item)).slice(0, 3),
             rightsConfirmed: formData.get("rightsConfirmed") === "on"
           }),
           cpmRateCents: cpm || 4500,
