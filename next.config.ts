@@ -1,33 +1,15 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-const scriptPolicy = process.env.NODE_ENV === "development"
-  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-  : "script-src 'self' 'unsafe-inline'";
-
+// The Content-Security-Policy is set per-request in middleware.ts so it can carry a fresh
+// nonce (script-src is nonce-gated, no 'unsafe-inline'). The static headers below apply to
+// every route.
 const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' https:",
-      scriptPolicy,
-      "style-src 'self' 'unsafe-inline'",
-      "connect-src 'self' https:",
-      "font-src 'self' data:",
-      "object-src 'none'",
-      "upgrade-insecure-requests"
-    ].join("; ")
-  }
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" }
 ];
 
 const nextConfig: NextConfig = {
