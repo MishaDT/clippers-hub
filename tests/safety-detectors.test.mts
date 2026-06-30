@@ -16,9 +16,18 @@ test("profanity caught through spacing, leet and homoglyphs", () => {
 });
 
 test("clean words containing a profanity substring are not flagged", () => {
-  for (const w of ["хлеб", "требования", "себе", "страховка", "директор", "команда", "блестит"]) {
+  for (const w of [
+    "хлеб", "требования", "себе", "страховка", "директор", "команда", "блестит",
+    "бляшка", "бляшки", "очко", "область", "сукно", "мандарин", "пиджак", "учебник"
+  ]) {
     assert.equal(detectProfanity(n(w)).length, 0, w);
   }
+});
+
+test("English profanity is caught through homoglyphs and leet", () => {
+  assert.ok(detectProfanity(n("fuck off")).length);
+  assert.ok(detectProfanity(n("fuсk")).length, "Cyrillic с homoglyph"); // с is Cyrillic
+  assert.ok(detectProfanity(n("sh1t")).length, "leet digit");
 });
 
 test("phone numbers are detected, plain large numbers are not", () => {

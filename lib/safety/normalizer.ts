@@ -10,9 +10,18 @@ const LEET_TO_CYRILLIC: Record<string, string> = {
   "0": "о", "1": "и", "3": "з", "4": "ч", "5": "с", "6": "б", "7": "т", "8": "в", "9": "я",
   "@": "а", "$": "с"
 };
+const LEET_TO_LATIN: Record<string, string> = {
+  "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "6": "g", "7": "t", "8": "b", "9": "g",
+  "@": "a", "$": "s"
+};
 // Classic Cyrillic/Latin visual confusables (Latin -> Cyrillic).
 const LATIN_TO_CYRILLIC: Record<string, string> = {
   a: "а", c: "с", e: "е", o: "о", p: "р", x: "х", y: "у", k: "к", m: "м", t: "т", b: "ь", h: "н"
+};
+// And the reverse (Cyrillic -> Latin), for catching English terms hidden behind Cyrillic
+// homoglyphs (e.g. "fuсk" with a Cyrillic "с").
+const CYRILLIC_TO_LATIN: Record<string, string> = {
+  а: "a", с: "c", е: "e", о: "o", р: "p", х: "x", у: "y", к: "k", м: "m", т: "t", ь: "b", н: "h"
 };
 
 function base(raw: string) {
@@ -30,6 +39,8 @@ export type NormalizedText = {
   /** Leet + Latin-homoglyph → Cyrillic, every repeat run collapsed to one char, separators
    *  kept (so gap-tolerant regexes can still see them). For Russian term detection. */
   deob: string;
+  /** Leet + Cyrillic-homoglyph → Latin, runs collapsed, separators kept. For English terms. */
+  deobLatin: string;
 };
 
 export function normalizeText(raw: string): NormalizedText {
@@ -44,5 +55,12 @@ export function normalizeText(raw: string): NormalizedText {
     .replace(/[ \t]+/g, " ")
     .trim();
 
-  return { text, deob };
+  const deobLatin = b
+    .replace(/[0-9@$]/g, (ch) => LEET_TO_LATIN[ch] ?? ch)
+    .replace(/[а-я]/g, (ch) => CYRILLIC_TO_LATIN[ch] ?? ch)
+    .replace(/(.)\1+/g, "$1")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+
+  return { text, deob, deobLatin };
 }

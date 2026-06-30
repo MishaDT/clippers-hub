@@ -76,7 +76,9 @@ function matchPhrases(text: string, phrases: string[], code: string, weight: num
 
 export function detectProfanity(n: NormalizedText): Hit[] {
   const ru = matchRuRoots(n.deob, PROFANITY_RU, "PROFANITY", 35);
-  const en = matchEnRoots(n.text, PROFANITY_EN, "PROFANITY", 35);
+  // English matched on the Latin-deobfuscated form so Cyrillic-homoglyph spellings (fuсk) and
+  // leet (sh1t) are caught too.
+  const en = matchEnRoots(n.deobLatin, PROFANITY_EN, "PROFANITY", 35);
   return ru.length ? ru : en;
 }
 
