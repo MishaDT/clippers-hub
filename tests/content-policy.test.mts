@@ -19,12 +19,12 @@ test("allows ordinary production discussion", () => {
   assert.equal(scanContent("Нужны субтитры и сильный первый кадр").action, "ALLOW");
 });
 
-test("flags off-platform contact attempts in chat (does not block)", () => {
-  assert.equal(scanContent("давай в телеграм обсудим", "CHAT").action, "FLAG");
-  assert.equal(scanContent("пиши мне в вотсап", "CHAT").action, "FLAG");
-  assert.equal(scanContent("мой тг @cooluser123", "CHAT").action, "FLAG");
-  assert.equal(scanContent("почта me.user@gmail.com", "CHAT").action, "FLAG");
-  assert.equal(scanContent("звони +7 999 123 45 67", "CHAT").action, "FLAG");
+test("off-platform solicitation is reviewed or blocked in chat", () => {
+  assert.equal(scanContent("давай в телеграм обсудим", "CHAT").action, "REVIEW");
+  assert.equal(scanContent("пиши мне в вотсап", "CHAT").action, "REVIEW");
+  assert.equal(scanContent("мой тг @cooluser123", "CHAT").action, "REVIEW");
+  assert.equal(scanContent("звони +7 999 123 45 67", "CHAT").action, "REVIEW");
+  assert.equal(scanContent("оплата напрямую без сайта", "CHAT").action, "BLOCK");
 });
 
 test("contact info is allowed inside support (legit to share with staff)", () => {
