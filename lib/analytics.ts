@@ -27,6 +27,22 @@ function hashValue(value: string) {
   return createHash("sha256").update(`${salt}:${value}`).digest("hex").slice(0, 32);
 }
 
+// Bound how much arbitrary client-supplied metadata can land in a single row, so a public
+// caller can't inflate the analytics table with multi-megabyte payloads.
+const MAX_METADATA_CHARS = 2000;
+function clampMetadata(metadata?: Record<string, unknown>) {
+  if (!metadata) return "{}";
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(metadata);
+  } catch {
+    return "{}";
+  }
+  return serialized.length > MAX_METADATA_CHARS
+    ? JSON.stringify({ truncated: true, bytes: serialized.length })
+    : serialized;
+}
+
 export async function trackEvent({
   request,
   userId,
@@ -53,7 +69,7 @@ export async function trackEvent({
         provider: provider ? provider.slice(0, 40) : null,
         ipHash: request ? hashValue(clientIp(request)) : null,
         userAgentHash: request ? hashValue(request.headers.get("user-agent") || "") : null,
-        metadata: JSON.stringify(metadata || {})
+        metadata: clampMetadata(metadata)
       }
     });
   } catch {

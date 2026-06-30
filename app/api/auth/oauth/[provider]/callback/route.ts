@@ -7,7 +7,6 @@ import { trackEvent } from "@/lib/analytics";
 import { callbackUri, exchangeAndFetchProfile, isConfigured, isProvider, redirectBase } from "@/lib/oauth";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
-import { awardReferralSignup } from "@/lib/referrals";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
@@ -103,7 +102,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
               preferredRoleMode: roleIntent
             }
           });
-          await awardReferralSignup(tx, created);
+          // Referral reward is deferred to a qualifying action (first real clip), not paid at
+          // signup — see submitClipAction. This blocks fake-signup farming of referral RP.
           return created;
         });
         createdUser = true;
@@ -113,6 +113,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
       });
     }
 
+    // A moderated existing account must not be able to obtain a fresh session via OAuth.
+    if (user.accountStatus === "BANNED" || user.accountStatus === "FROZEN") {
+      return fail("account_restricted");
+    }
     await createSession(user.id);
     const selectedMode = roleIntent || (user.preferredRoleMode === "client" ? "client" : "worker");
     if (roleIntent && user.preferredRoleMode !== roleIntent) {

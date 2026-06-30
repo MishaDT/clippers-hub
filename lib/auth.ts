@@ -73,7 +73,11 @@ export const getCurrentUser = cache(async () => {
   const [userId, createdAt] = parts;
   if (Date.now() - Number(createdAt) > 60 * 60 * 24 * 30 * 1000) return null;
 
-  return prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  // Immediate revocation: a BANNED account loses access on its next request even if it
+  // still holds a valid session cookie (covers a banned admin keeping admin powers).
+  if (user?.accountStatus === "BANNED") return null;
+  return user;
 });
 
 export async function requireUser() {

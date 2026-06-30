@@ -7,7 +7,6 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { normalizeEmail, sameOrigin, validatePassword } from "@/lib/security";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
-import { awardReferralSignup } from "@/lib/referrals";
 
 const schema = z.object({
   email: z.string().email(),
@@ -27,11 +26,13 @@ async function fail(request: Request, code: string) {
 }
 
 export async function POST(request: Request) {
+  // Cross-origin and rate-limited probes redirect without writing an analytics row, so a
+  // flood of blocked attempts can't be used to inflate the events table.
   if (!sameOrigin(request)) {
-    return fail(request, "invalid");
+    return NextResponse.redirect(redirectUrl("/register?error=invalid", request), 303);
   }
   if (!rateLimit(`register:${clientIp(request)}`, 5, 60_000)) {
-    return fail(request, "too_many");
+    return NextResponse.redirect(redirectUrl("/register?error=too_many", request), 303);
   }
   const formData = await request.formData();
   const intent = parseAuthIntent(formData.get("intent"));
@@ -74,7 +75,8 @@ export async function POST(request: Request) {
           preferredRoleMode: intent
         }
       });
-      await awardReferralSignup(tx, created);
+      // Referral reward is deferred to a qualifying action (first real clip), not paid at
+      // signup — see submitClipAction. This blocks fake-signup farming of referral RP.
       return created;
     });
     await createSession(user.id);

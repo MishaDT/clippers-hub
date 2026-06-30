@@ -31,13 +31,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ externalId
     if (!response.ok) return new Response(null, { status: 502 });
     const contentType = response.headers.get("content-type")?.split(";")[0] || "";
     if (!["image/png", "image/jpeg", "image/webp"].includes(contentType)) return new Response(null, { status: 415 });
+    const declared = Number(response.headers.get("content-length") || 0);
+    if (declared > 1_500_000) return new Response(null, { status: 413 });
     const body = new Uint8Array(await response.arrayBuffer());
     if (body.byteLength > 1_500_000) return new Response(null, { status: 413 });
     return new Response(body, {
       headers: {
         "content-type": contentType,
         "cache-control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000",
-        "x-content-type-options": "nosniff"
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; sandbox",
+        "content-disposition": "inline"
       }
     });
   } catch {

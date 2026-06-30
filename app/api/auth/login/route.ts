@@ -19,11 +19,13 @@ async function fail(request: Request, code: string) {
 }
 
 export async function POST(request: Request) {
+  // Cross-origin and rate-limited probes redirect without writing an analytics row, so a
+  // flood of blocked attempts can't be used to inflate the events table.
   if (!sameOrigin(request)) {
-    return fail(request, "invalid");
+    return NextResponse.redirect(redirectUrl("/login?error=invalid", request), 303);
   }
   if (!rateLimit(`login:${clientIp(request)}`, 8, 60_000)) {
-    return fail(request, "too_many");
+    return NextResponse.redirect(redirectUrl("/login?error=too_many", request), 303);
   }
   const formData = await request.formData();
   const intent = parseAuthIntent(formData.get("intent"));
@@ -39,6 +41,10 @@ export async function POST(request: Request) {
   const passwordOk = await verifyPasswordOrDummy(password, user?.passwordHash);
   if (!user || !passwordOk) {
     return fail(request, "bad_credentials");
+  }
+  // A moderated account must not be able to obtain a fresh session.
+  if (user.accountStatus === "BANNED" || user.accountStatus === "FROZEN") {
+    return fail(request, "account_restricted");
   }
   await createSession(user.id);
   const selectedMode = intent || (user.preferredRoleMode === "client" ? "client" : "worker");

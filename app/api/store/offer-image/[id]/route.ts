@@ -17,7 +17,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       headers: {
         "content-type": image.contentType,
         "cache-control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000",
-        "x-content-type-options": "nosniff"
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; sandbox",
+        "content-disposition": "inline"
       }
     });
   } catch {

@@ -15,6 +15,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Reject oversized bodies before reading them into memory / the DB.
+  if (Number(request.headers.get("content-length") || 0) > 16_000) {
+    return NextResponse.json({ ok: false }, { status: 413 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

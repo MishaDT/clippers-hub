@@ -27,6 +27,7 @@ import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@
 import { scanContent } from "@/lib/content-policy";
 import { isSafeRussianReport, normalizeRussianReport, reportReasonLabel } from "@/lib/report-reasons";
 import { notificationGroup, notify } from "@/lib/notifications";
+import { awardReferralSignup } from "@/lib/referrals";
 import { safeReturnTo } from "@/lib/navigation";
 
 function safeCheckoutUrl(url: string | undefined) {
@@ -794,6 +795,16 @@ export async function submitClipAction(formData: FormData) {
       viewVelocityJson: stringify([{ at: new Date().toISOString(), event: "submitted", fraudScore, reasons, watermarkConfirmed }])
     }
   });
+
+  // Referral reward is granted here — on a real, non-rejected clip — rather than at signup,
+  // so fake accounts can't farm referral RP. awardReferralSignup is idempotent per invitee.
+  if (status !== "REJECTED" && user.referredBy) {
+    try {
+      await prisma.$transaction((tx) => awardReferralSignup(tx, { id: user.id, name: user.name, referredBy: user.referredBy }));
+    } catch {
+      // never block a submission on referral bookkeeping
+    }
+  }
 
   // Best-effort instant ownership check: on platforms that expose public
   // metadata (YouTube/VK) we confirm the tracking code is already in the

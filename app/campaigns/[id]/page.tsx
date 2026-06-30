@@ -7,6 +7,7 @@ import { CampaignChat } from "@/components/campaign-chat";
 import { WorkspaceJourney } from "@/components/workspace-journey";
 import { joinCampaignAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
+import { canAccessAdmin } from "@/lib/admin";
 import { buildSafePreview } from "@/lib/chat-safety";
 import { parseJson } from "@/lib/json";
 import { compactNumber, expectedPayout, rub } from "@/lib/money";
@@ -66,6 +67,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       niche: true,
       language: true,
       visibility: true,
+      status: true,
       remainingBudgetCents: true,
       trackingPrefix: true,
       owner: { select: { id: true, name: true, handle: true, avatar: true } },
@@ -75,6 +77,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
   if (!campaign) notFound();
 
   const isOwner = currentUser?.id === campaign.ownerId;
+  // Draft and invite-only campaigns are private: only the owner (or an admin) may see the
+  // brief, source URL and economics. Everyone else gets a 404 — don't even confirm it exists.
+  if (!isOwner && !canAccessAdmin(currentUser) && (campaign.status === "DRAFT" || campaign.visibility === "PRIVATE_INVITE")) {
+    notFound();
+  }
   const [submission, chatThread] = currentUser
     ? await Promise.all([
         prisma.submission.findFirst({
