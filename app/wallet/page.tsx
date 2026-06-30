@@ -83,7 +83,8 @@ export default async function WalletPage({
       <section className="section wallet-screen">
         <Link className="wallet-back" href="/profile"><ArrowLeft size={17} /> Назад</Link>
         <div className="wallet-hero">
-          <div>
+          <div className="wallet-title-block">
+            <span className="eyebrow"><WalletCards size={15} /> Финансы ReelPay</span>
             <h1>Кошелёк</h1>
             <p className="lead">Деньги, резерв кампаний и бонусы в одном месте.</p>
           </div>

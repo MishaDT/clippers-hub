@@ -17,7 +17,8 @@ export const ANALYTICS_TYPES = new Set([
   "SUBMISSION_POSTED",
   "SUBMISSION_FLAGGED",
   "LOGOUT",
-  "CTA_CLICK"
+  "CTA_CLICK",
+  "STORE_OFFER_CLICK"
 ]);
 
 function hashValue(value: string) {

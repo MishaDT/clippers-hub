@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Scissors, ShoppingBag, Sparkles, Star, Trophy } from "lucide-react";
+import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Scissors, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LeagueBadge } from "@/components/league-badge";
 import { LeaderboardFireCanvas } from "@/components/leaderboard-fire-canvas";
@@ -10,12 +10,14 @@ import { ReferralCard } from "@/components/referral-card";
 import { ProgressCarousel } from "@/components/progress-carousel";
 import { PodiumFlameCanvas } from "@/components/podium-flame-canvas";
 import { LeaderboardLoadMore } from "@/components/leaderboard-load-more";
+import { LeaderboardStoreCarousel } from "@/components/leaderboard-store-carousel";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { sendCollabInviteAction } from "@/app/actions";
 import { compactNumber } from "@/lib/money";
 import { leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { parseJson } from "@/lib/json";
 
 // Default friendly opener for a one-click collab invite from the board.
 const COLLAB_MSG = "Привет! Хочу позвать тебя на совместный клип в ReelPay. Обсудим?";
@@ -180,10 +182,44 @@ export default async function LeaderboardPage({
   const period: Period = rawPeriod === "all" ? "all" : "week";
   const currentUser = await getCurrentUser();
   const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
-  const [rows, me] = await Promise.all([
+  const [rows, me, featuredOffers] = await Promise.all([
     loadLeaders(period),
-    currentUser ? loadMyProgress(currentUser) : Promise.resolve(null)
+    currentUser ? loadMyProgress(currentUser) : Promise.resolve(null),
+    prisma.storeOffer.findMany({
+      where: { kind: "PARTNER_LINK", active: true, featured: true, url: { not: null } },
+      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        provider: true,
+        imageUrl: true,
+        source: true,
+        externalId: true,
+        category: true,
+        description: true,
+        featuresJson: true
+      }
+    })
   ]);
+  const storeOffers = featuredOffers.map((offer) => {
+    const features = parseJson<string[]>(offer.featuresJson, []);
+    return {
+      id: offer.id,
+      title: offer.title,
+      provider: offer.provider || "Партнёр ReelPay",
+      imageUrl: offer.source === "PAMPADU" && offer.externalId
+        ? `/api/store/partner-image/${encodeURIComponent(offer.externalId)}`
+        : offer.imageUrl,
+      category: offer.category === "DEBIT_CARD"
+        ? "Дебетовая карта"
+        : offer.category === "CREDIT_CARD"
+          ? "Кредитная карта"
+          : offer.category === "BUSINESS_ACCOUNT"
+            ? "РКО для бизнеса"
+            : "Предложение партнёра",
+      feature: features[0] || offer.description
+    };
+  });
 
   const podium = rows.slice(0, 3);
   const rest = rows.slice(3);
@@ -358,12 +394,7 @@ export default async function LeaderboardPage({
               />
             ) : null}
 
-            <Link className="store-rail-card" href="/store?tab=partners">
-              <span><ShoppingBag size={15} /> Магазин ReelPay</span>
-              <strong>Награды и предложения</strong>
-              <p>Трать RP или открой витрину Pampadu.</p>
-              <em>Открыть магазин <ChevronRight size={15} /></em>
-            </Link>
+            <LeaderboardStoreCarousel offers={storeOffers} />
 
             {me ? (
               <section className="rail-panel referral-panel">

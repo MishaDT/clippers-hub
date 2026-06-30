@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, CreditCard, ExternalLink, Landmark, Search } from "lucide-react";
+import { ArrowLeft, Building2, CreditCard, ExternalLink, Landmark, QrCode, Search } from "lucide-react";
 
 export type PartnerCatalogOffer = {
   id: string;
@@ -34,6 +34,7 @@ export function PartnerCatalog({ offers }: { offers: PartnerCatalogOffer[] }) {
   const [category, setCategory] = useState("ALL");
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(12);
+  const [flippedId, setFlippedId] = useState<string | null>(null);
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("ru-RU");
     return offers.filter((offer) => {
@@ -83,33 +84,54 @@ export function PartnerCatalog({ offers }: { offers: PartnerCatalogOffer[] }) {
       {visible.length ? (
         <div className="partner-product-grid">
           {visible.map((offer) => (
-            <article className={`partner-product-card ${offer.featured ? "featured" : ""}`} key={offer.id}>
-              <header>
-                <span className="partner-product-logo">
-                  {offer.imageUrl ? <img src={offer.imageUrl} alt="" loading="lazy" /> : <Landmark size={26} />}
-                </span>
-                <div>
-                  <small>{categoryNames[offer.category || ""] || "Предложение партнёра"}</small>
-                  <em>Реклама</em>
+            <article className={`partner-product-card ${offer.featured ? "featured" : ""} ${flippedId === offer.id ? "is-flipped" : ""}`} key={offer.id}>
+              <div className="partner-card-inner">
+                <div className="partner-card-face partner-card-front" aria-hidden={flippedId === offer.id} inert={flippedId === offer.id ? true : undefined}>
+                  <header>
+                    <span className="partner-product-logo">
+                      {offer.imageUrl ? <img src={offer.imageUrl} alt="" loading="lazy" /> : <Landmark size={26} />}
+                    </span>
+                    <div>
+                      <small>{categoryNames[offer.category || ""] || "Предложение партнёра"}</small>
+                      <em>Реклама</em>
+                    </div>
+                    <button type="button" className="partner-qr-toggle" onClick={() => setFlippedId(offer.id)} aria-label={`Показать QR-код: ${offer.title}`}>
+                      <QrCode size={18} />
+                    </button>
+                  </header>
+                  <div className="partner-product-copy">
+                    <span>{offer.provider || "Партнёр"}</span>
+                    <h3>{offer.title}</h3>
+                    <ul>
+                      {(offer.features.length ? offer.features : [offer.description]).slice(0, 3).map((feature) => <li key={feature}>{feature}</li>)}
+                    </ul>
+                  </div>
+                  <footer>
+                    <a href={`/go/offer/${offer.id}?from=card`} target="_blank" rel="noopener noreferrer sponsored nofollow">
+                      Оформить <ExternalLink size={15} />
+                    </a>
+                    <details>
+                      <summary>Условия и лицензия</summary>
+                      <p>{offer.licenseNumber || "Информация о лицензии указана на странице партнёра."}</p>
+                      {offer.disclaimer ? <p>{offer.disclaimer}</p> : null}
+                    </details>
+                  </footer>
                 </div>
-              </header>
-              <div className="partner-product-copy">
-                <span>{offer.provider || "Партнёр"}</span>
-                <h3>{offer.title}</h3>
-                <ul>
-                  {(offer.features.length ? offer.features : [offer.description]).slice(0, 3).map((feature) => <li key={feature}>{feature}</li>)}
-                </ul>
+                <div className="partner-card-face partner-card-back" aria-hidden={flippedId !== offer.id} inert={flippedId !== offer.id ? true : undefined}>
+                  <button type="button" className="partner-card-back-button" onClick={() => setFlippedId(null)}>
+                    <ArrowLeft size={16} /> К предложению
+                  </button>
+                  <img src={`/api/store/partner-qr/${offer.id}`} alt={`QR-код для перехода: ${offer.title}`} loading="lazy" width={180} height={180} />
+                  <div>
+                    <small>{offer.provider || "Партнёр ReelPay"}</small>
+                    <strong>{offer.title}</strong>
+                    <p>Наведите камеру телефона — откроется защищённая ссылка ReelPay.</p>
+                  </div>
+                  <a href={`/go/offer/${offer.id}?from=qr`} target="_blank" rel="noopener noreferrer sponsored nofollow">
+                    Открыть на этом устройстве <ExternalLink size={15} />
+                  </a>
+                </div>
               </div>
-              <footer>
-                <a href={offer.url} target="_blank" rel="noopener noreferrer sponsored nofollow">
-                  Оформить <ExternalLink size={15} />
-                </a>
-                <details>
-                  <summary>Условия и лицензия</summary>
-                  <p>{offer.licenseNumber || "Информация о лицензии указана на странице партнёра."}</p>
-                  {offer.disclaimer ? <p>{offer.disclaimer}</p> : null}
-                </details>
-              </footer>
             </article>
           ))}
         </div>

@@ -99,7 +99,11 @@ export default async function AdminContentPage({
                 <div><strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong><span>{campaign.niche || "без ниши"} · {campaign.sourcePlatform}</span></div>
                 <div><strong>{campaign.owner.name}</strong><span>{campaign.owner.email}</span></div>
                 <div><Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : campaign.status === "ACTIVE" ? "good" : "soft"}>{statusLabel(campaign.status)}</Tag></div>
-                <div><strong>{rub(campaign.remainingBudgetCents)}</strong><span>из {rub(campaign.totalBudgetCents)}</span></div>
+                <div className="admin-budget-cell">
+                  <strong>{rub(campaign.remainingBudgetCents)}</strong>
+                  <i><span style={{ width: `${Math.max(3, Math.min(100, Math.round((campaign.remainingBudgetCents / Math.max(1, campaign.totalBudgetCents)) * 100)))}%` }} /></i>
+                  <span>из {rub(campaign.totalBudgetCents)}</span>
+                </div>
                 <div><strong>{campaign._count.submissions}</strong><span>цель {compactNumber(campaign.viewThreshold)}</span></div>
               </div>
             ))}
