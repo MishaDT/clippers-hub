@@ -28,6 +28,7 @@ import { scanContent } from "@/lib/content-policy";
 import { isSafeRussianReport, normalizeRussianReport, reportReasonLabel } from "@/lib/report-reasons";
 import { notificationGroup, notify } from "@/lib/notifications";
 import { awardReferralSignup } from "@/lib/referrals";
+import { rateLimit } from "@/lib/rate-limit";
 import { safeReturnTo } from "@/lib/navigation";
 
 function safeCheckoutUrl(url: string | undefined) {
@@ -225,6 +226,53 @@ export async function createCampaignAction(formData: FormData) {
   redirect(`/campaigns/${campaign.id}`);
 }
 
+export async function closeCampaignAction(formData: FormData) {
+  const user = await requireUser();
+  const campaignId = String(formData.get("campaignId") || "");
+  try {
+    await prisma.$transaction(async (db) => {
+      const campaign = await db.campaign.findUnique({
+        where: { id: campaignId },
+        select: { ownerId: true, status: true, remainingBudgetCents: true }
+      });
+      if (!campaign || campaign.ownerId !== user.id) throw new Error("FORBIDDEN");
+      if (campaign.status === "COMPLETED") return;
+      // Close + zero the budget conditionally on the exact remaining we read, so a concurrent
+      // settlement can't let us refund more than is actually unspent (and a double-submit
+      // can't refund twice).
+      const closed = await db.campaign.updateMany({
+        where: { id: campaignId, status: { not: "COMPLETED" }, remainingBudgetCents: campaign.remainingBudgetCents },
+        data: { status: "COMPLETED", remainingBudgetCents: 0 }
+      });
+      if (closed.count === 0) return;
+      const refund = Math.max(0, campaign.remainingBudgetCents);
+      if (refund > 0) {
+        await db.user.update({ where: { id: user.id }, data: { balanceCents: { increment: refund } } });
+        await db.transaction.create({
+          data: {
+            userId: user.id,
+            amountCents: refund,
+            feeCents: 0,
+            netCents: refund,
+            type: "ADJUSTMENT",
+            status: "COMPLETED",
+            providerData: stringify({ escrowRefundForCampaign: campaignId })
+          }
+        });
+      }
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "FORBIDDEN") redirect("/campaigns");
+    throw error;
+  }
+  revalidatePath("/campaigns");
+  revalidateTag("campaigns");
+  revalidatePath(`/campaigns/${campaignId}`);
+  revalidatePath("/profile");
+  revalidatePath("/wallet");
+  redirect(`/campaigns/${campaignId}?closed=1`);
+}
+
 export async function joinCampaignAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
@@ -315,6 +363,7 @@ export async function joinCampaignAction(formData: FormData) {
 export async function sendChatMessageAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
+  if (!(await rateLimit(`chat:${user.id}`, 20, 60_000))) return { ok: false, error: "Слишком много сообщений подряд. Подождите немного." };
   const threadId = String(formData.get("threadId") || "");
   const checked = validateChatMessage(String(formData.get("body") || ""));
   if (!threadId || !checked.ok) return { ok: false, error: checked.reasons[0] || "bad_message" };

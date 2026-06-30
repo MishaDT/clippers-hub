@@ -11,7 +11,7 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!rateLimit(`analytics:${clientIp(request)}`, 80, 60_000)) {
+  if (!(await rateLimit(`analytics:${clientIp(request)}`, 80, 60_000))) {
     return NextResponse.json({ ok: true });
   }
 

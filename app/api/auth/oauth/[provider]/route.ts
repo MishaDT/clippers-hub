@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
     await trackEvent({ request, type: "OAUTH_FAILED", path: "/login", provider, metadata: { reason: "provider_unconfigured" } });
     return NextResponse.redirect(new URL("/login?error=provider_unconfigured", base));
   }
-  if (!rateLimit(`oauth:${clientIp(request)}`, 12, 60_000)) {
+  if (!(await rateLimit(`oauth:${clientIp(request)}`, 12, 60_000))) {
     await trackEvent({ request, type: "OAUTH_FAILED", path: "/login", provider, metadata: { reason: "too_many" } });
     return NextResponse.redirect(new URL("/login?error=too_many", base));
   }

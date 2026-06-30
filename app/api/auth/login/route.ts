@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) {
     return NextResponse.redirect(redirectUrl("/login?error=invalid", request), 303);
   }
-  if (!rateLimit(`login:${clientIp(request)}`, 8, 60_000)) {
+  if (!(await rateLimit(`login:${clientIp(request)}`, 8, 60_000))) {
     return NextResponse.redirect(redirectUrl("/login?error=too_many", request), 303);
   }
   const formData = await request.formData();

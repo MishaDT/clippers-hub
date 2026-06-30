@@ -5,6 +5,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "crons": [
-    { "path": "/api/sync/views", "schedule": "0 3 * * *" }
+    { "path": "/api/sync/views", "schedule": "0 3 * * *" },
+    { "path": "/api/maintenance/cleanup", "schedule": "30 4 * * *" }
   ]
 }

@@ -5,7 +5,7 @@ import { AppShell } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
 import { CampaignChat } from "@/components/campaign-chat";
 import { WorkspaceJourney } from "@/components/workspace-journey";
-import { joinCampaignAction } from "@/app/actions";
+import { closeCampaignAction, joinCampaignAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/admin";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -187,7 +187,17 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                 <Link className="btn btn-primary od-apply-btn" href="/login">Войти, чтобы откликнуться</Link>
               ) : mode === "client" ? (
                 isOwner
-                  ? <Link className="btn btn-primary od-apply-btn" href="/campaigns">Все мои кампании</Link>
+                  ? (
+                      <>
+                        <Link className="btn btn-primary od-apply-btn" href="/campaigns">Все мои кампании</Link>
+                        {campaign.status !== "COMPLETED" ? (
+                          <form action={closeCampaignAction}>
+                            <input type="hidden" name="campaignId" value={campaign.id} />
+                            <button className="btn od-apply-btn" type="submit">Завершить и вернуть остаток ({rub(campaign.remainingBudgetCents)})</button>
+                          </form>
+                        ) : null}
+                      </>
+                    )
                   : <span className="od-apply-muted">Кампания другого заказчика</span>
               ) : submission ? (
                 <Link className="btn btn-primary od-apply-btn" href="/upload">Выложить работу</Link>

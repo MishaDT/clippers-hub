@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { supportCategories, supportPriorities, supportStatuses } from "@/lib/support";
 import { moderateText } from "@/lib/moderation";
 import { notificationGroup, notify } from "@/lib/notifications";
+import { rateLimit } from "@/lib/rate-limit";
 
 function cleanSubject(value: FormDataEntryValue | null) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 120);
@@ -44,6 +45,7 @@ async function notifyAdmins(title: string, body: string, href: string, threadId:
 
 export async function createSupportThreadAction(formData: FormData) {
   const user = await requireUser();
+  if (!(await rateLimit(`support-thread:${user.id}`, 5, 300_000))) redirect("/support?error=too_many");
   const subject = cleanSubject(formData.get("subject"));
   const categoryValue = String(formData.get("category") || "");
   const checked = validateChatMessage(String(formData.get("body") || ""));
@@ -84,6 +86,7 @@ export async function createSupportThreadAction(formData: FormData) {
 
 export async function sendSupportMessageAction(formData: FormData) {
   const user = await requireUser();
+  if (!(await rateLimit(`support-msg:${user.id}`, 15, 60_000))) return { ok: false, error: "Слишком часто. Подождите немного." };
   const threadId = String(formData.get("threadId") || "");
   const checked = validateChatMessage(String(formData.get("body") || ""));
   if (!threadId || !checked.ok) return { ok: false, error: checked.reasons[0] || "Сообщение не отправлено" };

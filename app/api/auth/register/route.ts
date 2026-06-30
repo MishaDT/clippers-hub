@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) {
     return NextResponse.redirect(redirectUrl("/register?error=invalid", request), 303);
   }
-  if (!rateLimit(`register:${clientIp(request)}`, 5, 60_000)) {
+  if (!(await rateLimit(`register:${clientIp(request)}`, 5, 60_000))) {
     return NextResponse.redirect(redirectUrl("/register?error=too_many", request), 303);
   }
   const formData = await request.formData();
