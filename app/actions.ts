@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { trackEvent } from "@/lib/analytics";
 import { canManageClient, canWork, destroySession, getCurrentUser, requireUser } from "@/lib/auth";
+import { canAccessAdmin } from "@/lib/admin";
 import { validateChatMessage } from "@/lib/chat-safety";
 import { extractPlatformPostId, validatePublicMediaUrl } from "@/lib/content-safety";
 import { scoreSubmissionFraud } from "@/lib/fraud";
@@ -48,6 +49,13 @@ function safeJson<T>(value: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+// Demo (unpaid) deposits credit balance with no real money behind them. They must
+// be an explicit, deliberate opt-in for test/staging — never the silent fallback in
+// production when a payment provider secret happens to be missing.
+function demoPaymentsEnabled() {
+  return process.env.DEMO_PAYMENTS === "1" || process.env.DEMO_PAYMENTS === "true";
 }
 
 export async function logoutAction() {
@@ -129,62 +137,86 @@ export async function createCampaignAction(formData: FormData) {
   });
   if (campaignPolicy.action !== "ALLOW") redirect("/campaigns/new?error=moderation");
 
-  const campaign = await prisma.campaign.create({
-    data: {
-      ownerId: user.id,
-      title: String(formData.get("title") || "Новая CPV-кампания"),
-      description: String(formData.get("description") || ""),
-      sourceUrl: sourceUrlCheck.normalizedUrl,
-      sourcePlatform: cleanSourcePlatform,
-      allowedPlatformsJson: stringify(platforms.length ? platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"]),
-      rulesJson: stringify({
-        requiredTags: String(formData.get("requiredTags") || "").split(",").map((item) => item.trim()).filter(Boolean),
-        bans: String(formData.get("bans") || "").split(",").map((item) => item.trim()).filter(Boolean),
-        watermarkBonus: formData.get("watermarkBonus") === "on",
-        watermarkAsset: "/watermark/reelpay-watermark.svg",
-        safety: {
-          sourceUrlChecked: true,
-          sourcePlatform: cleanSourcePlatform,
-          checkedAt: new Date().toISOString()
-        }
-      }),
-      briefJson: stringify({
-        deliverableCount: Math.max(1, Math.min(20, Number(formData.get("deliverableCount") || 1))),
-        clipDuration: String(formData.get("clipDuration") || "30-60"),
-        aspectRatio: String(formData.get("aspectRatio") || "9:16"),
-        style: String(formData.get("style") || "dynamic").slice(0, 40),
-        language: String(formData.get("language") || "ru").slice(0, 12),
-        subtitles: String(formData.get("subtitles") || "required").slice(0, 30),
-        cta: String(formData.get("cta") || "").trim().slice(0, 180),
-        mustInclude: String(formData.get("mustInclude") || "").trim().slice(0, 400),
-        exampleUrls: String(formData.get("exampleUrls") || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 3),
-        rightsConfirmed: formData.get("rightsConfirmed") === "on"
-      }),
-      cpmRateCents: cpm || 4500,
-      viewThreshold: Number(formData.get("viewThreshold") || 10000),
-      totalBudgetCents: budget || 5000000,
-      remainingBudgetCents: budget || 5000000,
-      status: "ACTIVE",
-      visibility,
-      trackingPrefix,
-      deadline: new Date(Date.now() + deadlineDays * 86400000),
-      language: String(formData.get("language") || "ru"),
-      niche: String(formData.get("niche") || "Gaming"),
-      metricsJson: stringify({ views: 0, roi: 0, fillRate: 0 })
-    }
-  });
+  const totalBudgetCents = budget || 5000000;
 
-  await prisma.transaction.create({
-    data: {
-      userId: user.id,
-      amountCents: campaign.totalBudgetCents,
-      feeCents: 0,
-      netCents: campaign.totalBudgetCents,
-      type: "DEPOSIT",
-      status: "PENDING",
-      providerData: stringify({ reservedForCampaign: campaign.id })
+  let campaign;
+  try {
+    campaign = await prisma.$transaction(async (db) => {
+      // Escrow the full budget from the client's balance up front. The debit is an atomic
+      // conditional update, so a campaign can never become ACTIVE with money the client
+      // never funded — every cent a clipper can earn is backed by a real client deposit.
+      const funded = await db.user.updateMany({
+        where: { id: user.id, balanceCents: { gte: totalBudgetCents } },
+        data: { balanceCents: { decrement: totalBudgetCents } }
+      });
+      if (funded.count === 0) throw new Error("INSUFFICIENT_BUDGET");
+
+      const created = await db.campaign.create({
+        data: {
+          ownerId: user.id,
+          title: String(formData.get("title") || "Новая CPV-кампания"),
+          description: String(formData.get("description") || ""),
+          sourceUrl: sourceUrlCheck.normalizedUrl,
+          sourcePlatform: cleanSourcePlatform,
+          allowedPlatformsJson: stringify(platforms.length ? platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"]),
+          rulesJson: stringify({
+            requiredTags: String(formData.get("requiredTags") || "").split(",").map((item) => item.trim()).filter(Boolean),
+            bans: String(formData.get("bans") || "").split(",").map((item) => item.trim()).filter(Boolean),
+            watermarkBonus: formData.get("watermarkBonus") === "on",
+            watermarkAsset: "/watermark/reelpay-watermark.svg",
+            safety: {
+              sourceUrlChecked: true,
+              sourcePlatform: cleanSourcePlatform,
+              checkedAt: new Date().toISOString()
+            }
+          }),
+          briefJson: stringify({
+            deliverableCount: Math.max(1, Math.min(20, Number(formData.get("deliverableCount") || 1))),
+            clipDuration: String(formData.get("clipDuration") || "30-60"),
+            aspectRatio: String(formData.get("aspectRatio") || "9:16"),
+            style: String(formData.get("style") || "dynamic").slice(0, 40),
+            language: String(formData.get("language") || "ru").slice(0, 12),
+            subtitles: String(formData.get("subtitles") || "required").slice(0, 30),
+            cta: String(formData.get("cta") || "").trim().slice(0, 180),
+            mustInclude: String(formData.get("mustInclude") || "").trim().slice(0, 400),
+            exampleUrls: String(formData.get("exampleUrls") || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 3),
+            rightsConfirmed: formData.get("rightsConfirmed") === "on"
+          }),
+          cpmRateCents: cpm || 4500,
+          viewThreshold: Number(formData.get("viewThreshold") || 10000),
+          totalBudgetCents,
+          remainingBudgetCents: totalBudgetCents,
+          status: "ACTIVE",
+          visibility,
+          trackingPrefix,
+          deadline: new Date(Date.now() + deadlineDays * 86400000),
+          language: String(formData.get("language") || "ru"),
+          niche: String(formData.get("niche") || "Gaming"),
+          metricsJson: stringify({ views: 0, roi: 0, fillRate: 0 })
+        }
+      });
+
+      // Immutable ledger entry for the escrow debit (negative net = money left the wallet).
+      await db.transaction.create({
+        data: {
+          userId: user.id,
+          amountCents: totalBudgetCents,
+          feeCents: 0,
+          netCents: -totalBudgetCents,
+          type: "ADJUSTMENT",
+          status: "COMPLETED",
+          providerData: stringify({ escrowForCampaign: created.id })
+        }
+      });
+
+      return created;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_BUDGET") {
+      redirect(`/wallet?error=insufficient_budget&need=${totalBudgetCents}`);
     }
-  });
+    throw error;
+  }
 
   revalidatePath("/campaigns");
   revalidateTag("campaigns");
@@ -198,6 +230,16 @@ export async function joinCampaignAction(formData: FormData) {
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const campaignId = String(formData.get("campaignId"));
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+
+  // Access guards: a clipper may only take a live, public, in-budget campaign that isn't
+  // their own. Without these, anyone who knew an ID could join a draft / paused / finished /
+  // private / expired campaign, or a BOTH/ADMIN account could take its own order and pay
+  // itself out of its own escrow.
+  if (campaign.ownerId === user.id) redirect("/campaigns?error=own_campaign");
+  if (campaign.status !== "ACTIVE" && campaign.status !== "LOW_BUDGET") redirect("/campaigns?error=closed");
+  if (campaign.visibility === "PRIVATE_INVITE") redirect("/campaigns?error=private");
+  if (campaign.deadline.getTime() <= Date.now()) redirect("/campaigns?error=expired");
+  if (campaign.remainingBudgetCents <= 0) redirect("/campaigns?error=no_budget");
 
   const existing = await prisma.submission.findFirst({ where: { campaignId, workerId: user.id } });
   if (existing) redirect("/upload");
@@ -882,6 +924,14 @@ export async function depositAction(formData: FormData) {
   if (amountCents <= 0) redirect("/wallet?error=amount");
   const provider = String(formData.get("provider") || "yookassa") as "yookassa" | "stripe";
   const intent = await createPaymentIntent({ amountCents, userId: user.id, provider, description: "ReelPay deposit" });
+
+  // Fail-closed: a "demo" intent means no real provider processed a payment. Crediting
+  // balance for it is only safe in an explicitly enabled test environment. In production
+  // this refuses instead of minting unpaid money.
+  if (intent.mode === "demo" && !demoPaymentsEnabled()) {
+    redirect("/wallet?error=payments_unavailable");
+  }
+
   await prisma.transaction.create({
     data: {
       userId: user.id,
@@ -904,34 +954,49 @@ export async function depositAction(formData: FormData) {
 
 export async function withdrawAction(formData: FormData) {
   const user = await requireUser();
+  await assertAccountActive(user); // frozen/banned/restricted accounts may not move money out
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/wallet");
   const amountCents = parseRubToCents(formData.get("amount"));
   if (amountCents <= 0) redirect("/wallet?error=amount");
-
-  const result = await prisma.user.updateMany({
-    where: { id: user.id, balanceCents: { gte: amountCents } },
-    data: { balanceCents: { decrement: amountCents } }
-  });
-  if (result.count === 0) redirect("/wallet?error=balance");
-
   const fee = 5000 + Math.round(amountCents * 0.01);
-  await prisma.transaction.create({
-    data: {
-      userId: user.id,
-      amountCents,
-      feeCents: fee,
-      netCents: Math.max(0, amountCents - fee),
-      type: "WITHDRAWAL",
-      status: "PENDING",
-      providerData: stringify({ fixedFeeCents: 5000, percentFee: 0.01 })
+  if (amountCents <= fee) redirect("/wallet?error=amount_too_small");
+
+  // Debit and ledger entry happen in one transaction: the balance can never drop without a
+  // matching WITHDRAWAL record (or vice versa). The conditional debit also stops concurrent
+  // withdrawals from overdrawing the balance.
+  let debited = true;
+  await prisma.$transaction(async (db) => {
+    const result = await db.user.updateMany({
+      where: { id: user.id, balanceCents: { gte: amountCents } },
+      data: { balanceCents: { decrement: amountCents } }
+    });
+    if (result.count === 0) {
+      debited = false;
+      return;
     }
+    await db.transaction.create({
+      data: {
+        userId: user.id,
+        amountCents,
+        feeCents: fee,
+        netCents: Math.max(0, amountCents - fee),
+        type: "WITHDRAWAL",
+        status: "PENDING",
+        providerData: stringify({ fixedFeeCents: 5000, percentFee: 0.01 })
+      }
+    });
   });
+  if (!debited) redirect("/wallet?error=balance");
   revalidatePath("/wallet");
   revalidatePath("/profile");
 }
 
 export async function syncViewsAction() {
-  await requireUser();
+  // View sync runs the settlement engine (mints earnings, releases holds). It must
+  // never be triggerable by ordinary users — production sync is driven by the
+  // CRON_SECRET-protected /api/sync/views route. Restrict the action to admins.
+  const user = await requireUser();
+  if (!canAccessAdmin(user)) redirect("/profile");
   await syncMockViews();
   revalidatePath("/campaigns");
   revalidatePath("/profile");

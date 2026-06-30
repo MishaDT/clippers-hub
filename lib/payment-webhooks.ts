@@ -22,11 +22,21 @@ async function completeDepositByProviderId(provider: string, providerPaymentId: 
   });
   if (!tx) return { completed: false, reason: "transaction_not_found" };
 
-  await prisma.$transaction([
-    prisma.transaction.update({ where: { id: tx.id }, data: { status: "COMPLETED" } }),
-    prisma.user.update({ where: { id: tx.userId }, data: { balanceCents: { increment: tx.netCents } } })
-  ]);
-  return { completed: true, transactionId: tx.id };
+  // Atomic claim: only the caller that actually flips this transaction PENDING -> COMPLETED
+  // is allowed to credit the balance. A concurrent or replayed webhook updates 0 rows and
+  // credits nothing, so a payment can never be deposited twice.
+  const credited = await prisma.$transaction(async (db) => {
+    const claim = await db.transaction.updateMany({
+      where: { id: tx.id, status: "PENDING" },
+      data: { status: "COMPLETED" }
+    });
+    if (claim.count === 0) return false;
+    await db.user.update({ where: { id: tx.userId }, data: { balanceCents: { increment: tx.netCents } } });
+    return true;
+  });
+  return credited
+    ? { completed: true, transactionId: tx.id }
+    : { completed: false, reason: "already_completed" };
 }
 
 export function verifyStripeSignature(body: string, signature: string | null) {

@@ -59,18 +59,27 @@ async function settlePendingEarnings() {
       select: { id: true }
     });
     if (ownershipFail) continue;
-    await prisma.$transaction([
-      prisma.transaction.update({ where: { id: tx.id }, data: { status: "COMPLETED" } }),
-      prisma.submission.update({ where: { id: tx.submission.id }, data: { status: "PAID", paidAt: new Date() } }),
-      prisma.user.update({
+    const submissionId = tx.submission.id;
+    // Atomic claim: only the run that flips this earning PENDING -> COMPLETED moves the
+    // money out of hold. Concurrent settlement passes that lose the race update 0 rows and
+    // release nothing, so a single earning can never be paid out twice.
+    const releasedOk = await prisma.$transaction(async (db) => {
+      const claim = await db.transaction.updateMany({
+        where: { id: tx.id, status: "PENDING" },
+        data: { status: "COMPLETED" }
+      });
+      if (claim.count === 0) return false;
+      await db.submission.update({ where: { id: submissionId }, data: { status: "PAID", paidAt: new Date() } });
+      await db.user.update({
         where: { id: tx.userId },
         data: {
           holdBalanceCents: { decrement: tx.netCents },
           balanceCents: { increment: tx.netCents }
         }
-      })
-    ]);
-    released += 1;
+      });
+      return true;
+    });
+    if (releasedOk) released += 1;
   }
   return released;
 }
@@ -184,6 +193,12 @@ export async function syncViews() {
       status = "VERIFIED";
     }
 
+    // The THRESHOLD_MET -> SETTLING transition is the only one that mints money. Keep the
+    // metric write at THRESHOLD_MET for that case and let the atomic block below claim the
+    // transition, so exactly one concurrent run can create the earning.
+    const willMint = status === "SETTLING" && submission.status === "THRESHOLD_MET";
+    const metricStatus = willMint ? "THRESHOLD_MET" : status;
+
     const updated = await prisma.submission.update({
       where: { id: submission.id },
       data: {
@@ -192,7 +207,7 @@ export async function syncViews() {
         currentComments: comments,
         peakViews: Math.max(views, submission.peakViews),
         fraudScore,
-        status,
+        status: metricStatus,
         verifiedAt: ownershipOk && !submission.verifiedAt ? new Date() : submission.verifiedAt,
         lastSyncedAt: new Date(),
         viewVelocityJson: stringify([
@@ -202,17 +217,32 @@ export async function syncViews() {
       }
     });
 
-    if (status === "SETTLING" && submission.status === "THRESHOLD_MET") {
-      const existingEarning = await prisma.transaction.findFirst({ where: { submissionId: submission.id, type: "EARNING" } });
-      if (existingEarning) {
-        updates.push(updated);
-        continue;
-      }
-      const gross = Math.floor((views / 1000) * submission.campaign.cpmRateCents);
-      const fee = Math.floor(gross * commissionRate(submission.worker.rank));
-      const net = gross - fee;
-      await prisma.$transaction([
-        prisma.transaction.create({
+    if (willMint) {
+      // Mint the earning atomically: claim the THRESHOLD_MET -> SETTLING transition, read the
+      // budget fresh inside the same transaction, and cap the payout at the remaining
+      // (escrowed) budget so total payouts can never exceed what the client funded. A losing
+      // concurrent run updates 0 rows and mints nothing.
+      await prisma.$transaction(async (db) => {
+        const claim = await db.submission.updateMany({
+          where: { id: submission.id, status: "THRESHOLD_MET" },
+          data: { status: "SETTLING" }
+        });
+        if (claim.count === 0) return;
+        const existingEarning = await db.transaction.findFirst({ where: { submissionId: submission.id, type: "EARNING" } });
+        if (existingEarning) return;
+
+        const campaign = await db.campaign.findUnique({
+          where: { id: submission.campaignId },
+          select: { remainingBudgetCents: true, totalBudgetCents: true, status: true }
+        });
+        const remaining = Math.max(0, campaign?.remainingBudgetCents ?? 0);
+        const rawGross = Math.floor((views / 1000) * submission.campaign.cpmRateCents);
+        const gross = Math.min(rawGross, remaining);
+        if (gross <= 0) return; // budget exhausted — nothing is owed for this clip
+
+        const fee = Math.floor(gross * commissionRate(submission.worker.rank));
+        const net = gross - fee;
+        await db.transaction.create({
           data: {
             userId: submission.workerId,
             submissionId: submission.id,
@@ -221,24 +251,29 @@ export async function syncViews() {
             netCents: net,
             type: "EARNING",
             status: "PENDING",
-            providerData: stringify({ settlementHours: 48, fraudScore })
+            providerData: stringify({ settlementHours: 48, fraudScore, rawGross })
           }
-        }),
-        prisma.user.update({
+        });
+        await db.user.update({
           where: { id: submission.workerId },
           data: {
             holdBalanceCents: { increment: net },
             lifetimeViews: { increment: velocity }
           }
-        }),
-        prisma.campaign.update({
+        });
+        const nextRemaining = remaining - gross;
+        await db.campaign.update({
           where: { id: submission.campaignId },
           data: {
-            remainingBudgetCents: { decrement: Math.min(gross, Math.max(0, submission.campaign.remainingBudgetCents)) },
-            status: submission.campaign.remainingBudgetCents - gross <= 0 ? "PAUSED" : submission.campaign.remainingBudgetCents - gross < submission.campaign.totalBudgetCents * 0.2 ? "LOW_BUDGET" : submission.campaign.status
+            remainingBudgetCents: { decrement: gross },
+            status: nextRemaining <= 0
+              ? "PAUSED"
+              : nextRemaining < submission.campaign.totalBudgetCents * 0.2
+                ? "LOW_BUDGET"
+                : (campaign?.status ?? submission.campaign.status)
           }
-        })
-      ]);
+        });
+      });
     }
 
     updates.push(updated);
