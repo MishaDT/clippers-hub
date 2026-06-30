@@ -94,12 +94,18 @@
 
 .item span {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: 10px;
 }
 
 .item b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .item .count {
