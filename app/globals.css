@@ -14447,3 +14447,162 @@ body:has(.wallet-screen) {
   .wallet-title-block h1 { font-size: 42px!important; }
   .wallet-row b { font-size: 13px; }
 }
+
+/* ===================== 15-point pass: new component styles ===================== */
+
+/* Point 4 — "Мои коллабы" priority link on leaderboard rail */
+.collabs-priority-link{border-color:rgba(201,243,29,.32)!important;background:linear-gradient(135deg,rgba(201,243,29,.12),rgba(201,243,29,.03))!important}
+.collabs-priority-link span{color:#dffb72}
+.collabs-priority-link svg{color:#c9f31d}
+
+/* Point 7 — back button on campaigns/new */
+.campaign-create-back{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;padding:8px 12px;border:1px solid #2c2c32;border-radius:9px;color:#b8b9bf;font-size:13px;font-weight:750;background:rgba(255,255,255,.03)}
+.campaign-create-back:hover{color:#fff;border-color:rgba(201,243,29,.3)}
+
+/* Point 5 — Collabs redesign (collab-v2) */
+.collabs-v2-page{display:grid;gap:18px;width:min(1180px,100%);margin:0 auto}
+.collabs-v2-hero{position:relative;overflow:hidden;border-radius:22px;padding:30px 34px;background:linear-gradient(120deg,rgba(201,243,29,.16),rgba(201,243,29,.03) 42%,transparent 72%),#0c0e09;border:1px solid rgba(201,243,29,.2)}
+.collabs-v2-hero::after{content:"";position:absolute;right:-40px;top:-60px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(201,243,29,.22),transparent 65%)}
+.collabs-v2-hero>span{position:relative;display:inline-flex;align-items:center;gap:7px;color:#c9f31d;font-size:12px;font-weight:800;letter-spacing:.1em;padding:6px 12px;border-radius:999px;background:rgba(201,243,29,.12);border:1px solid rgba(201,243,29,.25);text-transform:uppercase}
+.collabs-v2-hero h1{position:relative;margin:14px 0 0;font-size:clamp(30px,5vw,48px);line-height:.98;color:#fff}
+.collabs-v2-hero p{position:relative;margin:12px 0 0;max-width:560px;color:#9aa093;font-size:15px;line-height:1.55}
+.collabs-v2-hero>a{position:relative;display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:11px 18px;border-radius:11px;background:#c9f31d;color:#0c0d0a;font-size:14px;font-weight:800;box-shadow:0 8px 22px rgba(201,243,29,.32)}
+.collabs-v2-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px;border:1px solid rgba(201,243,29,.14);border-radius:14px;background:rgba(255,255,255,.03)}
+.collabs-v2-tabs a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border-radius:10px;color:#9aa093;font-size:14px;font-weight:700}
+.collabs-v2-tabs a.active{background:linear-gradient(135deg,#d6fa50,#b3ec39);color:#0c0d0a;font-weight:800;box-shadow:0 6px 18px rgba(201,243,29,.3)}
+.collabs-v2-tabs a b{min-width:20px;height:20px;padding:0 6px;display:grid;place-items:center;border-radius:999px;background:rgba(201,243,29,.14);color:#c9f31d;font-size:11px;font-weight:800}
+.collabs-v2-tabs a.active b{background:rgba(12,13,10,.85);color:#c9f31d}
+.collabs-v2-list{display:grid;gap:10px}
+.collabs-v2-list>header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:4px}
+.collabs-v2-list>header small{color:#8f9098;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.collabs-v2-list>header h2{margin:2px 0 0;font-size:24px;color:#fff}
+.collabs-v2-list>header span{color:#73756c;font-size:13px;font-weight:600}
+.collab-v2-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;padding:16px;border:1px solid rgba(201,243,29,.1);border-radius:16px;background:rgba(255,255,255,.02);transition:border-color .2s,transform .2s}
+.collab-v2-card:hover{border-color:rgba(201,243,29,.28);transform:translateY(-1px)}
+.collab-v2-person{display:flex;align-items:center;gap:12px;min-width:0;color:inherit}
+.collab-v2-person img{width:46px;height:46px;flex:none;border-radius:14px;object-fit:cover;background:#1a1d1b;box-shadow:0 0 0 2px rgba(255,255,255,.05)}
+.collab-v2-person span{display:grid;min-width:0}
+.collab-v2-person strong{font-size:15px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.collab-v2-person small{color:#8b8d85;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.collab-v2-status{display:inline-flex;align-items:center;gap:6px;justify-self:end;align-self:start;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.06);color:#9aa093;white-space:nowrap}
+.collab-v2-status.status-pending{background:rgba(245,181,61,.15);color:#f5b53d}
+.collab-v2-status.status-accepted{background:rgba(84,224,138,.14);color:#54e08a}
+.collab-v2-status.status-completed{background:rgba(201,243,29,.14);color:#c9f31d}
+.collab-v2-status.status-declined,.collab-v2-status.status-cancelled{background:rgba(255,138,107,.12);color:#ff8a6b}
+.collab-v2-card p{grid-column:1/-1;margin:0;color:#c3c6bf;font-size:14px;line-height:1.5}
+.collab-v2-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.collab-v2-actions form{display:contents}
+.collab-v2-primary,.collab-v2-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;border:0}
+.collab-v2-primary{background:#c9f31d;color:#0c0d0a;box-shadow:0 6px 16px rgba(201,243,29,.3)}
+.collab-v2-ghost{background:rgba(255,255,255,.05);color:#cfd1c8;font-weight:700;border:1px solid rgba(255,255,255,.08)}
+.collab-v2-ghost:hover{color:#fff;border-color:rgba(255,255,255,.16)}
+.collabs-v2-empty{display:grid;place-items:center;gap:8px;padding:40px 20px;text-align:center;color:#8b8d85;border:1px dashed #2c2c32;border-radius:16px}
+.collabs-v2-empty svg{color:#c9f31d}
+.collabs-v2-empty strong{color:#fff;font-size:18px}
+.collabs-v2-empty p{margin:0;max-width:360px;line-height:1.45}
+.collabs-v2-how{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.collabs-v2-how span{position:relative;display:grid;gap:4px;padding:16px 16px 16px 52px;border:1px solid rgba(255,255,255,.06);border-radius:14px;background:rgba(255,255,255,.02);color:#8b8d85;font-size:13px;line-height:1.45}
+.collabs-v2-how span::first-letter{font-weight:900}
+.collabs-v2-how strong{color:#fff;font-size:14px}
+
+/* Point 12 — admin dashboard charts */
+.admin-dashboard-section{display:grid;gap:12px;margin:4px 0 6px}
+.admin-chart-note{color:#73756c;font-size:11px}
+.admin-charts-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.admin-charts-grid.one{grid-template-columns:1fr}
+.admin-chart{display:grid;gap:12px;padding:16px;border:1px solid #26262c;border-radius:14px;background:#121216}
+.admin-chart header{display:flex;flex-direction:column;gap:3px}
+.admin-chart header span{color:#9697a0;font-size:12px}
+.admin-chart header strong{color:#fff;font-size:18px}
+.admin-chart-bars{display:flex;align-items:flex-end;gap:5px;height:84px}
+.admin-chart-bars>span{flex:1;display:grid;align-content:end;justify-items:center;gap:5px;height:100%}
+.admin-chart-bars i{width:100%;max-width:26px;border-radius:5px 5px 2px 2px;background:#c9f31d;transition:height .3s}
+.admin-chart-bars small{color:#7a7c74;font-size:9px;text-transform:capitalize}
+.admin-chart.tone-blue .admin-chart-bars i{background:#4ea1ff}
+.admin-chart.tone-orange .admin-chart-bars i{background:#ff9f43}
+.admin-chart.tone-violet .admin-chart-bars i{background:#a06bff}
+.admin-flow-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.admin-flow-kpis>span{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 12px;padding:13px 16px;border:1px solid #26262c;border-radius:13px;background:#121216}
+.admin-flow-kpis svg{grid-row:1/3;color:#c9f31d}
+.admin-flow-kpis b{font-size:20px;color:#fff}
+.admin-flow-kpis small{color:#8d958d;font-size:11px}
+
+/* Point 9 — admin users role tabs */
+.admin-user-role-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}
+.admin-user-role-tabs a{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:6px;border:1px solid #2a2a30;border-radius:9px;color:#9697a0;font-size:13px;font-weight:700;background:rgba(255,255,255,.02)}
+.admin-user-role-tabs a.active{background:rgba(201,243,29,.12);border-color:rgba(201,243,29,.38);color:#dffb72}
+.admin-user-role-tabs a b{color:inherit;opacity:.75;font-size:13px}
+
+/* Point 10 — activity view tabs */
+.admin-event-view-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.admin-event-view-tabs a{padding:8px 14px;border:1px solid #2a2a30;border-radius:9px;color:#9697a0;font-size:13px;font-weight:700;background:rgba(255,255,255,.02)}
+.admin-event-view-tabs a.active{background:rgba(201,243,29,.12);border-color:rgba(201,243,29,.38);color:#dffb72}
+
+/* Point 6 — store analytics page */
+.admin-back-link{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;color:#b8b9bf;font-size:13px;font-weight:750}
+.admin-back-link:hover{color:#c9f31d}
+.admin-period-switch{display:inline-flex;gap:5px;padding:4px;border:1px solid #2a2a30;border-radius:9px;background:#121216}
+.admin-period-switch a{padding:7px 13px;border-radius:6px;color:#9697a0;font-size:12px;font-weight:700}
+.admin-period-switch a.active{background:#c9f31d;color:#0a0b08}
+.store-click-products{display:grid;gap:5px}
+.store-click-products>div{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid #222227}
+.store-click-products>div>span{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#29350d;color:#d8ff54;font-weight:900;font-size:12px}
+.store-click-products>div>div{display:grid;min-width:0}
+.store-click-products strong{font-size:13px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.store-click-products small{color:#8b8d85;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.store-click-products b{color:#c9f31d;font-size:15px}
+.store-click-events{display:grid;gap:2px;max-height:520px;overflow-y:auto}
+.store-click-events article{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #222227}
+.store-click-events article>span{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;font-weight:900;font-size:12px}
+.store-click-events article>span.known{background:rgba(201,243,29,.14);color:#c9f31d}
+.store-click-events article>span.guest{background:rgba(255,255,255,.06);color:#9aa093}
+.store-click-events article>div{display:grid;min-width:0}
+.store-click-events strong{font-size:13px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.store-click-events small,.store-click-events em{color:#8b8d85;font-size:11px;font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.store-click-events time{color:#6e756f;font-size:11px;white-space:nowrap}
+
+/* Point 11 — admin mobile dropdown menu (desktop hidden) */
+.admin-mobile-menu{display:none}
+
+@media(max-width:920px){
+  .collabs-v2-how{grid-template-columns:1fr}
+  .admin-charts-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .collabs-v2-hero{padding:22px 18px}
+  .collab-v2-card{grid-template-columns:1fr}
+  .collab-v2-status{justify-self:start}
+  .admin-flow-kpis{grid-template-columns:1fr}
+  .admin-user-role-tabs{grid-template-columns:repeat(2,1fr)}
+  .admin-chart-bars{height:70px}
+  .admin-sidebar{display:none!important}
+  .admin-mobile-menu{display:block;margin:0 0 14px}
+  .admin-mobile-menu>summary{display:flex;align-items:center;gap:11px;min-height:54px;padding:0 14px;list-style:none;border:1px solid #2c2c32;border-radius:11px;background:#121216;color:#fff;cursor:pointer}
+  .admin-mobile-menu>summary::-webkit-details-marker{display:none}
+  .admin-mobile-menu>summary>span{flex:1;display:grid;gap:1px}
+  .admin-mobile-menu>summary>span small{color:#8f9098;font-size:11px}
+  .admin-mobile-menu>summary>span b{font-size:15px}
+  .admin-mobile-menu>summary>svg:last-child{transition:transform .2s}
+  .admin-mobile-menu[open]>summary>svg:last-child{transform:rotate(180deg)}
+  .admin-mobile-menu>nav{display:grid;gap:3px;margin-top:7px;padding:8px;border:1px solid #2c2c32;border-radius:11px;background:#121216}
+  .admin-mobile-menu>nav a{display:flex;align-items:center;gap:11px;padding:11px;border-radius:8px;color:#cfd1c8}
+  .admin-mobile-menu>nav a span{display:grid;gap:1px}
+  .admin-mobile-menu>nav a b{font-size:14px}
+  .admin-mobile-menu>nav a small{color:#8f9098;font-size:11px}
+  .admin-mobile-menu>nav a.active{background:rgba(201,243,29,.12);color:#dffb72}
+  .admin-mobile-menu>nav a i{margin-left:auto;min-width:20px;height:20px;display:grid;place-items:center;border-radius:10px;background:#ef4444;color:#fff;font-size:10px;font-weight:800}
+}
+
+/* ===================== 15-point pass: mobile polish (points 13, 14) ===================== */
+@media (max-width: 760px) {
+  /* Point 13 — wallet tabs as 2x2 grid, no horizontal clipping of "RP" */
+  .wallet-tabs { display:grid!important; grid-template-columns:1fr 1fr!important; overflow:visible!important; position:static!important; gap:6px!important; margin-inline:0!important; }
+  .wallet-tabs a { min-width:0!important; flex:none!important; }
+
+  /* Point 14 — admin stat cards: 2 per row so the big numbers fit */
+  .admin-grid.compact { grid-template-columns:1fr 1fr!important; gap:8px!important; }
+  .admin-grid.compact .admin-metric { min-height:110px!important; padding:13px!important; }
+  .admin-metric strong { font-size:26px!important; overflow-wrap:anywhere; }
+  .admin-kpi-strip { grid-template-columns:1fr 1fr!important; }
+  .admin-kpi-strip .admin-metric strong { font-size:24px!important; }
+}

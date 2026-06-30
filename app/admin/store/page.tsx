@@ -1,4 +1,4 @@
-import { Boxes, ChevronDown, Download, Gift, Link2, PackagePlus, RefreshCw, ShoppingBag } from "lucide-react";
+import { BarChart3, Boxes, ChevronDown, Download, Gift, Link2, PackagePlus, RefreshCw, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card } from "@/components/ui";
@@ -127,6 +127,7 @@ export default async function AdminStorePage({
           eyebrow="Магазин ReelPay"
           title="Витрина и награды"
           description="Добавляйте товары за RP и партнёрские ссылки. Название, описание, картинка и QR могут сформироваться автоматически."
+          action={<Link className="btn btn-primary" href="/admin/store/analytics"><BarChart3 size={16} /> Статистика переходов</Link>}
         />
 
         {params.imported ? <p className="admin-store-alert good">Импортировано и обновлено предложений: {params.imported}.</p> : null}

@@ -12,7 +12,8 @@ export function eventLabel(type: string) {
     SUBMISSION_POSTED: "Работа отправлена",
     SUBMISSION_FLAGGED: "Работа с риском",
     LOGOUT: "Выход",
-    CTA_CLICK: "Клик"
+    CTA_CLICK: "Клик",
+    STORE_OFFER_CLICK: "Переход к продукту"
   };
   return labels[type] || type;
 }

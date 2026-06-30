@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
-import { Activity, Eye, Search, UserCheck } from "lucide-react";
+import { Activity, AlertTriangle, Eye, Search, ShieldAlert, UserCheck } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +8,7 @@ import { clampPage, eventLabel, fullDate, pageHref, providerLabel } from "@/lib/
 
 export const dynamic = "force-dynamic";
 
-const pageSize = 60;
+const pageSize = 40;
 const eventTypes = [
   "ALL",
   "PAGE_VIEW",
@@ -22,6 +22,7 @@ const eventTypes = [
   "OAUTH_FAILED",
   "SUBMISSION_POSTED",
   "SUBMISSION_FLAGGED",
+  "STORE_OFFER_CLICK",
   "LOGOUT"
 ];
 
@@ -38,10 +39,12 @@ export default async function AdminActivityPage({
   const q = String(params.q || "").trim();
   const type = eventTypes.includes(String(params.type)) ? String(params.type) : "ALL";
   const provider = String(params.provider || "all");
+  const view = params.view === "all" ? "all" : "important";
   const page = clampPage(params.page);
 
   const where: Prisma.AnalyticsEventWhereInput = {};
   if (type !== "ALL") where.type = type;
+  else if (view === "important") where.type = { not: "PAGE_VIEW" };
   if (provider !== "all") where.provider = provider === "email" ? null : provider;
   if (q) {
     where.OR = [
@@ -53,7 +56,7 @@ export default async function AdminActivityPage({
   }
 
   const day = daysAgo(1);
-  const [total, events, views24h, users24h] = await Promise.all([
+  const [total, events, views24h, users24h, failedLogins, pageViewSignals] = await Promise.all([
     prisma.analyticsEvent.count({ where }),
     prisma.analyticsEvent.findMany({
       where,
@@ -67,11 +70,27 @@ export default async function AdminActivityPage({
       where: { userId: { not: null }, createdAt: { gte: day } },
       distinct: ["userId"],
       select: { userId: true }
+    }),
+    prisma.analyticsEvent.findMany({
+      where: { type: "LOGIN_FAILED", createdAt: { gte: day }, ipHash: { not: null } },
+      select: { ipHash: true }
+    }),
+    prisma.analyticsEvent.findMany({
+      where: { type: "PAGE_VIEW", createdAt: { gte: day }, ipHash: { not: null } },
+      select: { ipHash: true },
+      take: 10_000
     })
   ]);
+  const repeated = (rows: Array<{ ipHash: string | null }>, threshold: number) => {
+    const counts = new Map<string, number>();
+    rows.forEach((row) => { if (row.ipHash) counts.set(row.ipHash, (counts.get(row.ipHash) || 0) + 1); });
+    return [...counts.values()].filter((count) => count >= threshold).length;
+  };
+  const suspiciousLogins = repeated(failedLogins, 5);
+  const trafficBursts = repeated(pageViewSignals, 100);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const baseParams = { q, type: type === "ALL" ? "" : type, provider: provider === "all" ? "" : provider };
+  const baseParams = { q, type: type === "ALL" ? "" : type, provider: provider === "all" ? "" : provider, view };
 
   return (
     <AdminShell>
@@ -88,8 +107,20 @@ export default async function AdminActivityPage({
           <Card className="admin-metric"><Activity /><span>Найдено</span><strong>{total}</strong><small>событий</small></Card>
         </div>
 
+        <section className="admin-risk-strip">
+          <article className={suspiciousLogins ? "warning" : ""}><ShieldAlert size={18} /><span><b>{suspiciousLogins}</b><small>IP с 5+ ошибками входа</small></span></article>
+          <article className={trafficBursts ? "warning" : ""}><AlertTriangle size={18} /><span><b>{trafficBursts}</b><small>всплесков 100+ страниц</small></span></article>
+          <p>Это сигналы для проверки, а не автоматическая блокировка.</p>
+        </section>
+
+        <nav className="admin-event-view-tabs">
+          <Link className={view === "important" ? "active" : ""} href="/admin/activity?view=important">Важные события</Link>
+          <Link className={view === "all" ? "active" : ""} href="/admin/activity?view=all">Все, включая просмотры</Link>
+        </nav>
+
         <Card className="admin-panel admin-filter-panel">
           <form className="admin-filter-bar" action="/admin/activity">
+            <input type="hidden" name="view" value={view} />
             <label>
               <Search size={18} />
               <input name="q" defaultValue={q} placeholder="Страница, email, имя, ник" />
@@ -120,7 +151,7 @@ export default async function AdminActivityPage({
             {events.map((event) => (
               <div className="admin-table-row" key={event.id}>
                 <div><Tag tone={event.type.includes("OAUTH") ? "good" : "soft"}>{eventLabel(event.type)}</Tag></div>
-                <div><strong>{event.user?.name || "Гость"}</strong><span>{event.user?.email || event.ipHash || "без данных"}</span></div>
+                <div><strong>{event.user?.name || "Гость"}</strong><span>{event.user?.email || (event.ipHash ? `аноним ${event.ipHash.slice(0, 8)}` : "без данных")}</span></div>
                 <div><span>{event.path || "не указана"}</span></div>
                 <div><span>{providerLabel(event.provider)}</span></div>
                 <div><strong>{fullDate(event.createdAt)}</strong></div>
@@ -142,7 +173,7 @@ export default async function AdminActivityPage({
                   <p><b>Страница:</b> {event.path || "не указана"}</p>
                   <p><b>Источник:</b> {providerLabel(event.provider)}</p>
                   <p><b>Время:</b> {fullDate(event.createdAt)}</p>
-                  <p><b>IP hash:</b> {event.ipHash || "нет"}</p>
+                  <p><b>Анонимный ID:</b> {event.ipHash ? `${event.ipHash.slice(0, 12)}…` : "нет"}</p>
                 </div>
               </details>
             ))}

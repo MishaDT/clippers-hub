@@ -207,9 +207,7 @@ export default async function LeaderboardPage({
       id: offer.id,
       title: offer.title,
       provider: offer.provider || "Партнёр ReelPay",
-      imageUrl: offer.source === "PAMPADU" && offer.externalId
-        ? `/api/store/partner-image/${encodeURIComponent(offer.externalId)}`
-        : offer.imageUrl,
+      imageUrl: offer.imageUrl ? `/api/store/offer-image/${encodeURIComponent(offer.id)}` : null,
       category: offer.category === "DEBIT_CARD"
         ? "Дебетовая карта"
         : offer.category === "CREDIT_CARD"
@@ -319,7 +317,6 @@ export default async function LeaderboardPage({
                           <div className="podium-clips">{row.clips} клипов</div>
                           {mode === "client" && row.id !== currentUser?.id ? (
                             <div className="podium-actions">
-                              <Link href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(`/leaderboard?period=${period}`)}`}>Профиль</Link>
                               <form className="podium-invite" action={sendCollabInviteAction}>
                                 <input type="hidden" name="workerId" value={row.id} />
                                 <input type="hidden" name="handle" value={row.handle} />
@@ -370,6 +367,13 @@ export default async function LeaderboardPage({
           </div>
 
           <aside className="leaderboard-rail">
+            {currentUser ? (
+              <Link className="rail-link-panel collabs-priority-link" href="/collabs">
+                <span><Handshake size={16} /> Мои коллабы</span>
+                <ChevronRight size={16} />
+              </Link>
+            ) : null}
+
             {me ? (
               <ProgressCarousel
                 league={{
@@ -400,13 +404,6 @@ export default async function LeaderboardPage({
               <section className="rail-panel referral-panel">
                 <ReferralCard code={me.referralCode} invited={me.invited} rewardRp={me.referralRewardRp} />
               </section>
-            ) : null}
-
-            {currentUser ? (
-              <Link className="rail-link-panel" href="/collabs">
-                <span><Handshake size={16} /> Мои коллабы</span>
-                <ChevronRight size={16} />
-              </Link>
             ) : null}
 
             {!currentUser ? (

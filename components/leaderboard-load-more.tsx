@@ -25,14 +25,13 @@ export function LeaderboardLoadMore({ rows, clientMode, currentUserId, returnTo 
             <Link className="lr-clip" href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(returnTo)}`} aria-label="Открыть профиль"><img src={row.cover} alt="" loading="lazy" /><span className="lr-clip-play"><Play size={12} fill="#fff" /></span></Link>
             {clientMode && row.id !== currentUserId ? (
               <div className="leaderboard-row-actions">
-                <Link className="profile-open-btn" href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(returnTo)}`}>Профиль</Link>
                 <form className="invite-btn-form" action={sendCollabInviteAction}>
                   <input type="hidden" name="workerId" value={row.id} /><input type="hidden" name="handle" value={row.handle} />
                   <input type="hidden" name="message" value="Привет! Хочу позвать тебя на совместный клип в ReelPay. Обсудим?" />
                   <button className="invite-btn" type="submit"><Handshake size={14} /><span className="invite-full">Пригласить</span><span className="invite-short">Звать</span></button>
                 </form>
               </div>
-            ) : <Link className="invite-btn" href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(returnTo)}`}>{row.id === currentUserId ? <><span className="invite-full">Мой профиль</span><span className="invite-short">Я</span></> : <><Handshake size={14} /><span className="invite-full">Открыть профиль</span><span className="invite-short">Открыть</span></>}</Link>}
+            ) : null}
           </li>
         ))}
       </ol>

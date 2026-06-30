@@ -33,7 +33,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   if (provider === "google") where.oauthAccounts = { some: { provider: "google" } };
   if (provider === "email") where.oauthAccounts = { none: {} };
 
-  const [total, users, googleUsers] = await Promise.all([
+  const [total, users, googleUsers, roleGroups, allUsers] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
@@ -54,8 +54,17 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
       skip: (page - 1) * pageSize,
       take: pageSize
     }),
-    prisma.oAuthAccount.count({ where: { provider: "google" } })
+    prisma.oAuthAccount.count({ where: { provider: "google" } }),
+    prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
+    prisma.user.count()
   ]);
+  const roleCount = new Map(roleGroups.map((item) => [item.role, item._count._all]));
+  const roleTabs = [
+    { value: "ALL", label: "Все", count: allUsers },
+    { value: "ADMIN", label: "Админы", count: roleCount.get("ADMIN") || 0 },
+    { value: "CLIENT", label: "Заказчики", count: roleCount.get("CLIENT") || 0 },
+    { value: "WORKER", label: "Клипперы", count: roleCount.get("WORKER") || 0 }
+  ];
 
   const userIds = users.map((user) => user.id);
   const lastEvents = userIds.length
@@ -87,6 +96,16 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
           <Card className="admin-metric"><UserRound /><span>Найдено</span><strong>{total}</strong><small>по фильтрам</small></Card>
           <Card className="admin-metric"><UserRound /><span>Google</span><strong>{googleUsers}</strong><small>соц-входы</small></Card>
         </div>
+
+        <nav className="admin-user-role-tabs" aria-label="Быстрый выбор роли">
+          {roleTabs.map((item) => {
+            const query = new URLSearchParams();
+            if (q) query.set("q", q);
+            if (provider !== "all") query.set("provider", provider);
+            if (item.value !== "ALL") query.set("role", item.value);
+            return <Link className={role === item.value ? "active" : ""} href={`/admin/users${query.size ? `?${query}` : ""}`} key={item.value}><span>{item.label}</span><b>{item.count}</b></Link>;
+          })}
+        </nav>
 
         <Card className="admin-panel admin-filter-panel">
           <form className="admin-filter-bar" action="/admin/users">

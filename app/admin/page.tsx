@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import { AlertTriangle, ArrowRight, BarChart3, Eye, LockKeyhole, ShieldCheck, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, BarChart3, Eye, Handshake, LockKeyhole, MousePointerClick, ShieldCheck, ShoppingBag, Users } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
+import { AdminBarChart } from "@/components/admin-charts";
 import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { compactNumber, rub } from "@/lib/money";
@@ -17,6 +18,19 @@ function startOfDay() {
 
 function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+function moscowDay(date: Date) {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Moscow" }).format(date);
+}
+
+function chartDays() {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const key = moscowDay(date);
+    return { key, label: date.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "Europe/Moscow" }) };
+  });
 }
 
 const loadAdminStats = unstable_cache(async () => {
@@ -40,7 +54,11 @@ const loadAdminStats = unstable_cache(async () => {
     activeUsersRaw,
     uniqueVisitorsRaw,
     topPages,
-    recentEvents
+    recentEvents,
+    chartAnalytics,
+    chartUsers,
+    chartCollabs,
+    chartPurchases
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: today } } }),
@@ -75,8 +93,31 @@ const loadAdminStats = unstable_cache(async () => {
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { user: { select: { email: true } } }
-    })
+    }),
+    prisma.analyticsEvent.findMany({
+      where: { type: { in: ["PAGE_VIEW", "STORE_OFFER_CLICK"] }, createdAt: { gte: week } },
+      select: { type: true, createdAt: true, ipHash: true, userId: true }
+    }),
+    prisma.user.findMany({ where: { createdAt: { gte: week } }, select: { createdAt: true } }),
+    prisma.collabInvite.findMany({ where: { createdAt: { gte: week } }, select: { createdAt: true } }),
+    prisma.storeRedemption.findMany({ where: { createdAt: { gte: week } }, select: { createdAt: true } })
   ]);
+
+  const days = chartDays();
+  const countSeries = (rows: Array<{ createdAt: Date }>) => days.map((day) => ({
+    label: day.label,
+    value: rows.filter((row) => moscowDay(row.createdAt) === day.key).length
+  }));
+  const visitorSeries = days.map((day) => ({
+    label: day.label,
+    value: new Set(
+      chartAnalytics
+        .filter((event) => event.type === "PAGE_VIEW" && moscowDay(event.createdAt) === day.key)
+        .map((event) => event.userId || event.ipHash)
+        .filter(Boolean)
+    ).size
+  }));
+  const storeClicks = chartAnalytics.filter((event) => event.type === "STORE_OFFER_CLICK");
 
   return {
     totalUsers,
@@ -95,7 +136,15 @@ const loadAdminStats = unstable_cache(async () => {
     activeUsersDay: activeUsersRaw.length,
     uniqueVisitorsDay: uniqueVisitorsRaw.length,
     topPages,
-    recentEvents
+    recentEvents,
+    visitorSeries,
+    userSeries: countSeries(chartUsers),
+    collabSeries: countSeries(chartCollabs),
+    purchaseSeries: countSeries(chartPurchases),
+    storeClickSeries: countSeries(storeClicks),
+    storeClicks: storeClicks.length,
+    collabsWeek: chartCollabs.length,
+    purchasesWeek: chartPurchases.length
   };
 }, ["admin-dashboard-v2"], { revalidate: 30, tags: ["admin-dashboard"] });
 
@@ -159,6 +208,24 @@ export default async function AdminPage() {
             <em>Открыть события</em>
           </Link>
         </div>
+
+        <section className="admin-dashboard-section">
+          <div className="section-head compact">
+            <div><span className="eyebrow">Динамика</span><h2>Последние 7 дней</h2></div>
+            <span className="admin-chart-note">Данные считаются на сервере раз в 30 секунд</span>
+          </div>
+          <div className="admin-charts-grid">
+            <AdminBarChart title="Уникальные посетители" value={`${stats.uniqueVisitorsDay} сегодня`} points={stats.visitorSeries} tone="blue" />
+            <AdminBarChart title="Новые пользователи" value={`+${stats.usersWeek} за неделю`} points={stats.userSeries} />
+            <AdminBarChart title="Новые коллабы" value={`${stats.collabsWeek} за неделю`} points={stats.collabSeries} tone="violet" />
+            <AdminBarChart title="Клики магазина" value={`${stats.storeClicks} за неделю`} points={stats.storeClickSeries} tone="orange" />
+          </div>
+          <div className="admin-flow-kpis">
+            <span><Handshake size={17} /><b>{stats.collabsWeek}</b><small>новых коллабов</small></span>
+            <span><ShoppingBag size={17} /><b>{stats.purchasesWeek}</b><small>покупок за RP</small></span>
+            <span><MousePointerClick size={17} /><b>{stats.storeClicks}</b><small>переходов к банкам</small></span>
+          </div>
+        </section>
 
         <div className="admin-two">
           <Card className="admin-panel">

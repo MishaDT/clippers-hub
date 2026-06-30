@@ -24,10 +24,58 @@ function privateAddress(address: string) {
   return address.startsWith("fc") || address.startsWith("fd") || address.startsWith("fe80:");
 }
 
-async function assertPublicHost(url: URL) {
+export async function assertPublicHost(url: URL) {
   if (url.hostname === "localhost" || isIP(url.hostname) && privateAddress(url.hostname)) throw new Error("PRIVATE_URL");
   const addresses = await lookup(url.hostname, { all: true });
   if (!addresses.length || addresses.some((item) => privateAddress(item.address))) throw new Error("PRIVATE_URL");
+}
+
+export async function fetchPublicImage(input: string) {
+  if (input.startsWith("data:")) {
+    const match = /^data:(image\/(?:png|jpeg|webp|svg\+xml));base64,([a-z0-9+/=\s]+)$/i.exec(input);
+    if (!match) throw new Error("BAD_IMAGE_DATA");
+    const body = Buffer.from(match[2], "base64");
+    if (body.byteLength > 1_500_000) throw new Error("TOO_LARGE");
+    return { body: new Uint8Array(body), contentType: match[1] };
+  }
+
+  let current = new URL(input);
+  if (current.protocol !== "https:") throw new Error("BAD_PROTOCOL");
+  for (let redirect = 0; redirect < 3; redirect += 1) {
+    await assertPublicHost(current);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8_000);
+    try {
+      const response = await fetch(current, {
+        cache: "no-store",
+        redirect: "manual",
+        signal: controller.signal,
+        headers: {
+          accept: "image/avif,image/webp,image/png,image/jpeg,image/svg+xml,image/*;q=.8",
+          referer: `${current.origin}/`,
+          "user-agent": "Mozilla/5.0 (compatible; ReelPay Image Proxy/1.0)"
+        }
+      });
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location");
+        if (!location) throw new Error("BAD_REDIRECT");
+        current = new URL(location, current);
+        if (current.protocol !== "https:") throw new Error("BAD_PROTOCOL");
+        continue;
+      }
+      if (!response.ok) throw new Error(`IMAGE_${response.status}`);
+      const contentType = response.headers.get("content-type")?.split(";")[0] || "";
+      if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/avif"].includes(contentType)) throw new Error("BAD_CONTENT_TYPE");
+      const length = Number(response.headers.get("content-length") || 0);
+      if (length > 1_500_000) throw new Error("TOO_LARGE");
+      const body = new Uint8Array(await response.arrayBuffer());
+      if (!body.byteLength || body.byteLength > 1_500_000) throw new Error("TOO_LARGE");
+      return { body, contentType };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw new Error("TOO_MANY_REDIRECTS");
 }
 
 function meta(html: string, property: string) {

@@ -37,9 +37,7 @@ export default async function StorePage({
     title: offer.title,
     description: offer.description,
     url: offer.url!,
-    imageUrl: offer.source === "PAMPADU" && offer.externalId
-      ? `/api/store/partner-image/${encodeURIComponent(offer.externalId)}`
-      : offer.imageUrl,
+    imageUrl: offer.imageUrl ? `/api/store/offer-image/${encodeURIComponent(offer.id)}` : null,
     provider: offer.provider,
     category: offer.category,
     features: parseJson<string[]>(offer.featuresJson, []),
