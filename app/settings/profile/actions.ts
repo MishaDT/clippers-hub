@@ -31,7 +31,7 @@ export async function updateProfileAction(formData: FormData) {
     context: "PUBLIC",
     payload: { entityId: user.id, source: "PROFILE" }
   });
-  if (moderation.action !== "ALLOW") redirect("/settings/profile?error=moderation");
+  if (moderation.action === "BLOCK" || moderation.action === "REVIEW") redirect("/settings/profile?error=moderation");
 
   const changed = handle !== user.handle;
   if (changed && !canChangeHandle(user.handleChangedAt)) redirect("/settings/profile?error=cooldown");

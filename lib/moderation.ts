@@ -37,7 +37,11 @@ export async function createModerationCase(input: {
       payloadJson: stringify(input.payload || {})
     }
   });
-  const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+  // FLAG-tier cases (contact-info, profanity → MEDIUM/LOW) are recorded silently so the
+  // moderation queue stays useful without paging admins on every swear word. Only escalate a
+  // notification for genuinely serious cases.
+  const shouldNotify = input.severity === "HIGH" || input.severity === "CRITICAL" || input.source === "REPORT";
+  const admins = shouldNotify ? await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }) : [];
   if (admins.length) {
     await Promise.all(admins.map(({ id }) => notify({
         userId: id,

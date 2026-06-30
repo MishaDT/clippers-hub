@@ -137,7 +137,7 @@ export async function createCampaignAction(formData: FormData) {
     authorId: user.id,
     context: "PUBLIC"
   });
-  if (campaignPolicy.action !== "ALLOW") redirect("/campaigns/new?error=moderation");
+  if (campaignPolicy.action === "BLOCK" || campaignPolicy.action === "REVIEW") redirect("/campaigns/new?error=moderation");
 
   const totalBudgetCents = budget || 5000000;
 
@@ -376,6 +376,16 @@ export async function sendChatMessageAction(formData: FormData) {
     select: { id: true, kind: true, campaignId: true, clientId: true, workerId: true }
   });
   if (!thread) return { ok: false, error: "Чат не найден или у вас нет доступа" };
+
+  // Anti-flood: refuse an exact repeat of this sender's last message in the thread.
+  const lastOwn = await prisma.chatMessage.findFirst({
+    where: { threadId, senderId: user.id, type: "TEXT" },
+    orderBy: { createdAt: "desc" },
+    select: { body: true, createdAt: true }
+  });
+  if (lastOwn && lastOwn.body === checked.body && Date.now() - lastOwn.createdAt.getTime() < 5 * 60_000) {
+    return { ok: false, error: "Вы уже отправили это сообщение." };
+  }
 
   const policy = await moderateText({
     text: checked.body,
@@ -1071,7 +1081,7 @@ export async function sendCollabInviteAction(formData: FormData) {
   const message = String(formData.get("message") || "").trim().slice(0, 600);
   if (!workerId || workerId === user.id || message.length < 3) redirect(`/clippers/${handle}?error=invite`);
   const policy = await moderateText({ text: message, contentType: "COLLAB", authorId: user.id, context: "PUBLIC" });
-  if (policy.action !== "ALLOW") redirect(`/clippers/${handle}?error=moderation`);
+  if (policy.action === "BLOCK" || policy.action === "REVIEW") redirect(`/clippers/${handle}?error=moderation`);
 
   const worker = await prisma.user.findUnique({ where: { id: workerId }, select: { id: true } });
   if (!worker) redirect("/leaderboard");
@@ -1291,7 +1301,7 @@ export async function endorseClipperAction(formData: FormData) {
   if (!workerId || workerId === user.id) redirect(`/clippers/${handle}`);
   if (note) {
     const policy = await moderateText({ text: note, contentType: "ENDORSEMENT", authorId: user.id, context: "PUBLIC" });
-    if (policy.action !== "ALLOW") redirect(`/clippers/${handle}?error=moderation`);
+    if (policy.action === "BLOCK" || policy.action === "REVIEW") redirect(`/clippers/${handle}?error=moderation`);
   }
 
   // Only "large" clients (by order count) may endorse.

@@ -1,5 +1,7 @@
 export type PolicyDecision = {
-  action: "ALLOW" | "REVIEW" | "BLOCK";
+  // ALLOW: clean. FLAG: delivered, but a moderation case is recorded (contact-info leak,
+  // profanity). REVIEW: held for a moderator. BLOCK: rejected outright.
+  action: "ALLOW" | "FLAG" | "REVIEW" | "BLOCK";
   category: string;
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   matches: string[];
@@ -23,6 +25,20 @@ const reviewRules: Array<[string, RegExp]> = [
   ["ILLEGAL_SERVICES", /(поддельн.*документ|купить.*паспорт|взлом.*аккаунт)/i]
 ];
 
+// Off-platform contact / deal-leak signals. Scanned on the RAW text (digits intact, unlike
+// the leet-normalised text) and never inside SUPPORT, where sharing a phone/email with staff
+// is legitimate. These FLAG (deliver + record), they never block.
+const contactRules: Array<[string, RegExp]> = [
+  ["CONTACT_MESSENGER", /(?<![а-яёa-z])(?:телеграм{1,2}|тел[еэ]га|telegram|вотс?ап|ватс[ао]п|whats?app|вайбер|viber|тг|tg)(?![а-яёa-z])/i],
+  ["CONTACT_OFFPLATFORM", /(?:пиш[иуте]+|перейд[еёи]|спишемся|свяжемся|номер|почт)\s*(?:мне|тебе|сюда|в\s+)?\s*(?:личк|лс\b|директ|телег|вотсап|ватсап|whats?app|почт|майл|mail)/i],
+  ["CONTACT_TG_HANDLE", /(?:t\.me\/|@)[a-z0-9_]{4,32}/i],
+  ["CONTACT_EMAIL", /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i],
+  ["CONTACT_PHONE", /(?:\+?\d[\s\-().]?){10,}\d/]
+];
+
+// Strong profanity roots, matched after leet-normalisation. FLAG only — never blocks delivery.
+const profanityPattern = /(?<![а-яёa-z])(?:бля|[еёе]б[аиоуёл]|[уy]?ху[йяюеё]|пизд|пид[оа]?р|муд[аио]к|залуп|го[нд]дон|долбо[её]б|дроч|шлюх|ублюд)/i;
+
 export function normalizePolicyText(value: string) {
   return value
     .normalize("NFKC")
@@ -40,6 +56,7 @@ export function normalizePolicyText(value: string) {
 }
 
 export function scanContent(value: string, context: "PUBLIC" | "CHAT" | "SUPPORT" = "PUBLIC"): PolicyDecision {
+  const raw = value.normalize("NFKC").toLowerCase().slice(0, 5000);
   const text = normalizePolicyText(value).slice(0, 5000);
   for (const [category, pattern] of hardRules) {
     const match = text.match(pattern);
@@ -56,5 +73,13 @@ export function scanContent(value: string, context: "PUBLIC" | "CHAT" | "SUPPORT
     const match = text.match(pattern);
     if (match) return { action: "REVIEW", category, severity: "HIGH", matches: [match[0].slice(0, 100)] };
   }
+  if (context !== "SUPPORT") {
+    for (const [category, pattern] of contactRules) {
+      const match = raw.match(pattern);
+      if (match) return { action: "FLAG", category, severity: "MEDIUM", matches: [match[0].slice(0, 100)] };
+    }
+  }
+  const profane = text.match(profanityPattern);
+  if (profane) return { action: "FLAG", category: "PROFANITY", severity: "LOW", matches: [profane[0].slice(0, 40)] };
   return { action: "ALLOW", category: "NONE", severity: "LOW", matches: [] };
 }
