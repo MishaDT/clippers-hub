@@ -65,7 +65,9 @@ export async function trackEvent({
       data: {
         userId: userId || null,
         type,
-        path: path ? path.slice(0, 240) : null,
+        // Drop query string / fragment: they can carry tokens or PII and aren't needed for
+        // page-level analytics. Only the route path is retained.
+        path: path ? path.split(/[?#]/)[0].slice(0, 240) : null,
         provider: provider ? provider.slice(0, 40) : null,
         ipHash: request ? hashValue(clientIp(request)) : null,
         userAgentHash: request ? hashValue(request.headers.get("user-agent") || "") : null,
