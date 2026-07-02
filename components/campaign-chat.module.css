@@ -1,0 +1,24 @@
+.system {
+  justify-self: center !important;
+  max-width: min(90%, 680px) !important;
+  padding: 9px 12px !important;
+  border: 1px solid rgba(201, 243, 29, .14) !important;
+  border-radius: 12px !important;
+  background: #151a16 !important;
+  color: #b8c0ba !important;
+  box-shadow: none !important;
+}
+
+.system p {
+  margin: 0;
+  color: inherit !important;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .system {
+    max-width: 92% !important;
+  }
+}

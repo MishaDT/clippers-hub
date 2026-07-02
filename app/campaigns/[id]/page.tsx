@@ -5,12 +5,15 @@ import { AppShell } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
 import { CampaignChat } from "@/components/campaign-chat";
 import { WorkspaceJourney } from "@/components/workspace-journey";
-import { closeCampaignAction, joinCampaignAction } from "@/app/actions";
+import { TakeOrderButton } from "@/components/take-order-button";
+import { SubmissionDispute } from "@/components/submission-dispute";
+import { ClipVelocityChart } from "@/components/clip-velocity-chart";
+import { closeCampaignAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/admin";
 import { buildSafePreview } from "@/lib/chat-safety";
 import { parseJson } from "@/lib/json";
-import { compactNumber, expectedPayout, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, grossPayout, rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { safeReturnTo } from "@/lib/navigation";
@@ -36,7 +39,9 @@ function videoCheckStatus(status?: string) {
   const labels: Record<string, string> = {
     PENDING: "Ожидает",
     NEEDS_REVIEW: "Проверяется",
+    PASS: "Пройдено",
     PASSED: "Пройдено",
+    FAIL: "Не пройдено",
     FAILED: "Не пройдено"
   };
   return labels[status || ""] || "Не запускалась";
@@ -68,10 +73,19 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       language: true,
       visibility: true,
       status: true,
+      isDemo: true,
       remainingBudgetCents: true,
+      reservedBudgetCents: true,
+      maxPaidResults: true,
       trackingPrefix: true,
       owner: { select: { id: true, name: true, handle: true, avatar: true } },
-      _count: { select: { submissions: true } }
+      _count: {
+        select: {
+          submissions: {
+            where: { status: { not: "REJECTED" } }
+          }
+        }
+      }
     }
   });
   if (!campaign) notFound();
@@ -89,7 +103,14 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             campaignId: campaign.id,
             ...(mode === "client" ? { campaign: { ownerId: currentUser.id } } : { workerId: currentUser.id })
           },
-          include: { worker: { select: { id: true, name: true, handle: true } }, videoChecks: { orderBy: { createdAt: "desc" }, take: 1 } },
+          include: {
+            worker: { select: { id: true, name: true, handle: true } },
+            videoChecks: { orderBy: { createdAt: "desc" }, take: 3 },
+            disputes: {
+              orderBy: { createdAt: "desc" },
+              select: { id: true, reason: true, status: true, resolution: true, createdAt: true, user: { select: { name: true } } }
+            }
+          },
           orderBy: { updatedAt: "desc" }
         }),
         prisma.chatThread.findFirst({
@@ -106,6 +127,54 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         })
       ])
     : [null, null];
+  const reports = isOwner
+    ? await prisma.submission.findMany({
+        where: { campaignId: campaign.id },
+        select: {
+          id: true,
+          postUrl: true,
+          status: true,
+          currentViews: true,
+          currentLikes: true,
+          currentComments: true,
+          fraudScore: true,
+          viewVelocityJson: true,
+          lastSyncedAt: true,
+          worker: { select: { name: true, handle: true } },
+          disputes: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, reason: true, status: true, resolution: true, createdAt: true, user: { select: { name: true } } }
+          },
+          videoChecks: {
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            select: { id: true, checkType: true, status: true, createdAt: true }
+          }
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 30
+      })
+    : submission
+      ? [{
+          id: submission.id,
+          postUrl: submission.postUrl,
+          status: submission.status,
+          currentViews: submission.currentViews,
+          currentLikes: submission.currentLikes,
+          currentComments: submission.currentComments,
+          fraudScore: submission.fraudScore,
+          viewVelocityJson: submission.viewVelocityJson,
+          lastSyncedAt: submission.lastSyncedAt,
+          worker: submission.worker,
+          disputes: submission.disputes,
+          videoChecks: submission.videoChecks.map((check) => ({
+            id: check.id,
+            checkType: check.checkType,
+            status: check.status,
+            createdAt: check.createdAt
+          }))
+        }]
+      : [];
 
   const rules = parseJson<{ requiredTags?: string[]; bans?: string[]; watermarkBonus?: boolean }>(campaign.rulesJson, {});
   const brief = parseJson<{
@@ -121,7 +190,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
     rightsConfirmed?: boolean;
   }>(campaign.briefJson, {});
   const platforms = parseJson<string[]>(campaign.allowedPlatformsJson, []);
-  const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
+  const gross = grossPayout(campaign.viewThreshold, campaign.cpmRateCents);
+  const expected = mode === "client"
+    ? gross
+    : expectedPayout(campaign.viewThreshold, campaign.cpmRateCents, currentUser?.rank || "BRONZE");
+  const slotsLeft = Math.max(0, campaign.maxPaidResults - campaign._count.submissions);
   const daysLeft = Math.max(1, Math.ceil((campaign.deadline.getTime() - Date.now()) / 86400000));
   const safeSource = buildSafePreview(campaign.sourceUrl);
   const briefRows = [
@@ -135,7 +208,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
   const urgent = daysLeft <= 2;
   const signal = campaign.visibility === "FEATURED"
     ? { cls: "hot", Icon: Megaphone, text: "Продвижение" }
-    : campaign.remainingBudgetCents < expected
+    : campaign.remainingBudgetCents < gross || slotsLeft <= 0
       ? { cls: "urgent", Icon: CircleAlert, text: "Мало бюджета" }
     : urgent
       ? { cls: "urgent", Icon: Clock3, text: `${daysLeft} дн. до дедлайна` }
@@ -164,23 +237,24 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               <h1>{campaign.title}</h1>
               <p>{campaign.description}</p>
               <div className="od-chips">
+                {campaign.isDemo ? <span className="od-chip od-chip--demo">Демо-кампания</span> : null}
                 {signal ? <span className={`od-chip od-chip--${signal.cls}`}><signal.Icon size={13} /> {signal.text}</span> : null}
                 <span className="od-chip"><Clock3 size={13} /> {daysLeft} дн</span>
                 <span className="od-chip"><Target size={13} /> цель {compactNumber(campaign.viewThreshold)}</span>
-                <span className="od-chip"><Users size={13} /> {campaign._count.submissions} откликов</span>
+                <span className="od-chip"><Users size={13} /> {slotsLeft} мест доступно</span>
               </div>
             </div>
           </div>
 
           <aside className="od-aside">
             <div className="od-apply">
-              <span className="od-apply-label"><WalletCards size={15} /> Оплата за результат</span>
+              <span className="od-apply-label"><WalletCards size={15} /> {mode === "client" ? "Стоимость результата" : "Чистая выплата"}</span>
               <strong className="od-apply-sum">{rub(expected)}</strong>
               <div className="od-apply-metrics">
                 <div><b>{compactNumber(campaign.viewThreshold)}</b><em>цель просмотров</em></div>
                 <div><b>{rub(campaign.cpmRateCents)}</b><em>за 1000</em></div>
                 <div><b>{daysLeft} дн</b><em>до дедлайна</em></div>
-                <div><b>{campaign._count.submissions}</b><em>откликов</em></div>
+                <div><b>{slotsLeft}</b><em>свободных мест</em></div>
               </div>
 
               {!currentUser ? (
@@ -202,14 +276,16 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               ) : submission ? (
                 <Link className="btn btn-primary od-apply-btn" href="/upload">Выложить работу</Link>
               ) : (
-                <form action={joinCampaignAction}>
-                  <input type="hidden" name="campaignId" value={campaign.id} />
-                  <button className="btn btn-primary od-apply-btn" type="submit">Откликнуться</button>
-                </form>
+                <TakeOrderButton
+                  campaignId={campaign.id}
+                  payout={rub(expected)}
+                  deadline={`${daysLeft} дн.`}
+                  disabled={slotsLeft <= 0 || campaign.remainingBudgetCents < gross}
+                />
               )}
 
               <ul className="od-apply-notes">
-                <li><ShieldCheck size={14} /> {mode === "client" ? "Оплата списывается только после проверки просмотров." : "Выплата начисляется после проверки просмотров."}</li>
+                <li><ShieldCheck size={14} /> {mode === "client" ? "Оплата списывается только после проверки просмотров." : submission ? `Под вас зарезервировано ${rub(submission.reservedPayoutCents)}.` : "После взятия заказа выплата резервируется под вас."}</li>
                 <li><Clock3 size={14} /> Статистика обновляется автоматически.</li>
               </ul>
             </div>
@@ -273,6 +349,54 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             status={submissionStatus(submission.status)}
             steps={progressSteps}
           />
+        ) : null}
+
+        {reports.length ? (
+          <section className="od-report-block" aria-labelledby="campaign-report-title">
+            <div className="section-head compact">
+              <div><span className="eyebrow">Контроль результата</span><h2 id="campaign-report-title">Отчёт по публикациям</h2></div>
+              <span>{reports.length} {reports.length === 1 ? "ролик" : "роликов"}</span>
+            </div>
+            <div className="od-report-grid">
+              {reports.map((report) => {
+                const post = buildSafePreview(report.postUrl);
+                return (
+                  <article className="od-report-card" data-submission-id={report.id} key={report.id}>
+                    <header>
+                      <div><strong>{report.worker.name}</strong><span>@{report.worker.handle}</span></div>
+                      <b>{submissionStatus(report.status)}</b>
+                    </header>
+                    <div className="od-report-metrics">
+                      <span><b>{compactNumber(report.currentViews)}</b><small>просмотров</small></span>
+                      <span><b>{compactNumber(report.currentLikes)}</b><small>реакций</small></span>
+                      <span><b>{report.currentComments}</b><small>комментариев</small></span>
+                      <span data-risk={report.fraudScore >= 60}><b>{report.fraudScore}%</b><small>риск</small></span>
+                    </div>
+                    <div className="od-report-checks">
+                      {report.videoChecks.length ? report.videoChecks.map((check) => (
+                        <span key={check.id}>
+                          <ShieldCheck size={13} />
+                          {check.checkType === "OWNERSHIP" ? "Владение" : check.checkType === "WATERMARK" ? "Watermark" : check.checkType}
+                          <b>{videoCheckStatus(check.status)}</b>
+                        </span>
+                      )) : <span><Clock3 size={13} /> Проверки ещё не запускались</span>}
+                    </div>
+                    <ClipVelocityChart data={report.viewVelocityJson} />
+                    <footer>
+                      <small>Обновлено {report.lastSyncedAt.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
+                      {post && !report.postUrl.includes("post-link-waiting") ? <a href={post.url} target="_blank" rel="noreferrer">Открыть ролик <ArrowUpRight size={13} /></a> : null}
+                    </footer>
+                    <SubmissionDispute
+                      submissionId={report.id}
+                      campaignId={campaign.id}
+                      disputes={report.disputes}
+                      canOpen={Boolean(currentUser && report.status !== "PAID")}
+                    />
+                  </article>
+                );
+              })}
+            </div>
+          </section>
         ) : null}
 
         {chatThread && currentUser ? (

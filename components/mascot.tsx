@@ -5,8 +5,10 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BriefcaseBusiness, CircleHelp, MessageCircle, Upload, WalletCards, X } from "lucide-react";
+import styles from "./mascot.module.css";
 
 type Action = { label: string; href: string; hint: string; icon: "work" | "chat" | "upload" | "wallet" | "help" };
+type SmartAction = Action & { id: string; priority: number };
 
 function actionsFor(pathname: string, mode: "worker" | "client"): Action[] {
   if (pathname === "/wallet") return [
@@ -45,11 +47,29 @@ const ICONS = {
   help: CircleHelp
 };
 
+function readDismissed() {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem("ridzi-dismissed") || "[]"));
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function trackSuggestion(type: "RIDZI_SUGGESTION_CLICK" | "RIDZI_SUGGESTION_DISMISS", id: string, pathname: string) {
+  void fetch("/api/analytics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    body: JSON.stringify({ type, path: pathname, metadata: { suggestionId: id } })
+  });
+}
+
 export function Mascot() {
   const pathname = usePathname();
   const [mode, setMode] = useState<"worker" | "client">("worker");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
   const blocked = pathname === "/login" || pathname === "/register" || pathname === "/chats";
 
   useEffect(() => {
@@ -60,13 +80,24 @@ export function Mascot() {
 
   useEffect(() => {
     if (!open) return;
+    const dismissed = readDismissed();
+    const controller = new AbortController();
+    fetch("/api/ridzi/context", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((data: { suggestions?: SmartAction[] }) => setSmartActions((data.suggestions || []).filter((item) => !dismissed.has(item.id))))
+      .catch(() => setSmartActions([]));
+    return () => controller.abort();
+  }, [open, pathname]);
+
+  useEffect(() => {
+    if (!open) return;
     const close = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [open]);
 
   if (blocked) return null;
-  const actions = actionsFor(pathname, mode);
+  const actions = smartActions.length ? smartActions : actionsFor(pathname, mode);
   const sheet = open && mounted ? createPortal(
     <div className="ridzi-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
       <section className="ridzi-sheet" role="dialog" aria-modal="true" aria-label="Помощник Ридзи">
@@ -77,11 +108,24 @@ export function Mascot() {
         <div className="ridzi-actions">
           {actions.map((action) => {
             const Icon = ICONS[action.icon];
+            const smart = "id" in action && typeof action.id === "string" ? action as SmartAction : null;
             return (
-              <Link href={action.href} key={action.label} onClick={() => setOpen(false)}>
-                <span><Icon size={19} /></span>
-                <div><strong>{action.label}</strong><small>{action.hint}</small></div>
-              </Link>
+              <div className={styles.action} key={smart?.id || action.label}>
+                <Link href={action.href} onClick={() => {
+                  if (smart) trackSuggestion("RIDZI_SUGGESTION_CLICK", smart.id, pathname);
+                  setOpen(false);
+                }}>
+                  <span><Icon size={19} /></span>
+                  <div><strong>{action.label}</strong><small>{action.hint}</small></div>
+                </Link>
+                {smart ? <button type="button" onClick={() => {
+                  const dismissed = readDismissed();
+                  dismissed.add(smart.id);
+                  localStorage.setItem("ridzi-dismissed", JSON.stringify([...dismissed].slice(-50)));
+                  trackSuggestion("RIDZI_SUGGESTION_DISMISS", smart.id, pathname);
+                  setSmartActions((items) => items.filter((item) => item.id !== smart.id));
+                }}>Не показывать</button> : null}
+              </div>
             );
           })}
         </div>

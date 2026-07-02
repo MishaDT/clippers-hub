@@ -139,7 +139,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
                     <span>{compactNumber(campaign.views)} просмотров в кампании</span>
                   </div>
                 </div>
-                <h2><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></h2>
+                <h2><Link href={`/campaigns/${campaign.id}?returnTo=%2Ffeed`}>{campaign.title}</Link></h2>
                 <div className="reel-pay-row">
                   {mode === "worker" ? (
                     <>
@@ -153,7 +153,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
                     </>
                   )}
                 </div>
-                <Link className="btn btn-primary reel-cta" href={`/campaigns/${campaign.id}`}>
+                <Link className="btn btn-primary reel-cta" href={`/campaigns/${campaign.id}?returnTo=%2Ffeed`}>
                   {mode === "worker" ? "Смотреть заказ →" : "Открыть кампанию →"}
                 </Link>
               </div>

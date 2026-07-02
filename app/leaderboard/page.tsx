@@ -13,14 +13,10 @@ import { LeaderboardLoadMore } from "@/components/leaderboard-load-more";
 import { LeaderboardStoreCarousel } from "@/components/leaderboard-store-carousel";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { sendCollabInviteAction } from "@/app/actions";
 import { compactNumber } from "@/lib/money";
 import { leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { parseJson } from "@/lib/json";
-
-// Default friendly opener for a one-click collab invite from the board.
-const COLLAB_MSG = "Привет! Хочу позвать тебя на совместный клип в ReelPay. Обсудим?";
 
 export const metadata: Metadata = {
   title: "Доска лидеров",
@@ -40,6 +36,7 @@ type Row = {
   views: number;
   clips: number;
   cover: string;
+  demo: boolean;
 };
 
 const COVERS = [
@@ -79,7 +76,7 @@ const loadLeaders = unstable_cache(
     const ids = groups.map((group) => group.workerId);
     const users = await prisma.user.findMany({
       where: ids.length ? { id: { in: ids } } : { id: "__none__" },
-      select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true }
+      select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true, email: true }
     });
     const byId = new Map(users.map((user) => [user.id, user]));
 
@@ -97,32 +94,13 @@ const loadLeaders = unstable_cache(
           lifetimeViews: user?.lifetimeViews ?? 0,
           views: group._sum.currentViews ?? 0,
           clips: group._count._all,
-          cover: coverFor(handle || group.workerId)
+          cover: coverFor(handle || group.workerId),
+          demo: user?.email.endsWith("@clippers.local") || false
         };
       });
-    if (period === "week" && rows.length < 10) {
-      const fallback = await prisma.user.findMany({
-        where: { id: { notIn: rows.map((row) => row.id) }, submissions: { some: {} } },
-        select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true },
-        orderBy: { lifetimeViews: "desc" },
-        take: 10 - rows.length
-      });
-      rows.push(...fallback.map((user, index) => ({
-        rank: rows.length + index + 1,
-        id: user.id,
-        name: user.name,
-        handle: user.handle,
-        avatar: avatarFor(user.handle, user.avatar),
-        verified: user.kycStatus === "VERIFIED",
-        lifetimeViews: user.lifetimeViews,
-        views: 0,
-        clips: 0,
-        cover: coverFor(user.handle || user.id)
-      })));
-    }
     return rows.map((row, index) => ({ ...row, rank: index + 1 }));
   },
-  ["leaderboard-v6"],
+  ["leaderboard-v7"],
   { revalidate: 600, tags: ["leaderboard"] }
 );
 
@@ -184,7 +162,7 @@ export default async function LeaderboardPage({
   const mode = currentUser ? await getActiveRoleMode(currentUser) : "worker";
   const [rows, me, featuredOffers] = await Promise.all([
     loadLeaders(period),
-    currentUser ? loadMyProgress(currentUser) : Promise.resolve(null),
+    currentUser && mode === "worker" ? loadMyProgress(currentUser) : Promise.resolve(null),
     prisma.storeOffer.findMany({
       where: { kind: "PARTNER_LINK", active: true, featured: true, url: { not: null } },
       orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
@@ -308,6 +286,7 @@ export default async function LeaderboardPage({
                           <div className="podium-name">
                             <strong>{row.id === currentUser?.id ? "Я" : row.name}</strong>
                             {row.verified ? <BadgeCheck size={15} className="verified" /> : null}
+                            {row.demo ? <span className="leaderboard-demo">Демо</span> : null}
                           </div>
                           <LeagueBadge views={row.lifetimeViews} size="sm" />
                           <div className="podium-views">
@@ -317,12 +296,12 @@ export default async function LeaderboardPage({
                           <div className="podium-clips">{row.clips} клипов</div>
                           {mode === "client" && row.id !== currentUser?.id ? (
                             <div className="podium-actions">
-                              <form className="podium-invite" action={sendCollabInviteAction}>
-                                <input type="hidden" name="workerId" value={row.id} />
-                                <input type="hidden" name="handle" value={row.handle} />
-                                <input type="hidden" name="message" value={COLLAB_MSG} />
-                                <button type="submit"><Handshake size={14} /> Пригласить</button>
-                              </form>
+                              <Link
+                                className="podium-invite"
+                                href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(`/leaderboard?period=${period}`)}#cp-invite`}
+                              >
+                                <Handshake size={14} /> Пригласить
+                              </Link>
                             </div>
                           ) : row.id === currentUser?.id ? <span className="podium-self">Ваше место</span> : null}
                         </li>

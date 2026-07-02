@@ -1,0 +1,113 @@
+.overlay {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(8px);
+}
+
+.dialog {
+  display: grid;
+  gap: 14px;
+  width: min(430px, 100%);
+  padding: 20px;
+  border: 1px solid rgba(201, 243, 29, .24);
+  border-radius: 18px;
+  background: #10140d;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .5);
+}
+
+.dialog header,
+.dialog header div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dialog header div {
+  display: grid;
+  justify-content: start;
+  gap: 3px;
+}
+
+.dialog header span,
+.facts small {
+  color: #8e968d;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.dialog h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.dialog header button {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .04);
+  color: #fff;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.facts > span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+}
+
+.facts svg {
+  color: #c9f31d;
+}
+
+.facts div {
+  display: grid;
+}
+
+.dialog > p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: #aab1a8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dialog > p svg {
+  flex: none;
+  margin-top: 1px;
+  color: #c9f31d;
+}
+
+.dialog form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+@media (max-width: 420px) {
+  .dialog {
+    padding: 16px;
+  }
+
+  .dialog form {
+    grid-template-columns: 1fr;
+  }
+}

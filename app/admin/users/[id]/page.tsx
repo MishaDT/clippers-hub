@@ -127,7 +127,7 @@ export default async function AdminUserDetailPage({
                   <div className="admin-dense-details">
                     <p><b>Работ:</b> {campaign._count.submissions}</p>
                     <p><b>Бюджет:</b> {rub(campaign.remainingBudgetCents)} из {rub(campaign.totalBudgetCents)}</p>
-                    <p><Link href={`/campaigns/${campaign.id}`}>Открыть заказ</Link></p>
+                    <p><Link href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent(`/admin/users/${user.id}`)}`}>Открыть заказ</Link></p>
                   </div>
                 </details>
               ))}
@@ -145,7 +145,7 @@ export default async function AdminUserDetailPage({
                     <p><b>Fraud:</b> {submission.fraudScore}%</p>
                     <p><b>Платформа:</b> {submission.platform}</p>
                     <p><b>Ссылка:</b> {submission.postUrl}</p>
-                    <p><Link href={`/campaigns/${submission.campaign.id}`}>Открыть заказ</Link></p>
+                    <p><Link href={`/campaigns/${submission.campaign.id}?returnTo=${encodeURIComponent(`/admin/users/${user.id}`)}`}>Открыть заказ</Link></p>
                   </div>
                 </details>
               ))}

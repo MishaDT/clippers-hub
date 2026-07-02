@@ -1,10 +1,14 @@
 import Link from "next/link";
+import styles from "./site-footer.module.css";
 
-const links = [
+const primaryLinks = [
   ["/about", "О сервисе"],
   ["/about#how-it-works", "Как работает"],
   ["/help", "Помощь"],
-  ["/safety", "Безопасность"],
+  ["/safety", "Безопасность"]
+] as const;
+
+const secondaryLinks = [
   ["/support", "Поддержка"],
   ["/store", "Магазин"],
   ["/legal/terms", "Условия"],
@@ -14,12 +18,18 @@ const links = [
 
 export function SiteFooter() {
   return (
-    <footer className="site-footer">
-      <Link className="site-footer-brand" href="/">Reel<span>Pay</span></Link>
-      <nav className="site-footer-links" aria-label="Полезные ссылки">
-        {links.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}
+    <footer className={styles.footer}>
+      <Link className={styles.brand} href="/">Reel<span>Pay</span></Link>
+      <nav className={styles.links} aria-label="Основные ссылки">
+        {primaryLinks.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}
+        <details className={styles.more}>
+          <summary>Ещё</summary>
+          <div aria-label="Дополнительные ссылки">
+            {secondaryLinks.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}
+          </div>
+        </details>
       </nav>
-      <span className="site-footer-copy">© {new Date().getFullYear()} ReelPay</span>
+      <span className={styles.copy}>© {new Date().getFullYear()}</span>
     </footer>
   );
 }

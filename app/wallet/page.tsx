@@ -27,6 +27,8 @@ export default async function WalletPage({
   const tab = ["operations", "reserved", "campaigns", "rp"].includes(String(params.tab)) ? String(params.tab) : "operations";
   const page = Math.max(1, Number(params.page || 1));
   const pageSize = 10;
+  const requestedDepositCents = Math.max(0, Number(params.need || 0));
+  const depositDefaultRub = requestedDepositCents > 0 ? Math.ceil(requestedDepositCents / 100) : 50000;
   const visibleTypes = mode === "client"
     ? ["DEPOSIT", "ADJUSTMENT"] as const
     : ["EARNING", "WITHDRAWAL", "REFERRAL_BONUS", "STREAK_BONUS"] as const;
@@ -48,13 +50,13 @@ export default async function WalletPage({
     mode === "client"
       ? prisma.campaign.aggregate({
           where: { ownerId: user.id },
-          _sum: { totalBudgetCents: true, remainingBudgetCents: true }
+          _sum: { totalBudgetCents: true, remainingBudgetCents: true, reservedBudgetCents: true }
         })
       : Promise.resolve(null),
     mode === "client"
       ? prisma.campaign.findMany({
           where: { ownerId: user.id },
-          select: { id: true, title: true, totalBudgetCents: true, remainingBudgetCents: true },
+          select: { id: true, title: true, totalBudgetCents: true, remainingBudgetCents: true, reservedBudgetCents: true },
           orderBy: { updatedAt: "desc" },
           take: 5
         })
@@ -67,7 +69,7 @@ export default async function WalletPage({
   ]);
 
   const totalMoney = totalAggregate._sum.netCents || 0;
-  const reserved = campaignBudget?._sum.remainingBudgetCents || 0;
+  const reserved = (campaignBudget?._sum.remainingBudgetCents || 0) + (campaignBudget?._sum.reservedBudgetCents || 0);
   const spent = Math.max(0, (campaignBudget?._sum.totalBudgetCents || 0) - reserved);
   const totalPages = Math.max(1, Math.ceil(totalTransactions / pageSize));
   const transactionGroups = transactions.reduce<Array<{ date: string; items: typeof transactions }>>((groups, item) => {
@@ -82,6 +84,12 @@ export default async function WalletPage({
     <AppShell hideFooter>
       <section className="section wallet-screen">
         <Link className="wallet-back" href="/profile"><ArrowLeft size={17} /> Назад</Link>
+        {params.error === "insufficient_budget" ? (
+          <Card className="upload-status warn">
+            <strong>Для запуска кампании не хватает средств</strong>
+            <span>Пополните баланс минимум на {rub(requestedDepositCents)}. После оплаты вернитесь к созданию кампании.</span>
+          </Card>
+        ) : null}
         <div className="wallet-hero">
           <div className="wallet-title-block">
             <span className="eyebrow"><WalletCards size={15} /> Финансы ReelPay</span>
@@ -114,7 +122,7 @@ export default async function WalletPage({
             <Card className="wallet-action-card">
               <div className="wallet-action-head"><CreditCard /><h2>Пополнить баланс</h2></div>
               <form className="form" action={depositAction}>
-                <label className="field">Сумма, ₽<input name="amount" type="number" min="100" step="100" defaultValue="50000" /></label>
+                <label className="field">Сумма, ₽<input name="amount" type="number" min="100" step="100" defaultValue={depositDefaultRub} /></label>
                 <label className="field">
                   Способ оплаты
                   <select name="provider">
@@ -145,10 +153,10 @@ export default async function WalletPage({
                 <div className="pay-row wallet-row" key={campaign.id}>
                   <span>₽</span>
                   <div>
-                    <strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong>
-                    <small>Осталось {rub(campaign.remainingBudgetCents)}</small>
+                    <strong><Link href={`/campaigns/${campaign.id}?returnTo=%2Fwallet`}>{campaign.title}</Link></strong>
+                    <small>Свободно {rub(campaign.remainingBudgetCents)} · под клипперов {rub(campaign.reservedBudgetCents)}</small>
                   </div>
-                  <b>{rub(Math.max(0, campaign.totalBudgetCents - campaign.remainingBudgetCents))}</b>
+                  <b>{rub(Math.max(0, campaign.totalBudgetCents - campaign.remainingBudgetCents - campaign.reservedBudgetCents))}</b>
                 </div>
               ))}
             </div>

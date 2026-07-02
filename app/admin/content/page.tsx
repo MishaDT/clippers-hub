@@ -96,7 +96,7 @@ export default async function AdminContentPage({
             </div>
             {campaigns.map((campaign) => (
               <div className="admin-table-row" key={campaign.id}>
-                <div><strong><Link href={`/campaigns/${campaign.id}`}>{campaign.title}</Link></strong><span>{campaign.niche || "без ниши"} · {campaign.sourcePlatform}</span></div>
+                <div><strong><Link href={`/campaigns/${campaign.id}?returnTo=%2Fadmin%2Fcontent`}>{campaign.title}</Link></strong><span>{campaign.niche || "без ниши"} · {campaign.sourcePlatform}</span></div>
                 <div><strong>{campaign.owner.name}</strong><span>{campaign.owner.email}</span></div>
                 <div><Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : campaign.status === "ACTIVE" ? "good" : "soft"}>{statusLabel(campaign.status)}</Tag></div>
                 <div className="admin-budget-cell">
@@ -123,7 +123,7 @@ export default async function AdminContentPage({
                   <p><b>Бюджет:</b> {rub(campaign.remainingBudgetCents)} из {rub(campaign.totalBudgetCents)}</p>
                   <p><b>Работ:</b> {campaign._count.submissions} · цель {compactNumber(campaign.viewThreshold)}</p>
                   <p><b>Создан:</b> {fullDate(campaign.createdAt)}</p>
-                  <p><Link href={`/campaigns/${campaign.id}`}>Открыть заказ</Link></p>
+                  <p><Link href={`/campaigns/${campaign.id}?returnTo=%2Fadmin%2Fcontent`}>Открыть заказ</Link></p>
                 </div>
               </details>
             ))}

@@ -27,6 +27,7 @@ import { loadAchievementStats } from "@/lib/achievement-stats";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { RECURRING_REWARDS, moscowWeekKey } from "@/lib/rp";
+import styles from "./profile.module.css";
 
 const ACTIVE_SUBMISSION_STATUSES = ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] as const;
 
@@ -92,24 +93,41 @@ async function loadWorker(userId: string) {
 async function loadClient(userId: string) {
   const campaignWhere = { ownerId: userId };
   const submissionWhere = { campaign: { ownerId: userId } };
-  const [campaigns, budgets, views, clipCount, topClips] = await Promise.all([
+  const [activeCampaigns, completedCampaigns, budgets, views, clipCount, topClips] = await Promise.all([
     prisma.campaign.findMany({
-      where: campaignWhere,
+      where: { ...campaignWhere, status: { in: ["ACTIVE", "LOW_BUDGET", "PAUSED"] } },
       select: {
         id: true,
         title: true,
         status: true,
         totalBudgetCents: true,
         remainingBudgetCents: true,
+        reservedBudgetCents: true,
+        maxPaidResults: true,
         _count: { select: { submissions: true } }
       },
       orderBy: { updatedAt: "desc" },
-      take: 6
+      take: 20
+    }),
+    prisma.campaign.findMany({
+      where: { ...campaignWhere, status: "COMPLETED" },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        totalBudgetCents: true,
+        remainingBudgetCents: true,
+        reservedBudgetCents: true,
+        maxPaidResults: true,
+        _count: { select: { submissions: true } }
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 10
     }),
     prisma.campaign.aggregate({
       where: campaignWhere,
       _count: { id: true },
-      _sum: { totalBudgetCents: true, remainingBudgetCents: true }
+      _sum: { totalBudgetCents: true, remainingBudgetCents: true, reservedBudgetCents: true }
     }),
     prisma.submission.aggregate({
       where: submissionWhere,
@@ -129,11 +147,23 @@ async function loadClient(userId: string) {
       take: 5
     })
   ]);
+  const campaignIds = [...activeCampaigns, ...completedCampaigns].map((campaign) => campaign.id);
+  const campaignViews = campaignIds.length ? await prisma.submission.groupBy({
+    by: ["campaignId"],
+    where: { campaignId: { in: campaignIds } },
+    _sum: { currentViews: true }
+  }) : [];
+  const viewsByCampaign = new Map(campaignViews.map((item) => [item.campaignId, item._sum.currentViews || 0]));
+  const withViews = <T extends { id: string }>(campaigns: T[]) => campaigns.map((campaign) => ({
+    ...campaign,
+    views: viewsByCampaign.get(campaign.id) || 0
+  }));
 
   const totalBudget = budgets._sum.totalBudgetCents || 0;
-  const remainingBudget = budgets._sum.remainingBudgetCents || 0;
+  const remainingBudget = (budgets._sum.remainingBudgetCents || 0) + (budgets._sum.reservedBudgetCents || 0);
   return {
-    campaigns,
+    activeCampaigns: withViews(activeCampaigns),
+    completedCampaigns: withViews(completedCampaigns),
     campaignCount: budgets._count.id,
     totalBudget,
     remainingBudget,
@@ -167,23 +197,35 @@ export default async function ProfilePage() {
       claimed: claimedCodes.has(item.code)
     }));
   const weeklyClaimed = new Set(weeklyClaims.map((item) => item.code));
+  const nearestAchievement = [...achievementItems]
+    .filter((item) => !item.claimed)
+    .sort((a, b) => Number(b.done) - Number(a.done) || b.pct - a.pct)[0];
+  const weeklyRewardReady = RECURRING_REWARDS.some(
+    (reward) => (achievementStats[reward.metric] || 0) >= reward.target && !weeklyClaimed.has(reward.code)
+  );
+  const achievementSummary = weeklyRewardReady
+    ? "Награда готова к получению"
+    : nearestAchievement
+      ? `${nearestAchievement.title} · ${nearestAchievement.pct}%`
+      : "Все доступные цели выполнены";
 
   return (
     <AppShell>
-      <section className="section profile-screen">
-        <header className="profile-overview profile-hero">
-          <div className="profile-person">
-            <span className="profile-avatar-stage">
+      <section className={`section profile-screen ${styles.screen}`}>
+        <header className={styles.hero}>
+          <div className={styles.person}>
+            <span className={styles.avatar}>
               <UserAvatar avatar={user.avatar} name={user.name} handle={user.handle} size={88} />
             </span>
-            <div className="profile-identity">
-              <div className="profile-name-line">
+            <div className={styles.identity}>
+              <div className={styles.nameLine}>
                 <h1>{user.name}</h1>
                 <Tag>{mode === "client" ? "Заказчик" : "Клипмейкер"}</Tag>
+                {user.email.endsWith("@clippers.local") ? <Tag tone="soft">Демо-профиль</Tag> : null}
               </div>
-              <p className="muted">@{user.handle}</p>
-              <div className="profile-hero-stats">
-                <span className="profile-role-label">
+              <p className={styles.handle}>@{user.handle}</p>
+              <div className={styles.stats}>
+                <span className={styles.role}>
                   {mode === "client" ? <BriefcaseBusiness size={15} /> : <Zap size={15} />}
                   {mode === "client" ? "Заказчик" : "Исполнитель"}
                 </span>
@@ -198,7 +240,7 @@ export default async function ProfilePage() {
               </div>
             </div>
           </div>
-          <div className="profile-edit-actions">
+          <div className={styles.actions}>
             <Link href="/settings/profile" aria-label="Редактировать профиль"><SquarePen size={18} /><span>Редактировать</span></Link>
             <Link href="/settings/account" aria-label="Настройки аккаунта"><Settings size={18} /><span>Настройки</span></Link>
           </div>
@@ -229,7 +271,7 @@ export default async function ProfilePage() {
           </form>
         ) : null}
 
-        <ProfileDisclosure storageKey="rewards" title="Награды и задания" summary="Достижения и RP" defaultOpen={RECURRING_REWARDS.some((reward) => (achievementStats[reward.metric] || 0) >= reward.target && !weeklyClaimed.has(reward.code))}>
+        <ProfileDisclosure storageKey="rewards" title="Достижения и задания" summary={achievementSummary}>
         <section className="profile-achievements">
           <div className="section-head compact">
             <div><span className="eyebrow">Награды</span><h2>Достижения</h2></div>
@@ -325,26 +367,35 @@ export default async function ProfilePage() {
 
             <section className="section-list">
               <div className="section-head compact"><h2>Мои заказы</h2><Link href="/campaigns/new">Создать</Link></div>
-              <div className="profile-order-groups">
-              <Card className="stack-list"><h3>Активные</h3>
-                {data.campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET", "PAUSED"].includes(campaign.status)).length ? data.campaigns.filter((campaign) => ["ACTIVE", "LOW_BUDGET", "PAUSED"].includes(campaign.status)).map((campaign) => (
-                  <div className="campaign-mini" key={campaign.id}>
-                    <strong><Link href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`}>{campaign.title}</Link></strong>
-                    <span>{campaign._count.submissions} роликов · {rub(campaign.remainingBudgetCents)} осталось</span>
-                    <Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : "good"}>
-                      {campaignLabels[campaign.status] || campaign.status}
-                    </Tag>
-                  </div>
-                )) : <p className="muted">Активных заказов нет.</p>}
+              <div className={styles.orderGroups}>
+              <Card className={styles.orderGroup}><h3>Активные</h3>
+                {data.activeCampaigns.length ? data.activeCampaigns.map((campaign) => (
+                  <Link className={styles.orderCard} href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`} key={campaign.id}>
+                    <div className={styles.orderTitle}>
+                      <strong>{campaign.title}</strong>
+                      <Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : "good"}>{campaignLabels[campaign.status] || campaign.status}</Tag>
+                    </div>
+                    <div className={styles.orderMetrics}>
+                      <span><b>{campaign._count.submissions}/{campaign.maxPaidResults}</b><small>публикаций</small></span>
+                      <span><b>{compactNumber(campaign.views)}</b><small>просмотров</small></span>
+                      <span><b>{rub(campaign.reservedBudgetCents)}</b><small>под клипперов</small></span>
+                    </div>
+                    <em>{campaign.status === "LOW_BUDGET" ? "Пополнить бюджет" : campaign._count.submissions ? "Открыть результаты" : "Ждём исполнителей"} <ArrowRight size={15} /></em>
+                  </Link>
+                )) : <p className={styles.compactEmpty}>Активных заказов нет.</p>}
               </Card>
-              <Card className="stack-list"><h3>Завершённые</h3>
-                {data.campaigns.filter((campaign) => campaign.status === "COMPLETED").length ? data.campaigns.filter((campaign) => campaign.status === "COMPLETED").map((campaign) => (
-                  <div className="campaign-mini" key={campaign.id}>
-                    <strong><Link href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`}>{campaign.title}</Link></strong>
-                    <span>{campaign._count.submissions} роликов</span>
-                    <Tag>{campaignLabels[campaign.status]}</Tag>
-                  </div>
-                )) : <p className="muted">Завершённых заказов нет.</p>}
+              <Card className={styles.orderGroup}><h3>Завершённые</h3>
+                {data.completedCampaigns.length ? data.completedCampaigns.map((campaign) => (
+                  <Link className={`${styles.orderCard} ${styles.completed}`} href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`} key={campaign.id}>
+                    <div className={styles.orderTitle}><strong>{campaign.title}</strong><Tag>{campaignLabels[campaign.status]}</Tag></div>
+                    <div className={styles.orderMetrics}>
+                      <span><b>{campaign._count.submissions}</b><small>публикаций</small></span>
+                      <span><b>{compactNumber(campaign.views)}</b><small>просмотров</small></span>
+                      <span><b>{rub(Math.max(0, campaign.totalBudgetCents - campaign.remainingBudgetCents - campaign.reservedBudgetCents))}</b><small>использовано</small></span>
+                    </div>
+                    <em>Посмотреть итог <ArrowRight size={15} /></em>
+                  </Link>
+                )) : <p className={styles.compactEmpty}>Завершённых заказов нет.</p>}
               </Card>
               </div>
             </section>

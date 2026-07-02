@@ -7,7 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
 import { stringify } from "@/lib/json";
+import { CampaignReservationError, releaseSubmissionReservation, restoreSubmissionReservation } from "@/lib/campaign-reservations";
 import { parseRubToCents } from "@/lib/money";
+import { notificationGroup, notify } from "@/lib/notifications";
 
 const roles = ["ADMIN", "CLIENT", "WORKER", "BOTH"] as const;
 const ranks = ["BRONZE", "SILVER", "GOLD", "DIAMOND", "LEGENDARY"] as const;
@@ -123,16 +125,19 @@ export async function adminModerateSubmissionAction(formData: FormData) {
   if (!submissionId) redirect("/admin/security");
 
   const status = decision === "approve" ? "VERIFIED" : "REJECTED";
-  await prisma.$transaction([
-    prisma.submission.update({
+  try {
+    await prisma.$transaction(async (db) => {
+      if (decision === "approve") await restoreSubmissionReservation(db, submissionId);
+      else await releaseSubmissionReservation(db, submissionId);
+      await db.submission.update({
       where: { id: submissionId },
       data: {
         status: status as "VERIFIED" | "REJECTED",
         fraudScore: decision === "approve" ? 20 : 95,
         verifiedAt: decision === "approve" ? new Date() : null
       }
-    }),
-    prisma.auditLog.create({
+      });
+      await db.auditLog.create({
       data: {
         userId: admin.id,
         action: decision === "approve" ? "ADMIN_SUBMISSION_APPROVE" : "ADMIN_SUBMISSION_REJECT",
@@ -140,11 +145,134 @@ export async function adminModerateSubmissionAction(formData: FormData) {
         entityId: submissionId,
         metadata: stringify({ note })
       }
-    })
-  ]);
+      });
+    });
+  } catch (error) {
+    if (error instanceof CampaignReservationError) {
+      redirect(`/admin/security?error=${error.code === "NO_SLOTS" ? "no_slot_for_restore" : "no_budget_for_restore"}`);
+    }
+    throw error;
+  }
   revalidatePath("/admin/security");
   revalidatePath("/admin/content");
   redirect("/admin/security?moderated=1");
+}
+
+export async function adminResolveDisputeAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const disputeId = clean(formData.get("disputeId"));
+  const decision = clean(formData.get("decision"));
+  const resolution = clean(formData.get("resolution")).slice(0, 1000);
+  if (!disputeId || !["accept", "reject"].includes(decision) || resolution.length < 10) {
+    redirect("/admin/disputes?error=resolution");
+  }
+
+  const dispute = await prisma.disputeCase.findUnique({
+    where: { id: disputeId },
+    include: {
+      user: { select: { id: true } },
+      submission: {
+        include: {
+          worker: { select: { id: true } },
+          campaign: { select: { id: true, ownerId: true, title: true, deadline: true, status: true } }
+        }
+      }
+    }
+  });
+  if (!dispute || dispute.status !== "OPEN") redirect("/admin/disputes");
+
+  try {
+    await prisma.$transaction(async (db) => {
+      const openedByWorker = dispute.userId === dispute.submission.workerId;
+      const pendingEarning = await db.transaction.findFirst({
+        where: { submissionId: dispute.submissionId, type: "EARNING", status: "PENDING" }
+      });
+
+      if (decision === "accept" && openedByWorker) {
+        if (!pendingEarning && dispute.submission.status === "REJECTED") {
+          await restoreSubmissionReservation(db, dispute.submissionId);
+        }
+        await db.submission.update({
+          where: { id: dispute.submissionId },
+          data: {
+            status: pendingEarning ? "SETTLING" : "VERIFIED",
+            fraudScore: Math.min(dispute.submission.fraudScore, 35),
+            verifiedAt: new Date()
+          }
+        });
+      } else if (decision === "accept" && !openedByWorker) {
+        if (pendingEarning) {
+          const reversed = await db.transaction.updateMany({
+            where: { id: pendingEarning.id, status: "PENDING" },
+            data: { status: "REVERSED" }
+          });
+          if (reversed.count) {
+            await db.user.update({
+              where: { id: dispute.submission.workerId },
+              data: { holdBalanceCents: { decrement: pendingEarning.netCents } }
+            });
+            await db.campaign.update({
+              where: { id: dispute.submission.campaignId },
+              data: {
+                remainingBudgetCents: { increment: pendingEarning.amountCents },
+                status: dispute.submission.campaign.deadline.getTime() > Date.now() ? "ACTIVE" : dispute.submission.campaign.status
+              }
+            });
+          }
+        } else {
+          await releaseSubmissionReservation(db, dispute.submissionId);
+        }
+        await db.submission.update({
+          where: { id: dispute.submissionId },
+          data: { status: "REJECTED", fraudScore: Math.max(dispute.submission.fraudScore, 70) }
+        });
+      }
+      await db.disputeCase.update({
+        where: { id: disputeId },
+        data: {
+          status: decision === "accept" ? "RESOLVED_ACCEPTED" : "RESOLVED_REJECTED",
+          resolution,
+          resolvedById: admin.id,
+          resolvedAt: new Date(),
+          openKey: null
+        }
+      });
+      await db.auditLog.create({
+        data: {
+          userId: admin.id,
+          action: decision === "accept" ? "DISPUTE_ACCEPTED" : "DISPUTE_REJECTED",
+          entity: "DisputeCase",
+          entityId: disputeId,
+          metadata: stringify({ submissionId: dispute.submissionId, resolution })
+        }
+      });
+    });
+  } catch (error) {
+    if (error instanceof CampaignReservationError) {
+      redirect(`/admin/disputes?error=${error.code === "NO_SLOTS" ? "no_slot_for_restore" : "no_budget_for_restore"}`);
+    }
+    throw error;
+  }
+
+  const recipients = new Set([
+    dispute.user.id,
+    dispute.submission.worker.id,
+    dispute.submission.campaign.ownerId
+  ]);
+  recipients.delete(admin.id);
+  await Promise.all([...recipients].map((userId) => notify({
+    userId,
+    groupKey: notificationGroup("dispute-result", disputeId),
+    title: decision === "accept" ? "Апелляция удовлетворена" : "Апелляция отклонена",
+    body: resolution,
+    priority: "HIGH",
+    kind: "DISPUTE",
+    href: `/campaigns/${dispute.submission.campaign.id}`
+  })));
+
+  revalidatePath("/admin/disputes");
+  revalidatePath(`/campaigns/${dispute.submission.campaign.id}`);
+  redirect("/admin/disputes?resolved=1");
 }
 
 export async function adminUpdateVideoCheckAction(formData: FormData) {
@@ -166,15 +294,21 @@ export async function adminUpdateVideoCheckAction(formData: FormData) {
     include: { submission: true }
   });
 
-  await prisma.$transaction([
-    prisma.submission.update({
+  try {
+    await prisma.$transaction(async (db) => {
+      if (status === "PASSED" && check.submission.status === "REJECTED") {
+        await restoreSubmissionReservation(db, check.submissionId);
+      } else if (status === "FAILED") {
+        await releaseSubmissionReservation(db, check.submissionId);
+      }
+      await db.submission.update({
       where: { id: check.submissionId },
       data: {
         fraudScore: status === "PASSED" ? Math.min(check.submission.fraudScore, 25) : Math.max(check.submission.fraudScore, score),
         status: status === "FAILED" ? "REJECTED" : check.submission.status === "REJECTED" && status === "PASSED" ? "VERIFIED" : check.submission.status
       }
-    }),
-    prisma.auditLog.create({
+      });
+      await db.auditLog.create({
       data: {
         userId: admin.id,
         action: "ADMIN_VIDEO_CHECK_UPDATE",
@@ -182,8 +316,14 @@ export async function adminUpdateVideoCheckAction(formData: FormData) {
         entityId: checkId,
         metadata: stringify({ status, score, note, submissionId: check.submissionId })
       }
-    })
-  ]);
+      });
+    });
+  } catch (error) {
+    if (error instanceof CampaignReservationError) {
+      redirect(`/admin/security?error=${error.code === "NO_SLOTS" ? "no_slot_for_restore" : "no_budget_for_restore"}`);
+    }
+    throw error;
+  }
 
   revalidatePath("/admin/security");
   revalidatePath("/admin/content");

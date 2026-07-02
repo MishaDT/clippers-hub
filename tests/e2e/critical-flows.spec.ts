@@ -33,9 +33,9 @@ test.describe("public experience", () => {
   test("guest understands the product and can choose a role", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Видео, которые приносят деньги" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Я заказчик/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Я клиппер/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Превратите длинное видео в короткие ролики" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Нужны ролики/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Хочу зарабатывать/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /С чего начнёшь/i })).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Рџ");
     await expect(page.locator("body")).not.toContainText("вЂ");
@@ -79,9 +79,10 @@ test.describe("worker flow", () => {
     await page.locator(".mk-card").first().click();
     const campaignAction = page.locator(".od-apply");
     await campaignAction.locator('.od-apply-btn').waitFor({ state: "visible" });
-    const joinButton = campaignAction.getByRole("button", { name: /Откликнуться/i });
+    const joinButton = campaignAction.getByRole("button", { name: /Взять заказ/i });
     if (await joinButton.isVisible().catch(() => false)) {
       await joinButton.click();
+      await page.getByRole("button", { name: /Подтвердить и взять заказ/i }).click();
     } else {
       await campaignAction.getByRole("link", { name: /Выложить работу/i }).click();
     }
@@ -95,6 +96,36 @@ test.describe("worker flow", () => {
     await expect(page.locator("body")).toContainText("Выложить работу");
     await expectNoHorizontalScroll(page);
   });
+
+  test("open dispute blocks the payout until an admin decision", async ({ page }) => {
+    const worker = await prisma.user.findUniqueOrThrow({ where: { email: "anya@clippers.local" } });
+    const submission = await prisma.submission.findFirstOrThrow({
+      where: { workerId: worker.id, status: { not: "PAID" } },
+      include: { campaign: true }
+    });
+    await prisma.disputeCase.deleteMany({ where: { submissionId: submission.id } });
+    await prisma.submission.update({ where: { id: submission.id }, data: { status: "REJECTED" } });
+
+    await login(page, "anya@clippers.local");
+    await page.goto(`/campaigns/${submission.campaignId}`);
+    await page.getByText("Спор и апелляция").click();
+    await page.locator(`textarea[name="reason"]`).fill("Работа выполнена по брифу, tracking-код сохранён, прошу проверить отклонение по фактам.");
+    await page.getByRole("button", { name: "Открыть апелляцию" }).click();
+    await expect(page).toHaveURL(/dispute=opened/);
+    await expect(page.getByText("Выплата остановлена")).toBeVisible();
+
+    const opened = await prisma.disputeCase.findFirstOrThrow({ where: { submissionId: submission.id, status: "OPEN" } });
+    await page.context().clearCookies();
+    await login(page, "admin@clippers.local");
+    await page.goto("/admin/disputes");
+    await page.locator(`input[name="disputeId"][value="${opened.id}"]`).locator("..").locator('textarea[name="resolution"]').fill(
+      "Проверка показала, что отклонение обосновано отсутствием подтверждения владения публикацией."
+    );
+    await page.locator(`input[name="disputeId"][value="${opened.id}"]`).locator("..").getByRole("button", { name: "Отклонить апелляцию" }).click();
+    await expect(page).toHaveURL(/resolved=1/);
+    await expect.poll(async () => (await prisma.disputeCase.findUnique({ where: { id: opened.id } }))?.status)
+      .toBe("RESOLVED_REJECTED");
+  });
 });
 
 test.describe("client flow", () => {
@@ -105,14 +136,81 @@ test.describe("client flow", () => {
     await page.goto("/campaigns/new");
     await expect(page.getByRole("heading", { name: /Опиши задачу/i })).toBeVisible();
     await page.locator('input[name="title"]').fill(`E2E заказ ${Date.now()}`);
+    await page.getByRole("button", { name: /Продолжить/i }).click();
     await page.locator('input[name="sourceUrl"]').fill("https://twitch.tv/videos/e2e-demo");
+    await page.getByRole("button", { name: /Продолжить/i }).click();
+    await page.getByRole("button", { name: /Продолжить/i }).click();
+    await page.getByRole("button", { name: /Продолжить/i }).click();
+    await page.getByRole("button", { name: /Продолжить/i }).click();
     await page.locator('input[name="budget"]').fill("50000");
     await page.locator('input[name="cpm"]').fill("45");
+    await page.getByRole("button", { name: /Продолжить/i }).click();
     await page.locator('input[name="rightsConfirmed"]').check();
     await page.getByRole("button", { name: /Опубликовать заказ/i }).click();
 
     await expect(page).toHaveURL(/\/campaigns\/(?!new$)[^/]+$/);
     await expect(page.getByRole("heading", { name: /E2E заказ/ })).toBeVisible();
     await expectNoHorizontalScroll(page);
+  });
+
+  test("accepted client dispute reverses a pending earning exactly once", async ({ page }) => {
+    const client = await prisma.user.findUniqueOrThrow({ where: { email: "nikita@clippers.local" } });
+    const submission = await prisma.submission.findFirstOrThrow({
+      where: { campaign: { ownerId: client.id }, status: { not: "PAID" } },
+      include: { worker: true, campaign: true }
+    });
+    await prisma.disputeCase.deleteMany({ where: { submissionId: submission.id } });
+    await prisma.transaction.deleteMany({ where: { submissionId: submission.id, type: "EARNING" } });
+    const gross = 12_000;
+    const net = 10_000;
+    const workerHoldBefore = submission.worker.holdBalanceCents;
+    const remainingBefore = submission.campaign.remainingBudgetCents;
+    await prisma.$transaction([
+      prisma.submission.update({ where: { id: submission.id }, data: { status: "SETTLING", reservedPayoutCents: 0 } }),
+      prisma.user.update({ where: { id: submission.workerId }, data: { holdBalanceCents: { increment: net } } }),
+      prisma.transaction.create({
+        data: {
+          userId: submission.workerId,
+          submissionId: submission.id,
+          amountCents: gross,
+          feeCents: gross - net,
+          netCents: net,
+          type: "EARNING",
+          status: "PENDING"
+        }
+      })
+    ]);
+
+    await login(page, "nikita@clippers.local");
+    await page.goto(`/campaigns/${submission.campaignId}`);
+    const report = page.locator(`[data-submission-id="${submission.id}"]`);
+    await report.getByText("Спор и апелляция").click();
+    await report.locator('textarea[name="reason"]').fill(
+      "Просмотры выглядят аномально и не соответствуют сохранённой динамике, прошу остановить выплату."
+    );
+    await report.getByRole("button", { name: "Открыть апелляцию" }).click();
+    await expect(page).toHaveURL(/dispute=opened/, { timeout: 45_000 });
+    const opened = await prisma.disputeCase.findFirstOrThrow({ where: { submissionId: submission.id, status: "OPEN" } });
+
+    await page.context().clearCookies();
+    await login(page, "admin@clippers.local");
+    await page.goto("/admin/disputes");
+    const resolutionForm = page.locator(`input[name="disputeId"][value="${opened.id}"]`).locator("..");
+    await resolutionForm.locator('textarea[name="resolution"]').fill(
+      "Аномалия подтверждена проверками. Выплата отменена, сумма возвращена в доступный бюджет кампании."
+    );
+    await resolutionForm.getByRole("button", { name: "Удовлетворить апелляцию" }).click();
+    await expect(page).toHaveURL(/resolved=1/, { timeout: 45_000 });
+
+    const [earning, workerAfter, campaignAfter, submissionAfter] = await Promise.all([
+      prisma.transaction.findFirstOrThrow({ where: { submissionId: submission.id, type: "EARNING" } }),
+      prisma.user.findUniqueOrThrow({ where: { id: submission.workerId } }),
+      prisma.campaign.findUniqueOrThrow({ where: { id: submission.campaignId } }),
+      prisma.submission.findUniqueOrThrow({ where: { id: submission.id } })
+    ]);
+    expect(earning.status).toBe("REVERSED");
+    expect(workerAfter.holdBalanceCents).toBe(workerHoldBefore);
+    expect(campaignAfter.remainingBudgetCents).toBe(remainingBefore + gross);
+    expect(submissionAfter.status).toBe("REJECTED");
   });
 });

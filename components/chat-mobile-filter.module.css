@@ -1,0 +1,35 @@
+.trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #30353a;
+  border-radius: 11px;
+  background: #171a18;
+  color: #c7cdc8;
+  cursor: pointer;
+}
+
+.trigger:hover,
+.trigger[aria-expanded="true"] {
+  border-color: rgba(201, 243, 29, .42);
+  color: #dfff63;
+}
+
+.trigger b {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #c9f31d;
+  color: #0a0c08;
+  font-size: 9px;
+}

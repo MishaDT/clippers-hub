@@ -122,6 +122,8 @@ model Campaign {
   viewThreshold        Int
   totalBudgetCents     Int
   remainingBudgetCents Int
+  reservedBudgetCents  Int            @default(0)
+  maxPaidResults       Int            @default(1)
   status               CampaignStatus @default(ACTIVE)
   visibility           Visibility     @default(PUBLIC)
   trackingPrefix       String         @unique
@@ -134,12 +136,14 @@ model Campaign {
   updatedAt            DateTime       @updatedAt
   moderationStatus     String         @default("APPROVED")
   featuredUntil        DateTime?
+  isDemo               Boolean        @default(false)
 
   owner       User            @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   submissions Submission[]
   savedBy     SavedCampaign[]
   likedBy     LikedCampaign[]
   chatThreads ChatThread[]
+  collabInvites CollabInvite[]
 
   @@index([ownerId, createdAt])
   @@index([status, createdAt])
@@ -184,6 +188,8 @@ model Submission {
   peakViews        Int              @default(0)
   status           SubmissionStatus @default(POSTED)
   fraudScore       Int              @default(0)
+  reservedPayoutCents Int           @default(0)
+  reservationReleasedAt DateTime?
   viewVelocityJson String           @default("[]")
   lastSyncedAt     DateTime         @default(now())
   verifiedAt       DateTime?
@@ -587,11 +593,18 @@ model DisputeCase {
   submissionId String
   reason       String
   status       String    @default("OPEN")
+  resolution   String?
+  resolvedById String?
+  openKey      String?   @unique
   createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   resolvedAt   DateTime?
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, createdAt])
+  @@index([status, createdAt])
 }
 
 model AuditLog {
@@ -631,6 +644,9 @@ model CollabInvite {
   id          String    @id @default(cuid())
   clientId    String
   workerId    String
+  campaignId  String?
+  role        String    @default("Клиппер")
+  deadline    DateTime?
   message     String
   status      String    @default("PENDING")
   createdAt   DateTime  @default(now())
@@ -640,10 +656,12 @@ model CollabInvite {
 
   client User @relation("CollabClient", fields: [clientId], references: [id], onDelete: Cascade)
   worker User @relation("CollabWorker", fields: [workerId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   chatThread ChatThread?
 
   @@index([workerId, status])
   @@index([clientId, status])
+  @@index([campaignId, status])
 }
 
 // A large client endorsing a clipper ("{client} рекомендует").

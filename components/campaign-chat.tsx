@@ -4,6 +4,7 @@ import { useEffect, useOptimistic, useRef, useState, useTransition } from "react
 import { ArrowUpRight, Ban, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Link2, Pencil, RefreshCw, Send, ShieldAlert, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import styles from "./campaign-chat.module.css";
 import { advanceCollabStageAction, deleteChatMessageAction, editChatMessageAction, sendChatMessageAction } from "@/app/actions";
 
 type Message = {
@@ -233,12 +234,12 @@ export function CampaignChat({
         }}
       >
         {visibleMessages.map((message) => {
-          const mine = message.senderId === currentUserId;
           const system = message.type === "SYSTEM";
+          const mine = !system && message.senderId === currentUserId;
           const editing = editingId === message.id;
           const canManage = mine && !system && !message.deleted && !message.id.startsWith("pending-");
           return (
-            <article className={`chat-bubble ${mine ? "mine" : ""} ${system ? "system" : ""} ${message.deleted ? "deleted" : ""}`} key={message.id}>
+            <article className={`chat-bubble ${mine ? "mine" : ""} ${system ? `system ${styles.system}` : ""} ${message.deleted ? "deleted" : ""}`} key={message.id}>
               {!system && !message.deleted ? (
                 <small>{message.senderName} · {message.createdAt}{message.edited ? " · изменено" : ""}</small>
               ) : null}

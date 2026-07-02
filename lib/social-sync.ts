@@ -3,6 +3,7 @@ import { commissionRate } from "@/lib/money";
 import { stringify } from "@/lib/json";
 import { viewProviders, type ViewPlatform } from "@/lib/view-providers";
 import { checkOwnership, platformIsVerifiable, type OwnershipResult } from "@/lib/antifraud";
+import { trackEvent } from "@/lib/analytics";
 
 function canUseProvider(platform: string): platform is ViewPlatform {
   return platform === "YOUTUBE" || platform === "VK" || platform === "TIKTOK" || platform === "INSTAGRAM";
@@ -43,7 +44,12 @@ async function settlePendingEarnings() {
       type: "EARNING",
       status: "PENDING",
       createdAt: { lte: settlementCutoff },
-      submissionId: { not: null }
+      submissionId: { not: null },
+      submission: {
+        disputes: {
+          none: { status: "OPEN" }
+        }
+      }
     },
     include: { submission: true },
     take: 100
@@ -64,6 +70,11 @@ async function settlePendingEarnings() {
     // money out of hold. Concurrent settlement passes that lose the race update 0 rows and
     // release nothing, so a single earning can never be paid out twice.
     const releasedOk = await prisma.$transaction(async (db) => {
+      const openDispute = await db.disputeCase.findFirst({
+        where: { submissionId, status: "OPEN" },
+        select: { id: true }
+      });
+      if (openDispute) return false;
       const claim = await db.transaction.updateMany({
         where: { id: tx.id, status: "PENDING" },
         data: { status: "COMPLETED" }
@@ -78,7 +89,7 @@ async function settlePendingEarnings() {
         }
       });
       return true;
-    });
+    }, { isolationLevel: "Serializable" });
     if (releasedOk) released += 1;
   }
   return released;
@@ -216,6 +227,22 @@ export async function syncViews() {
         ])
       }
     });
+    if (ownershipOk && !submission.verifiedAt) {
+      const verifiedForClient = await prisma.submission.count({
+        where: {
+          campaign: { ownerId: submission.campaign.ownerId },
+          verifiedAt: { not: null }
+        }
+      });
+      if (verifiedForClient === 1) {
+        await trackEvent({
+          userId: submission.campaign.ownerId,
+          type: "FIRST_VERIFIED_RESULT",
+          path: `/campaigns/${submission.campaignId}`,
+          metadata: { campaignId: submission.campaignId, submissionId: submission.id }
+        });
+      }
+    }
 
     if (willMint) {
       // Mint the earning atomically: claim the THRESHOLD_MET -> SETTLING transition, read the
@@ -233,11 +260,14 @@ export async function syncViews() {
 
         const campaign = await db.campaign.findUnique({
           where: { id: submission.campaignId },
-          select: { remainingBudgetCents: true, totalBudgetCents: true, status: true }
+          select: { remainingBudgetCents: true, reservedBudgetCents: true, totalBudgetCents: true, status: true }
         });
         const remaining = Math.max(0, campaign?.remainingBudgetCents ?? 0);
         const rawGross = Math.floor((views / 1000) * submission.campaign.cpmRateCents);
-        const gross = Math.min(rawGross, remaining);
+        const reserved = Math.max(0, submission.reservedPayoutCents || 0);
+        // New submissions are paid strictly from their addressable reservation. Legacy
+        // submissions created before reservations keep the old escrow fallback.
+        const gross = reserved > 0 ? reserved : Math.min(rawGross, remaining);
         if (gross <= 0) return; // budget exhausted — nothing is owed for this clip
 
         const fee = Math.floor(gross * commissionRate(submission.worker.rank));
@@ -261,11 +291,13 @@ export async function syncViews() {
             lifetimeViews: { increment: velocity }
           }
         });
-        const nextRemaining = remaining - gross;
+        const nextRemaining = reserved > 0 ? remaining : remaining - gross;
         await db.campaign.update({
           where: { id: submission.campaignId },
           data: {
-            remainingBudgetCents: { decrement: gross },
+            ...(reserved > 0
+              ? { reservedBudgetCents: { decrement: gross } }
+              : { remainingBudgetCents: { decrement: gross } }),
             status: nextRemaining <= 0
               ? "PAUSED"
               : nextRemaining < submission.campaign.totalBudgetCents * 0.2
@@ -273,6 +305,12 @@ export async function syncViews() {
                 : (campaign?.status ?? submission.campaign.status)
           }
         });
+        if (reserved > 0) {
+          await db.submission.update({
+            where: { id: submission.id },
+            data: { reservedPayoutCents: { decrement: gross } }
+          });
+        }
       });
     }
 

@@ -59,7 +59,7 @@ export default async function ProfileSettingsPage({
       </form>
 
       <section className="settings-card">
-        <div className="settings-section-head"><Link href={`/clippers/${user.handle}`}><ExternalLink size={16} /> Открыть публичный профиль</Link></div>
+        <div className="settings-section-head"><Link href={`/clippers/${user.handle}?returnTo=%2Fsettings%2Fprofile`}><ExternalLink size={16} /> Открыть публичный профиль</Link></div>
         <PortfolioManager initialPins={user.portfolioPins} automatic={submissions} />
       </section>
     </main>

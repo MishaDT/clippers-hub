@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   AlertCircle,
   ArrowRight,
   CalendarDays,
   Check,
+  ChevronLeft,
   CircleDollarSign,
   Hash,
   Link2,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { createCampaignAction } from "@/app/actions";
 import { compactNumber, rub } from "@/lib/money";
+import styles from "./campaign-form.module.css";
 
 const platformOptions = [
   ["TIKTOK", "TikTok"],
@@ -27,7 +29,9 @@ const platformOptions = [
 ] as const;
 
 const viewOptions = [5000, 10000, 25000, 50000] as const;
-const deadlineOptions = [3, 5, 7, 10] as const;
+const deadlineOptions = [3, 5, 7, 10, 14, 30] as const;
+const DRAFT_KEY = "reelpay_campaign_draft_v1";
+const steps = ["Задача", "Исходник", "Результат", "Площадки", "Правила", "Бюджет", "Проверка"] as const;
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -38,28 +42,106 @@ function SubmitButton() {
   );
 }
 
-export function CampaignForm() {
+export function CampaignForm({
+  initial,
+  preferInitial = false
+}: {
+  initial?: { deliverableCount?: number; viewThreshold?: number; budget?: number; cpm?: number; deadlineDays?: number };
+  preferInitial?: boolean;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const draftTrackedRef = useRef(false);
   const [title, setTitle] = useState("Нарезать стрим на сильные моменты");
   const [description, setDescription] = useState("Найти 3-5 смешных или эмоциональных моментов, сделать вертикальные ролики 9:16, добавить крупные субтитры и цепляющий первый кадр.");
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourcePlatform, setSourcePlatform] = useState("TWITCH");
-  const [viewThreshold, setViewThreshold] = useState(10000);
-  const [budget, setBudget] = useState(15000);
-  const [cpm, setCpm] = useState(50);
-  const [deadlineDays, setDeadlineDays] = useState(7);
+  const [viewThreshold, setViewThreshold] = useState(initial?.viewThreshold || 10000);
+  const [deliverableCount, setDeliverableCount] = useState(initial?.deliverableCount || 3);
+  const [budget, setBudget] = useState(initial?.budget || 15000);
+  const [cpm, setCpm] = useState(initial?.cpm || 50);
+  const [deadlineDays, setDeadlineDays] = useState(initial?.deadlineDays || 7);
   const [niche, setNiche] = useState("Gaming");
   const [requiredTags, setRequiredTags] = useState("#reelpay, #clips");
   const [bans, setBans] = useState("NSFW, политика, оскорбления, чужие логотипы крупным планом");
   const [platforms, setPlatforms] = useState<string[]>(["TIKTOK", "YOUTUBE", "INSTAGRAM"]);
   const [watermarkBonus, setWatermarkBonus] = useState(true);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    if (preferInitial) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Record<string, string | string[]>;
+      if (typeof draft.title === "string") setTitle(draft.title);
+      if (typeof draft.description === "string") setDescription(draft.description);
+      if (typeof draft.sourceUrl === "string") setSourceUrl(draft.sourceUrl);
+      if (typeof draft.sourcePlatform === "string") setSourcePlatform(draft.sourcePlatform);
+      if (typeof draft.viewThreshold === "string") setViewThreshold(Number(draft.viewThreshold) || 10000);
+      if (typeof draft.deliverableCount === "string") setDeliverableCount(Number(draft.deliverableCount) || 3);
+      if (typeof draft.budget === "string") setBudget(Number(draft.budget) || 15000);
+      if (typeof draft.cpm === "string") setCpm(Number(draft.cpm) || 50);
+      if (typeof draft.deadlineDays === "string") setDeadlineDays(Number(draft.deadlineDays) || 7);
+      if (typeof draft.niche === "string") setNiche(draft.niche);
+      if (typeof draft.requiredTags === "string") setRequiredTags(draft.requiredTags);
+      if (typeof draft.bans === "string") setBans(draft.bans);
+      if (Array.isArray(draft.platforms) && draft.platforms.length) setPlatforms(draft.platforms);
+      if (typeof draft.watermarkBonus === "string") setWatermarkBonus(draft.watermarkBonus === "on");
+
+      requestAnimationFrame(() => {
+        const form = formRef.current;
+        if (!form) return;
+        for (const [name, value] of Object.entries(draft)) {
+          if (["platforms", "rightsConfirmed"].includes(name) || Array.isArray(value)) continue;
+          const field = form.elements.namedItem(name);
+          if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
+            if (!field.matches("[type=checkbox], [type=radio]")) field.value = value;
+          }
+        }
+      });
+      setDraftSaved(true);
+    } catch {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  }, [preferInitial]);
+
+  function saveDraft() {
+    if (!draftTrackedRef.current) {
+      draftTrackedRef.current = true;
+      void fetch("/api/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({ type: "CAMPAIGN_DRAFT_STARTED", path: "/campaigns/new" })
+      });
+    }
+    requestAnimationFrame(() => {
+      const form = formRef.current;
+      if (!form) return;
+      const data = new FormData(form);
+      const draft: Record<string, string | string[]> = {};
+      for (const [name, value] of data.entries()) {
+        if (name === "rightsConfirmed" || typeof value !== "string") continue;
+        if (name === "platforms") {
+          const values = draft.platforms;
+          draft.platforms = Array.isArray(values) ? [...values, value] : [value];
+        } else {
+          draft[name] = value;
+        }
+      }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      setDraftSaved(true);
+    });
+  }
 
   const estimate = useMemo(() => {
-    const payout = Math.max(0, Math.round((viewThreshold / 1000) * cpm * 0.89 * 100));
+    const payout = Math.max(0, Math.round((viewThreshold / 1000) * cpm * 100));
     const grossViews = cpm > 0 ? Math.floor((budget / cpm) * 1000) : 0;
-    const clipperCapacity = payout > 0 ? Math.max(1, Math.floor((budget * 100) / payout)) : 0;
+    const requiredBudget = Math.max(0, Math.round((payout * deliverableCount) / 100));
     const quality = cpm >= 70 ? "Высокий интерес" : cpm >= 45 ? "Нормальная ставка" : "Ставка низкая";
-    return { payout, grossViews, clipperCapacity, quality };
-  }, [budget, cpm, viewThreshold]);
+    return { payout, grossViews, requiredBudget, quality };
+  }, [budget, cpm, deliverableCount, viewThreshold]);
 
   function togglePlatform(value: string) {
     setPlatforms((current) => {
@@ -68,31 +150,65 @@ export function CampaignForm() {
     });
   }
 
+  function goNext() {
+    const form = formRef.current;
+    if (!form) return;
+    const fields = [...form.querySelectorAll<HTMLElement>(`[data-wizard-field="${step}"] input, [data-wizard-field="${step}"] textarea, [data-wizard-field="${step}"] select`)];
+    const invalid = fields.find((field) => "reportValidity" in field && !(field as HTMLInputElement).reportValidity());
+    if (invalid) return;
+    setStep((current) => Math.min(7, current + 1));
+    window.scrollTo({ top: Math.max(0, form.offsetTop - 80), behavior: "smooth" });
+  }
+
   return (
-    <form className="order-builder" action={createCampaignAction}>
+    <form ref={formRef} className="order-builder" action={createCampaignAction} onChange={saveDraft}>
       <div className="order-fields">
-        <section className="order-panel order-intro">
+        <div className="order-draft-state" role="status">
+          <span>{draftSaved ? "Черновик сохранён в этом браузере" : "Изменения будут сохранены автоматически"}</span>
+          {draftSaved ? (
+            <button type="button" onClick={() => { localStorage.removeItem(DRAFT_KEY); setDraftSaved(false); }}>
+              Удалить черновик
+            </button>
+          ) : null}
+        </div>
+        <div className={styles.wizard} aria-label="Шаги создания заказа">
+          <div className={styles.wizardTop}>
+            <b>Шаг {step} из 7</b>
+            <span>{steps[step - 1]}</span>
+          </div>
+          <div className={styles.track} aria-hidden="true">
+            {steps.map((label, index) => <i data-done={index + 1 <= step} key={label} />)}
+          </div>
+          <div className={styles.labels}>
+            {steps.map((label, index) => (
+              <button type="button" data-active={index + 1 === step} onClick={() => index + 1 < step && setStep(index + 1)} key={label}>
+                {index + 1}. {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <section className="order-panel order-intro" hidden={step !== 1}>
           <span><Sparkles size={18} /> Новый заказ</span>
           <h1>Опиши задачу так, чтобы клиппер сразу понял результат</h1>
           <p>Чем яснее цель, исходник и правила, тем быстрее появятся хорошие ролики.</p>
         </section>
 
-        <section className="order-panel">
+        <section className="order-panel" hidden={step !== 1 && step !== 2}>
           <div className="order-section-title">
             <b>1</b>
             <div>
-              <h2>Основа заказа</h2>
-              <p>Название, исходник и короткое описание результата.</p>
+              <h2>{step === 1 ? "Что продвигаем" : "Откуда брать материал"}</h2>
+              <p>{step === 1 ? "Название, ниша и понятное описание результата." : "Укажите исходное видео и площадку, где оно размещено."}</p>
             </div>
           </div>
 
-          <label className="order-field">
+          <label className="order-field" data-wizard-field="1" hidden={step !== 1}>
             <span>Название</span>
             <input name="title" value={title} maxLength={80} onChange={(event) => setTitle(event.target.value)} required />
             <small>{title.length}/80</small>
           </label>
 
-          <label className="order-field">
+          <label className="order-field" data-wizard-field="2" hidden={step !== 2}>
             <span>Ссылка на исходное видео</span>
             <div className="order-input-icon">
               <Link2 size={18} />
@@ -100,7 +216,7 @@ export function CampaignForm() {
             </div>
           </label>
 
-          <div className="order-grid-2">
+          <div className="order-grid-2" data-wizard-field="2" hidden={step !== 2}>
             <label className="order-field">
               <span>Где лежит исходник</span>
               <select name="sourcePlatform" value={sourcePlatform} onChange={(event) => setSourcePlatform(event.target.value)}>
@@ -112,27 +228,28 @@ export function CampaignForm() {
               </select>
             </label>
 
-            <label className="order-field">
-              <span>Ниша</span>
-              <select name="niche" value={niche} onChange={(event) => setNiche(event.target.value)}>
-                <option value="Gaming">Игры</option>
-                <option value="Podcast">Подкаст</option>
-                <option value="Business">Бизнес</option>
-                <option value="Education">Обучение</option>
-                <option value="Brand">Бренд</option>
-                <option value="Humor">Юмор</option>
-              </select>
-            </label>
           </div>
 
-          <label className="order-field">
+          <label className="order-field" data-wizard-field="1" hidden={step !== 1}>
+            <span>Ниша</span>
+            <select name="niche" value={niche} onChange={(event) => setNiche(event.target.value)}>
+              <option value="Gaming">Игры</option>
+              <option value="Podcast">Подкаст</option>
+              <option value="Business">Бизнес</option>
+              <option value="Education">Обучение</option>
+              <option value="Brand">Бренд</option>
+              <option value="Humor">Юмор</option>
+            </select>
+          </label>
+
+          <label className="order-field" data-wizard-field="1" hidden={step !== 1}>
             <span>Что нужно сделать</span>
             <textarea name="description" value={description} maxLength={420} onChange={(event) => setDescription(event.target.value)} required />
             <small>{description.length}/420</small>
           </label>
         </section>
 
-        <section className="order-panel">
+        <section className="order-panel" data-wizard-field="3" hidden={step !== 3}>
           <div className="order-section-title">
             <b>2</b>
             <div>
@@ -144,7 +261,7 @@ export function CampaignForm() {
           <div className="order-grid-2">
             <label className="order-field">
               <span>Количество роликов</span>
-              <input name="deliverableCount" type="number" min={1} max={20} defaultValue={3} required />
+              <input name="deliverableCount" type="number" min={1} max={20} value={deliverableCount} onChange={(event) => setDeliverableCount(Number(event.target.value))} required />
             </label>
             <label className="order-field">
               <span>Длительность</span>
@@ -198,16 +315,16 @@ export function CampaignForm() {
           </label>
         </section>
 
-        <section className="order-panel">
+        <section className="order-panel" hidden={step !== 4 && step !== 5}>
           <div className="order-section-title">
             <b>3</b>
             <div>
-              <h2>Публикация и правила</h2>
-              <p>Площадки, примеры, обязательные теги и запреты.</p>
+              <h2>{step === 4 ? "Где публиковать" : "Правила публикации"}</h2>
+              <p>{step === 4 ? "Выберите площадки для готовых роликов." : "Примеры, обязательные теги и запреты."}</p>
             </div>
           </div>
 
-          <div className="order-platforms">
+          <div className="order-platforms" data-wizard-field="4" hidden={step !== 4}>
             {platformOptions.map(([value, label]) => (
               <label key={value}>
                 <input type="checkbox" name="platforms" value={value} checked={platforms.includes(value)} onChange={() => togglePlatform(value)} />
@@ -215,37 +332,37 @@ export function CampaignForm() {
               </label>
             ))}
           </div>
-          <label className="order-field">
+          <label className="order-field" data-wizard-field="5" hidden={step !== 5}>
             <span>Примеры роликов, до 3 ссылок</span>
             <textarea name="exampleUrls" placeholder={"https://youtube.com/shorts/...\nhttps://vk.com/clip-..."} />
           </label>
-          <label className="order-field">
+          <label className="order-field" data-wizard-field="5" hidden={step !== 5}>
             <span>Обязательные теги</span>
             <div className="order-input-icon">
               <Hash size={18} />
               <input name="requiredTags" value={requiredTags} onChange={(event) => setRequiredTags(event.target.value)} />
             </div>
           </label>
-          <label className="order-field">
+          <label className="order-field" data-wizard-field="5" hidden={step !== 5}>
             <span>Запреты</span>
             <textarea name="bans" value={bans} onChange={(event) => setBans(event.target.value)} />
           </label>
-          <label className="order-check">
+          <label className="order-check" data-wizard-field="5" hidden={step !== 5}>
             <input type="checkbox" name="watermarkBonus" checked={watermarkBonus} onChange={(event) => setWatermarkBonus(event.target.checked)} />
-            <span><ShieldCheck size={18} /> +5% к ставке за watermark ReelPay</span>
+            <span><ShieldCheck size={18} /> Требовать watermark ReelPay для дополнительной проверки</span>
           </label>
         </section>
 
-        <section className="order-panel">
+        <section className="order-panel" hidden={step !== 6 && step !== 7}>
           <div className="order-section-title">
             <b>4</b>
             <div>
-              <h2>Бюджет и срок</h2>
-              <p>Цель по просмотрам, ставка, общий бюджет и дедлайн.</p>
+              <h2>{step === 6 ? "Цель и бюджет" : "Срок и подтверждение"}</h2>
+              <p>{step === 6 ? "Цель по просмотрам, ставка и максимальный резерв." : "Проверьте срок и подтвердите права на исходник."}</p>
             </div>
           </div>
 
-          <div className="order-presets">
+          <div className="order-presets" data-wizard-field="6" hidden={step !== 6}>
             {viewOptions.map((views) => (
               <label key={views}>
                 <input type="radio" name="viewThreshold" value={views} checked={viewThreshold === views} onChange={() => setViewThreshold(views)} />
@@ -254,7 +371,7 @@ export function CampaignForm() {
             ))}
           </div>
 
-          <div className="order-grid-2">
+          <div className="order-grid-2" data-wizard-field="6" hidden={step !== 6}>
             <label className="order-field">
               <span>Бюджет, ₽</span>
               <input name="budget" type="number" min={1000} step={500} value={budget} onChange={(event) => setBudget(Number(event.target.value))} required />
@@ -265,27 +382,35 @@ export function CampaignForm() {
             </label>
           </div>
 
-          <div className="order-hint">
+          <div className="order-hint" hidden={step !== 6}>
             <AlertCircle size={17} />
             <span>Для старта лучше держать ставку от 45 ₽ за 1000 просмотров. Ниже клипперы будут выбирать заказ реже.</span>
           </div>
 
-          <label className="order-field">
+          <label className="order-field" data-wizard-field="7" hidden={step !== 7}>
             <span>Срок</span>
             <select name="deadlineDays" value={deadlineDays} onChange={(event) => setDeadlineDays(Number(event.target.value))}>
               {deadlineOptions.map((days) => <option value={days} key={days}>{days} дней</option>)}
             </select>
           </label>
 
-          <label className="order-check">
+          <label className="order-check" data-wizard-field="7" hidden={step !== 7}>
             <input type="checkbox" name="rightsConfirmed" required />
             <span><ShieldCheck size={18} /> Подтверждаю права на исходный материал и разрешаю его монтаж</span>
           </label>
         </section>
+        <div className={styles.nav}>
+          <button type="button" disabled={step === 1} onClick={() => setStep((current) => Math.max(1, current - 1))}>
+            <ChevronLeft size={17} /> Назад
+          </button>
+          {step < 7
+            ? <button type="button" onClick={goNext}>Продолжить <ArrowRight size={17} /></button>
+            : <span className={styles.ready}>Проверьте итог и опубликуйте заказ</span>}
+        </div>
       </div>
 
-      <div className="order-mobile-submit">
-        <span><small>Выплата за результат</small><b>{rub(estimate.payout)}</b></span>
+      <div className="order-mobile-submit" hidden={step !== 7}>
+        <span><small>Стоимость результата</small><b>{rub(estimate.payout)}</b></span>
         <SubmitButton />
       </div>
 
@@ -293,7 +418,7 @@ export function CampaignForm() {
         <div className="summary-card">
           <span className="summary-kicker">Прогноз заказа</span>
           <h2>{rub(estimate.payout)}</h2>
-          <p>примерная выплата клипперу за ролик, который доберёт цель</p>
+          <p>максимальная стоимость одной успешной публикации до комиссии платформы</p>
 
           <div className="summary-metrics">
             <span><Target size={17} /><b>{compactNumber(viewThreshold)}</b><em>цель</em></span>
@@ -306,7 +431,7 @@ export function CampaignForm() {
             <CircleDollarSign size={18} />
             <div>
               <b>{estimate.quality}</b>
-              <span>Хватит примерно на {estimate.clipperCapacity} успешных роликов.</span>
+              <span>{budget >= estimate.requiredBudget ? `Бюджета хватает на ${deliverableCount} результатов.` : `Для ${deliverableCount} результатов нужно от ${estimate.requiredBudget.toLocaleString("ru-RU")} ₽.`}</span>
             </div>
           </div>
 
@@ -316,7 +441,7 @@ export function CampaignForm() {
             <span><Check size={15} /> Просмотры проверяются</span>
           </div>
 
-          <SubmitButton />
+          {step === 7 ? <SubmitButton /> : null}
           <small>После публикации заказ появится в витрине и будет доступен клипперам.</small>
         </div>
       </aside>

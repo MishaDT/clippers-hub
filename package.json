@@ -28,7 +28,8 @@
     "test:rp": "node --experimental-strip-types --test tests/rp-rewards.test.mts",
     "test:auth-intent": "node --experimental-strip-types --test tests/auth-intent.test.mts",
     "test:reports": "node --experimental-strip-types --test tests/report-reasons.test.mts",
-    "test:notifications": "node --experimental-strip-types --test tests/notifications.test.mts"
+    "test:notifications": "node --experimental-strip-types --test tests/notifications.test.mts",
+    "test:money": "node --experimental-strip-types --test tests/financial-model.test.mts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

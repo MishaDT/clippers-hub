@@ -37,6 +37,7 @@ const loadAdminStats = unstable_cache(async () => {
   const today = startOfDay();
   const week = daysAgo(7);
   const day = daysAgo(1);
+  const realUser = { email: { not: { endsWith: "@clippers.local" } } };
 
   const [
     totalUsers,
@@ -60,14 +61,14 @@ const loadAdminStats = unstable_cache(async () => {
     chartCollabs,
     chartPurchases
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { createdAt: { gte: today } } }),
-    prisma.user.count({ where: { createdAt: { gte: week } } }),
-    prisma.campaign.count(),
-    prisma.campaign.count({ where: { status: { in: ["ACTIVE", "LOW_BUDGET"] } } }),
-    prisma.submission.count(),
-    prisma.submission.count({ where: { fraudScore: { gte: 60 } } }),
-    prisma.transaction.aggregate({ where: { status: "PENDING" }, _sum: { netCents: true }, _count: true }),
+    prisma.user.count({ where: realUser }),
+    prisma.user.count({ where: { ...realUser, createdAt: { gte: today } } }),
+    prisma.user.count({ where: { ...realUser, createdAt: { gte: week } } }),
+    prisma.campaign.count({ where: { isDemo: false } }),
+    prisma.campaign.count({ where: { isDemo: false, status: { in: ["ACTIVE", "LOW_BUDGET"] } } }),
+    prisma.submission.count({ where: { campaign: { isDemo: false } } }),
+    prisma.submission.count({ where: { campaign: { isDemo: false }, fraudScore: { gte: 60 } } }),
+    prisma.transaction.aggregate({ where: { status: "PENDING", user: realUser }, _sum: { netCents: true }, _count: true }),
     prisma.oAuthAccount.count({ where: { provider: "google" } }),
     prisma.oAuthAccount.findMany({ distinct: ["userId"], select: { userId: true } }),
     prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: day } } }),
@@ -95,12 +96,20 @@ const loadAdminStats = unstable_cache(async () => {
       include: { user: { select: { email: true } } }
     }),
     prisma.analyticsEvent.findMany({
-      where: { type: { in: ["PAGE_VIEW", "STORE_OFFER_CLICK"] }, createdAt: { gte: week } },
+      where: {
+        type: {
+          in: ["PAGE_VIEW", "STORE_OFFER_CLICK", "CAMPAIGN_PUBLISHED", "ORDER_TAKEN", "FIRST_VERIFIED_RESULT"]
+        },
+        createdAt: { gte: week }
+      },
       select: { type: true, createdAt: true, ipHash: true, userId: true }
     }),
-    prisma.user.findMany({ where: { createdAt: { gte: week } }, select: { createdAt: true } }),
-    prisma.collabInvite.findMany({ where: { createdAt: { gte: week } }, select: { createdAt: true } }),
-    prisma.storeRedemption.findMany({ where: { createdAt: { gte: week } }, select: { createdAt: true } })
+    prisma.user.findMany({ where: { ...realUser, createdAt: { gte: week } }, select: { createdAt: true } }),
+    prisma.collabInvite.findMany({
+      where: { createdAt: { gte: week }, client: realUser, worker: realUser },
+      select: { createdAt: true }
+    }),
+    prisma.storeRedemption.findMany({ where: { createdAt: { gte: week }, user: realUser }, select: { createdAt: true } })
   ]);
 
   const days = chartDays();
@@ -118,6 +127,9 @@ const loadAdminStats = unstable_cache(async () => {
     ).size
   }));
   const storeClicks = chartAnalytics.filter((event) => event.type === "STORE_OFFER_CLICK");
+  const campaignsPublished = chartAnalytics.filter((event) => event.type === "CAMPAIGN_PUBLISHED");
+  const ordersTaken = chartAnalytics.filter((event) => event.type === "ORDER_TAKEN");
+  const verifiedResults = chartAnalytics.filter((event) => event.type === "FIRST_VERIFIED_RESULT");
 
   return {
     totalUsers,
@@ -142,7 +154,12 @@ const loadAdminStats = unstable_cache(async () => {
     collabSeries: countSeries(chartCollabs),
     purchaseSeries: countSeries(chartPurchases),
     storeClickSeries: countSeries(storeClicks),
+    campaignSeries: countSeries(campaignsPublished),
+    orderTakenSeries: countSeries(ordersTaken),
     storeClicks: storeClicks.length,
+    campaignsPublishedWeek: campaignsPublished.length,
+    ordersTakenWeek: ordersTaken.length,
+    verifiedResultsWeek: verifiedResults.length,
     collabsWeek: chartCollabs.length,
     purchasesWeek: chartPurchases.length
   };
@@ -166,7 +183,7 @@ export default async function AdminPage() {
             <Users />
             <span>Пользователи</span>
             <strong>{stats.totalUsers}</strong>
-            <small>+{stats.usersToday} сегодня · +{stats.usersWeek} за неделю</small>
+            <small>+{stats.usersToday} сегодня · +{stats.usersWeek} за неделю · демо исключено</small>
           </Card>
           <Card className="admin-metric">
             <LockKeyhole />
@@ -184,7 +201,7 @@ export default async function AdminPage() {
             <BarChart3 />
             <span>Контент</span>
             <strong>{stats.activeCampaigns}/{stats.totalCampaigns}</strong>
-            <small>{stats.totalSubmissions} работ на платформе</small>
+            <small>{stats.totalSubmissions} реальных работ · демо исключено</small>
           </Card>
         </div>
 
@@ -217,6 +234,8 @@ export default async function AdminPage() {
           <div className="admin-charts-grid">
             <AdminBarChart title="Уникальные посетители" value={`${stats.uniqueVisitorsDay} сегодня`} points={stats.visitorSeries} tone="blue" />
             <AdminBarChart title="Новые пользователи" value={`+${stats.usersWeek} за неделю`} points={stats.userSeries} />
+            <AdminBarChart title="Новые кампании" value={`${stats.campaignsPublishedWeek} за неделю`} points={stats.campaignSeries} />
+            <AdminBarChart title="Взятые заказы" value={`${stats.ordersTakenWeek} за неделю`} points={stats.orderTakenSeries} tone="blue" />
             <AdminBarChart title="Новые коллабы" value={`${stats.collabsWeek} за неделю`} points={stats.collabSeries} tone="violet" />
             <AdminBarChart title="Клики магазина" value={`${stats.storeClicks} за неделю`} points={stats.storeClickSeries} tone="orange" />
           </div>
@@ -224,6 +243,7 @@ export default async function AdminPage() {
             <span><Handshake size={17} /><b>{stats.collabsWeek}</b><small>новых коллабов</small></span>
             <span><ShoppingBag size={17} /><b>{stats.purchasesWeek}</b><small>покупок за RP</small></span>
             <span><MousePointerClick size={17} /><b>{stats.storeClicks}</b><small>переходов к банкам</small></span>
+            <span><ShieldCheck size={17} /><b>{stats.verifiedResultsWeek}</b><small>первых подтверждённых результатов</small></span>
           </div>
         </section>
 

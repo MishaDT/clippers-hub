@@ -13,6 +13,7 @@ import { getActiveRoleMode } from "@/lib/role-mode";
 import { getUnreadSummary } from "@/lib/unread";
 import { NotificationBell } from "@/components/notification-bell";
 import { ReadStateTracker } from "@/components/read-state-tracker";
+import { RoleModeSwitcher } from "@/components/role-mode-switcher";
 
 const loadAdminAlerts = unstable_cache(
   (userId: string) => prisma.notification.count({
@@ -83,7 +84,13 @@ export async function AppShell({
                   createdAt: item.lastOccurredAt.toLocaleString("ru-RU", { day: "2-digit", month: "short" })
                 }))}
               />
-              <Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>
+              {user.role === "BOTH" || user.role === "ADMIN" ? (
+                <Suspense fallback={<Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>}>
+                  <RoleModeSwitcher mode={mode} />
+                </Suspense>
+              ) : (
+                <Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>
+              )}
               <form action={logoutAction}>
                 <button className="btn btn-small btn-ghost" type="submit">Выйти</button>
               </form>

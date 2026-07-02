@@ -1,0 +1,23 @@
+.saved {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  gap: 5px;
+  width: 100%;
+}
+
+.saved > button {
+  min-width: 0;
+  justify-content: flex-start !important;
+}
+
+.saved > button:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved > button:last-child {
+  justify-content: center !important;
+  padding-inline: 0 !important;
+  color: #8b9088;
+}

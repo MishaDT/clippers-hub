@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-
-const RESET_COOKIES = ["clippers_session", "rp_consent", "oauth_state", "oauth_verifier", "oauth_provider", "oauth_intent"];
+import { BROWSER_DATA_COOKIES } from "@/lib/browser-data";
 
 export async function POST() {
   const jar = await cookies();
-  for (const name of RESET_COOKIES) {
+  for (const name of BROWSER_DATA_COOKIES) {
     jar.delete(name);
   }
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Clear-Site-Data", '"cache", "cookies", "storage"');
+  return response;
 }

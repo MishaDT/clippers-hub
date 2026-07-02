@@ -140,6 +140,7 @@ async function main() {
         deadline: daysFromNow(6 + (index % 24)),
         language: "ru",
         niche,
+        isDemo: true,
         metricsJson: json({
           views: 220000 + index * 185000,
           fillRate: Number((spent / budget).toFixed(2)),

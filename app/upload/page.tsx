@@ -48,7 +48,7 @@ export default async function UploadPage({
       id: submission.id,
       title: submission.campaign.title,
       trackingCode: submission.trackingCode,
-      payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents)),
+      payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents, user.rank)),
       target: compactNumber(submission.campaign.viewThreshold),
       daysLeft: Math.max(1, Math.ceil((submission.campaign.deadline.getTime() - Date.now()) / 86400000)),
       platforms: parsePlatforms(submission.campaign.allowedPlatformsJson),

@@ -26,7 +26,13 @@ export function commissionRate(rank: string) {
   return 0.15;
 }
 
-// Expected clipper payout (in cents) for hitting the view goal, net of platform fee.
-export function expectedPayout(viewThreshold: number, cpmRateCents: number) {
-  return Math.round((viewThreshold / 1000) * cpmRateCents * 0.89);
+// Full amount reserved from the client's funded campaign for one successful result.
+export function grossPayout(viewThreshold: number, cpmRateCents: number) {
+  return Math.max(0, Math.round((viewThreshold / 1000) * cpmRateCents));
+}
+
+// Amount the clipper receives after their rank-specific platform commission.
+export function expectedPayout(viewThreshold: number, cpmRateCents: number, rank = "BRONZE") {
+  const gross = grossPayout(viewThreshold, cpmRateCents);
+  return gross - Math.floor(gross * commissionRate(rank));
 }

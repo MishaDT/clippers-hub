@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import styles from "./chat-mobile-filter.module.css";
 
 type Item = { label: string; href: string; active: boolean; count?: number };
 
@@ -67,9 +68,8 @@ export function ChatMobileFilter({
 
   return (
     <div className="chat-mobile-filter">
-      <button className="chat-mobile-filter-trigger" type="button" aria-label="Фильтры" aria-expanded={open} onClick={toggle}>
+      <button className={styles.trigger} type="button" aria-label="Фильтры" title="Фильтры" aria-expanded={open} onClick={toggle}>
         <SlidersHorizontal size={18} />
-        <span>Фильтры</span>
         {activeCount ? <b>{activeCount}</b> : null}
       </button>
       {open ? (

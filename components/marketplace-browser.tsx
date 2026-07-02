@@ -14,8 +14,10 @@ export type MarketplaceCard = {
   niche: string | null;
   cpmRateCents: number;
   viewThreshold: number;
+  payoutCents: number;
   remainingBudgetCents: number;
   featured: boolean;
+  demo: boolean;
   owner: { name: string; handle: string; avatar: string | null };
   submissions: number;
   deadlineMs: number;
@@ -23,10 +25,6 @@ export type MarketplaceCard = {
 };
 
 const DAY = 86_400_000;
-
-function payoutOf(card: MarketplaceCard) {
-  return Math.round((card.viewThreshold / 1000) * card.cpmRateCents * 0.89);
-}
 
 function shortText(text: string, limit = 120) {
   return text.length > limit ? `${text.slice(0, limit).trim()}…` : text;
@@ -39,7 +37,8 @@ export function MarketplaceBrowser({
   basePath,
   initialPage,
   page1Top,
-  alwaysTop
+  alwaysTop,
+  compactTop
 }: {
   cards: MarketplaceCard[];
   medianRate: number;
@@ -48,6 +47,7 @@ export function MarketplaceBrowser({
   initialPage: number;
   page1Top: ReactNode;
   alwaysTop: ReactNode;
+  compactTop: ReactNode;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -85,13 +85,13 @@ export function MarketplaceBrowser({
   return (
     <>
       {page === 1 ? page1Top : null}
-      {alwaysTop}
+      {page === 1 ? alwaysTop : compactTop}
 
       {cards.length ? (
         <div className="mk-grid">
           {visible.map((card) => {
             const daysLeft = Math.max(1, Math.ceil((card.deadlineMs - Date.now()) / DAY));
-            const payout = payoutOf(card);
+            const payout = card.payoutCents;
             const cpm = Math.round(card.cpmRateCents / 100);
             const urgent = daysLeft <= 2;
             const fresh = Date.now() - card.createdAtMs <= 2 * DAY;
@@ -109,7 +109,23 @@ export function MarketplaceBrowser({
                       : null;
             const SignalIcon = signal?.Icon;
             return (
-              <Link className="mk-card" href={`/campaigns/${card.id}?returnTo=${encodeURIComponent(returnTo)}`} key={card.id}>
+              <Link
+                className="mk-card"
+                href={`/campaigns/${card.id}?returnTo=${encodeURIComponent(returnTo)}`}
+                key={card.id}
+                onClick={() => {
+                  void fetch("/api/analytics", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    keepalive: true,
+                    body: JSON.stringify({
+                      type: "CAMPAIGN_CARD_OPEN",
+                      path: returnTo,
+                      metadata: { campaignId: card.id }
+                    })
+                  });
+                }}
+              >
                 <div className="mk-card-top">
                   <div className="mk-client">
                     <UserAvatar avatar={card.owner.avatar} name={card.owner.name} handle={card.owner.handle} size={38} />
@@ -118,9 +134,12 @@ export function MarketplaceBrowser({
                       <span>{card.niche || "Видео"}</span>
                     </div>
                   </div>
-                  {signal && SignalIcon ? (
-                    <span className={`mk-signal mk-signal--${signal.cls}`} title={signal.title}><SignalIcon size={12} /> {signal.text}</span>
-                  ) : null}
+                  <div className="mk-card-signals">
+                    {card.demo ? <span className="mk-demo">Демо</span> : null}
+                    {signal && SignalIcon ? (
+                      <span className={`mk-signal mk-signal--${signal.cls}`} title={signal.title}><SignalIcon size={12} /> {signal.text}</span>
+                    ) : null}
+                  </div>
                 </div>
                 <h2 className="mk-title">{card.title}</h2>
                 <p className="mk-desc">{shortText(card.description)}</p>

@@ -70,7 +70,7 @@ const generalScenes = [
     label: "Проверка",
     kicker: "Прозрачность и защита",
     title: "ReelPay проверяет результат",
-    text: "Tracking-код, реальные просмотры через API и защита от подозрительной активности.",
+    text: "Tracking-код, метрики через официальный API там, где он доступен, и ручная проверка в остальных случаях.",
     duration: 4000
   },
   {
@@ -234,7 +234,7 @@ function PromoVisual({ scene }: { scene: number }) {
         <div className="rpv-checks">
           <div><Check size={15} /><span>Tracking-код найден</span><b>Готово</b></div>
           <div><Check size={15} /><span>Публикация подтверждена</span><b>Готово</b></div>
-          <div><Check size={15} /><span>Просмотры получены через API</span><b>Live</b></div>
+          <div><Check size={15} /><span>Метрики получены или подтверждены</span><b>Live</b></div>
           <div><Clock3 size={15} /><span>Финальная проверка</span><b>48 ч.</b></div>
         </div>
       </div>

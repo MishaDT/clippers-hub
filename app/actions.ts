@@ -17,7 +17,7 @@ import { stringify } from "@/lib/json";
 import { canEndorse } from "@/lib/leagues";
 import { achievementByCode, achievementProgress, nextFeaturedUntil, RP_BOOST_COST } from "@/lib/achievements";
 import { loadAchievementStats } from "@/lib/achievement-stats";
-import { parseRubToCents } from "@/lib/money";
+import { grossPayout, parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
 import { syncMockViews } from "@/lib/social-sync";
 import { notifyModerators } from "@/lib/video-checks";
@@ -30,6 +30,7 @@ import { notificationGroup, notify } from "@/lib/notifications";
 import { awardReferralSignup } from "@/lib/referrals";
 import { rateLimit } from "@/lib/rate-limit";
 import { safeReturnTo } from "@/lib/navigation";
+import { CampaignReservationError, reserveCampaignSlot } from "@/lib/campaign-reservations";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -65,6 +66,95 @@ export async function logoutAction() {
   if (user) await trackEvent({ userId: user.id, type: "LOGOUT", path: "/profile" });
   await destroySession();
   redirect("/login");
+}
+
+export async function openDisputeAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  if (!(await rateLimit(`dispute:${user.id}`, 3, 60 * 60 * 1000))) {
+    redirect("/support?error=dispute_limit");
+  }
+
+  const submissionId = String(formData.get("submissionId") || "");
+  const returnTo = safeInternalPath(String(formData.get("returnTo") || ""), "/profile");
+  const reason = String(formData.get("reason") || "").trim().slice(0, 1000);
+  if (!submissionId || reason.length < 20) redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}error=dispute_reason`);
+
+  const policy = await moderateText({
+    text: reason,
+    contentType: "DISPUTE",
+    authorId: user.id,
+    context: "SUPPORT"
+  });
+  if (policy.action === "BLOCK") redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}error=moderation`);
+
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    include: {
+      campaign: { select: { id: true, title: true, ownerId: true } },
+      worker: { select: { id: true, name: true } }
+    }
+  });
+  if (!submission) redirect(returnTo);
+  const isParty = submission.workerId === user.id || submission.campaign.ownerId === user.id;
+  if (!isParty && !canAccessAdmin(user)) redirect(returnTo);
+  if (submission.status === "PAID") {
+    redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}error=dispute_paid`);
+  }
+
+  let disputeId = "";
+  try {
+    const dispute = await prisma.$transaction(async (db) => {
+      const created = await db.disputeCase.create({
+        data: {
+          userId: user.id,
+          submissionId,
+          reason,
+          openKey: submissionId
+        }
+      });
+      await db.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "DISPUTE_OPENED",
+          entity: "DisputeCase",
+          entityId: created.id,
+          metadata: stringify({ submissionId, campaignId: submission.campaign.id })
+        }
+      });
+      return created;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    disputeId = dispute.id;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}dispute=already_open`);
+    }
+    throw error;
+  }
+
+  const counterpartId = user.id === submission.workerId ? submission.campaign.ownerId : submission.workerId;
+  await notify({
+    userId: counterpartId,
+    groupKey: notificationGroup("dispute", submissionId),
+    title: "Открыта апелляция",
+    body: `В работе «${submission.campaign.title}» открыт спор. Выплата приостановлена до решения.`,
+    priority: "HIGH",
+    kind: "DISPUTE",
+    href: `/campaigns/${submission.campaign.id}`
+  });
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+  await Promise.all(admins.map((admin) => notify({
+    userId: admin.id,
+    groupKey: notificationGroup("admin-dispute", disputeId),
+    title: "Новый спор по работе",
+    body: `${user.name} просит проверить результат по кампании «${submission.campaign.title}».`,
+    priority: "HIGH",
+    kind: "MODERATION",
+    href: "/admin/disputes"
+  })));
+
+  revalidatePath(`/campaigns/${submission.campaign.id}`);
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}dispute=opened`);
 }
 
 export async function unlinkOAuthAccountAction(formData: FormData) {
@@ -140,6 +230,12 @@ export async function createCampaignAction(formData: FormData) {
   if (campaignPolicy.action === "BLOCK" || campaignPolicy.action === "REVIEW") redirect("/campaigns/new?error=moderation");
 
   const totalBudgetCents = budget || 5000000;
+  const maxPaidResults = Math.max(1, Math.min(20, Number(formData.get("deliverableCount") || 1)));
+  const minimumBudgetCents = grossPayout(Number(formData.get("viewThreshold") || 10000), cpm || 4500) * maxPaidResults;
+  if (totalBudgetCents < minimumBudgetCents) {
+    redirect(`/campaigns/new?error=budget_min&need=${minimumBudgetCents}`);
+  }
+  const priorCampaignCount = await prisma.campaign.count({ where: { ownerId: user.id } });
 
   let campaign;
   try {
@@ -173,7 +269,7 @@ export async function createCampaignAction(formData: FormData) {
             }
           }),
           briefJson: stringify({
-            deliverableCount: Math.max(1, Math.min(20, Number(formData.get("deliverableCount") || 1))),
+            deliverableCount: maxPaidResults,
             clipDuration: String(formData.get("clipDuration") || "30-60"),
             aspectRatio: String(formData.get("aspectRatio") || "9:16"),
             style: String(formData.get("style") || "dynamic").slice(0, 40),
@@ -188,6 +284,8 @@ export async function createCampaignAction(formData: FormData) {
           viewThreshold: Number(formData.get("viewThreshold") || 10000),
           totalBudgetCents,
           remainingBudgetCents: totalBudgetCents,
+          reservedBudgetCents: 0,
+          maxPaidResults,
           status: "ACTIVE",
           visibility,
           trackingPrefix,
@@ -223,6 +321,20 @@ export async function createCampaignAction(formData: FormData) {
   revalidatePath("/campaigns");
   revalidateTag("campaigns");
   revalidatePath("/profile");
+  await trackEvent({
+    userId: user.id,
+    type: "CAMPAIGN_PUBLISHED",
+    path: "/campaigns/new",
+    metadata: { campaignId: campaign.id, maxPaidResults, viewThreshold: campaign.viewThreshold }
+  });
+  if (priorCampaignCount > 0) {
+    await trackEvent({
+      userId: user.id,
+      type: "CAMPAIGN_REPEATED",
+      path: "/campaigns/new",
+      metadata: { campaignId: campaign.id, priorCampaignCount }
+    });
+  }
   redirect(`/campaigns/${campaign.id}`);
 }
 
@@ -295,47 +407,61 @@ export async function joinCampaignAction(formData: FormData) {
 
   const trackingCode = `${campaign.trackingPrefix}_${user.handle.toUpperCase().slice(0, 4)}_${randomBytes(5).toString("hex").toUpperCase()}`;
   try {
-    await prisma.$transaction(async (tx) => {
-    const submission = await tx.submission.create({
-      data: {
-        campaignId,
-        workerId: user.id,
-        postUrl: "https://example.com/post-link-waiting",
-        platform: "TIKTOK",
-        platformPostId: `draft_${Date.now()}`,
-        trackingCode,
-        status: "ACCEPTED",
-        fraudScore: 0
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          const { reserve } = await reserveCampaignSlot(tx, campaignId, user.id);
+          const submission = await tx.submission.create({
+            data: {
+              campaignId,
+              workerId: user.id,
+              postUrl: "https://example.com/post-link-waiting",
+              platform: "TIKTOK",
+              platformPostId: `draft_${Date.now()}`,
+              trackingCode,
+              status: "ACCEPTED",
+              fraudScore: 0,
+              reservedPayoutCents: reserve
+            }
+          });
+          await tx.chatThread.upsert({
+            where: { campaignId_workerId: { campaignId, workerId: user.id } },
+            update: {
+              submissionId: submission.id,
+              messages: {
+                create: {
+                  senderId: user.id,
+                  type: "SYSTEM",
+                  body: "Исполнитель снова открыл заказ. Можно продолжить обсуждение здесь."
+                }
+              }
+            },
+            create: {
+              campaignId,
+              submissionId: submission.id,
+              clientId: campaign.ownerId,
+              workerId: user.id,
+              messages: {
+                create: {
+                  senderId: user.id,
+                  type: "SYSTEM",
+                  body: "Исполнитель взял заказ. Выплата зарезервирована; здесь можно уточнить детали и вопросы по ролику."
+                }
+              }
+            }
+          });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        break;
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;
+        throw error;
       }
-    });
-    await tx.chatThread.upsert({
-      where: { campaignId_workerId: { campaignId, workerId: user.id } },
-      update: {
-        submissionId: submission.id,
-        messages: {
-          create: {
-            senderId: user.id,
-            type: "SYSTEM",
-            body: "Исполнитель снова открыл заказ. Можно продолжить обсуждение здесь."
-          }
-        }
-      },
-      create: {
-        campaignId,
-        submissionId: submission.id,
-        clientId: campaign.ownerId,
-        workerId: user.id,
-        messages: {
-          create: {
-            senderId: user.id,
-            type: "SYSTEM",
-            body: "Исполнитель взял заказ. Здесь можно уточнить детали и прислать вопросы по ролику."
-          }
-        }
-      }
-    });
-    });
+    }
   } catch (error) {
+    if (error instanceof CampaignReservationError) {
+      const reason = error.code === "NO_SLOTS" ? "no_slots" : error.code === "ALREADY_JOINED" ? "already_joined" : error.code === "CLOSED" ? "closed" : "no_budget";
+      redirect(`/campaigns?error=${reason}`);
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       redirect("/upload");
     }
@@ -355,6 +481,12 @@ export async function joinCampaignAction(formData: FormData) {
       href: `/chats?thread=${thread.id}`
     });
   }
+  await trackEvent({
+    userId: user.id,
+    type: "ORDER_TAKEN",
+    path: `/campaigns/${campaignId}`,
+    metadata: { campaignId }
+  });
   revalidatePath("/upload");
   revalidatePath("/profile");
   redirect("/upload");
@@ -1078,20 +1210,44 @@ export async function sendCollabInviteAction(formData: FormData) {
   const handle = String(formData.get("handle") || "");
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
   const workerId = String(formData.get("workerId") || "");
+  const campaignId = String(formData.get("campaignId") || "");
+  const role = String(formData.get("role") || "").trim().slice(0, 80);
   const message = String(formData.get("message") || "").trim().slice(0, 600);
-  if (!workerId || workerId === user.id || message.length < 3) redirect(`/clippers/${handle}?error=invite`);
+  if (!workerId || workerId === user.id || !campaignId || role.length < 2 || message.length < 3) {
+    redirect(`/clippers/${handle}?error=invite`);
+  }
   const policy = await moderateText({ text: message, contentType: "COLLAB", authorId: user.id, context: "PUBLIC" });
   if (policy.action === "BLOCK" || policy.action === "REVIEW") redirect(`/clippers/${handle}?error=moderation`);
 
-  const worker = await prisma.user.findUnique({ where: { id: workerId }, select: { id: true } });
-  if (!worker) redirect("/leaderboard");
+  const [worker, campaign] = await Promise.all([
+    prisma.user.findUnique({ where: { id: workerId }, select: { id: true } }),
+    prisma.campaign.findFirst({
+      where: {
+        id: campaignId,
+        ownerId: user.id,
+        status: { in: ["ACTIVE", "LOW_BUDGET"] },
+        deadline: { gt: new Date() }
+      },
+      select: { id: true, deadline: true }
+    })
+  ]);
+  if (!worker || !campaign) redirect(`/clippers/${handle}?error=campaign`);
 
   const existing = await prisma.collabInvite.findFirst({
-    where: { clientId: user.id, workerId, status: "PENDING" },
+    where: { clientId: user.id, workerId, campaignId, status: "PENDING" },
     select: { id: true }
   });
   if (!existing) {
-    const invite = await prisma.collabInvite.create({ data: { clientId: user.id, workerId, message } });
+    const invite = await prisma.collabInvite.create({
+      data: {
+        clientId: user.id,
+        workerId,
+        campaignId,
+        role,
+        deadline: campaign.deadline,
+        message
+      }
+    });
     await notify({
       userId: workerId,
       groupKey: notificationGroup("collab-invite", invite.id),

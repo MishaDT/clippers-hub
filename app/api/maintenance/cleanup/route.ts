@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notificationGroup, notify } from "@/lib/notifications";
 
 // A prune pass can touch many rows; give it room but stay within serverless limits.
 export const maxDuration = 60;
@@ -30,7 +31,44 @@ async function run() {
     deleted += res.count;
     if (res.count === 0) break;
   }
-  return { deleted, retentionDays, cutoff: cutoff.toISOString() };
+  const now = new Date();
+  const reminderCutoff = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const due = await prisma.submission.findMany({
+    where: {
+      status: { in: ["ACCEPTED", "POSTED", "VERIFIED", "THRESHOLD_MET"] },
+      campaign: { deadline: { gt: now, lte: reminderCutoff }, status: { in: ["ACTIVE", "LOW_BUDGET", "PAUSED"] } }
+    },
+    select: {
+      id: true,
+      workerId: true,
+      campaignId: true,
+      campaign: { select: { title: true, ownerId: true, deadline: true } }
+    },
+    take: 200
+  });
+  let reminders = 0;
+  for (const item of due) {
+    for (const userId of new Set([item.workerId, item.campaign.ownerId])) {
+      const groupKey = notificationGroup("deadline-24h", `${item.id}:${userId}`);
+      const existing = await prisma.notification.findUnique({
+        where: { userId_groupKey: { userId, groupKey } },
+        select: { id: true }
+      });
+      if (existing) continue;
+      const hours = Math.max(1, Math.ceil((item.campaign.deadline.getTime() - now.getTime()) / 3_600_000));
+      await notify({
+        userId,
+        groupKey,
+        title: "До дедлайна меньше суток",
+        body: `По заказу «${item.campaign.title}» осталось около ${hours} ч. Проверьте следующий шаг сделки.`,
+        priority: "HIGH",
+        kind: "DEADLINE",
+        href: `/campaigns/${item.campaignId}`
+      });
+      reminders += 1;
+    }
+  }
+  return { deleted, reminders, retentionDays, cutoff: cutoff.toISOString() };
 }
 
 export async function GET(request: Request) {

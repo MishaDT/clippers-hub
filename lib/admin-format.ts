@@ -13,7 +13,16 @@ export function eventLabel(type: string) {
     SUBMISSION_FLAGGED: "Работа с риском",
     LOGOUT: "Выход",
     CTA_CLICK: "Клик",
-    STORE_OFFER_CLICK: "Переход к продукту"
+    STORE_OFFER_CLICK: "Переход к продукту",
+    CALCULATOR_COMPLETE: "Расчёт бюджета",
+    CAMPAIGN_DRAFT_STARTED: "Черновик кампании",
+    CAMPAIGN_PUBLISHED: "Кампания опубликована",
+    CAMPAIGN_CARD_OPEN: "Карточка заказа открыта",
+    ORDER_TAKEN: "Заказ взят",
+    FIRST_VERIFIED_RESULT: "Первый результат подтверждён",
+    CAMPAIGN_REPEATED: "Повторная кампания",
+    RIDZI_SUGGESTION_CLICK: "Подсказка Ридзи открыта",
+    RIDZI_SUGGESTION_DISMISS: "Подсказка Ридзи скрыта"
   };
   return labels[type] || type;
 }

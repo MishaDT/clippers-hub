@@ -1,26 +1,32 @@
 "use client";
 
 import { useState } from "react";
-
-const CLIENT_COOKIES = ["rp_consent", "oauth_state", "oauth_verifier", "oauth_provider", "oauth_intent"];
+import { BROWSER_DATA_COOKIES } from "@/lib/browser-data";
 
 function expireCookie(name: string) {
   document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`;
 }
 
 export function PrivacyControls() {
-  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function resetBrowserData() {
     setBusy(true);
+    setError("");
     try {
-      CLIENT_COOKIES.forEach(expireCookie);
+      BROWSER_DATA_COOKIES.forEach(expireCookie);
       localStorage.clear();
       sessionStorage.clear();
-      await fetch("/api/privacy/reset-browser", { method: "POST" });
-      setDone(true);
-    } finally {
+      const response = await fetch("/api/privacy/reset-browser", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("reset_failed");
+      window.location.replace("/login?reset=1");
+    } catch {
+      setError("Не удалось полностью удалить данные. Проверьте соединение и повторите.");
       setBusy(false);
     }
   }
@@ -37,7 +43,7 @@ export function PrivacyControls() {
       <button className="btn btn-primary" type="button" onClick={resetBrowserData} disabled={busy}>
         {busy ? "Сбрасываем..." : "Сбросить на этом устройстве"}
       </button>
-      {done ? <p className="privacy-done">Готово. Обновите страницу, если хотите заново выбрать cookie.</p> : null}
+      {error ? <p className="privacy-error" role="alert">{error}</p> : null}
     </div>
   );
 }

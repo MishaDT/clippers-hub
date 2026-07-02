@@ -2,6 +2,34 @@
   width: min(1180px, 100%);
 }
 
+.marketplace :global(.mk-compact-top) {
+  display: grid;
+  gap: 12px;
+}
+
+.marketplace :global(.mk-compact-top > div:first-child) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.marketplace :global(.mk-compact-top > div:first-child > b) {
+  color: #f3f5ef;
+  font-size: 14px;
+}
+
+.marketplace :global(.campaign-search-row) {
+  align-items: stretch;
+  gap: 9px;
+}
+
+.marketplace :global(.campaign-search-row > button) {
+  position: relative;
+  min-height: 48px;
+  border-radius: 11px;
+}
+
 .signalRules {
   margin: -2px 0 2px;
   color: var(--muted);
@@ -105,6 +133,48 @@
   .marketplace :global(.mk-head) {
     display: grid;
     gap: 12px;
+  }
+
+  .marketplace :global(.mk-compact-top) {
+    gap: 9px;
+  }
+
+  .marketplace :global(.campaign-filter-shell) {
+    margin: 0;
+  }
+
+  .marketplace :global(.campaign-search-row) {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 7px;
+  }
+
+  .marketplace :global(.campaign-search-row > button) {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .marketplace :global(.campaign-search-row > button > span),
+  .marketplace :global(.campaign-search-row > button > svg:last-child:not(:first-child)) {
+    display: none;
+  }
+
+  .marketplace :global(.campaign-search-row > button > b) {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0 4px;
+    border-radius: 999px;
+    font-size: 9px;
   }
 
   .marketplace :global(.mk-stats) {

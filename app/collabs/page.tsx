@@ -5,6 +5,7 @@ import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { cancelCollabInviteAction, endCollabAction, respondCollabInviteAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
+import styles from "./collabs.module.css";
 
 export const metadata: Metadata = { title: "Коллабы" };
 export const dynamic = "force-dynamic";
@@ -35,6 +36,9 @@ type CardItem = {
   message: string;
   createdAt: Date;
   partner: { name: string; handle: string; avatar: string | null };
+  campaign: { id: string; title: string } | null;
+  role: string;
+  deadline: Date | null;
   chatThread: { id: string } | null;
 };
 
@@ -42,49 +46,54 @@ function CollabCard({ item }: { item: CardItem }) {
   const pending = item.status === "PENDING";
   const accepted = item.status === "ACCEPTED";
   return (
-    <article className={`collab-v2-card state-${item.status.toLowerCase()}`}>
-      <Link className="collab-v2-person" href={`/clippers/${item.partner.handle}?returnTo=%2Fcollabs`}>
+    <article className={styles.card}>
+      <Link className={styles.person} href={`/clippers/${item.partner.handle}?returnTo=%2Fcollabs`}>
         <img src={avatarFor(item.partner.handle, item.partner.avatar)} alt="" loading="lazy" />
         <span>
           <strong>{item.partner.name}</strong>
           <small>@{item.partner.handle} · {relativeDate(item.createdAt)}</small>
         </span>
       </Link>
-      <span className={`collab-v2-status status-${item.status.toLowerCase()}`}>
+      <span className={styles.status}>
         {pending ? <Clock3 size={13} /> : accepted ? <Check size={13} /> : item.status === "COMPLETED" ? <Sparkles size={13} /> : <X size={13} />}
         {STATUS[item.status] || item.status}
       </span>
+      <div className={styles.context}>
+        <span><small>Кампания</small><strong>{item.campaign?.title || "Старое приглашение"}</strong></span>
+        <span><small>Роль</small><strong>{item.role}</strong></span>
+        <span><small>Срок</small><strong>{item.deadline ? item.deadline.toLocaleDateString("ru-RU") : "Не указан"}</strong></span>
+      </div>
       <p>{item.message}</p>
-      <div className="collab-v2-actions">
+      <div className={styles.actions}>
         {item.direction === "incoming" && pending ? (
           <>
             <form action={respondCollabInviteAction}>
               <input type="hidden" name="inviteId" value={item.id} />
               <input type="hidden" name="decision" value="decline" />
-              <button className="collab-v2-ghost" type="submit"><X size={15} /> Отклонить</button>
+              <button className={styles.ghost} type="submit"><X size={15} /> Отклонить</button>
             </form>
             <form action={respondCollabInviteAction}>
               <input type="hidden" name="inviteId" value={item.id} />
               <input type="hidden" name="decision" value="accept" />
-              <button className="collab-v2-primary" type="submit"><MessageCircle size={15} /> Обсудить</button>
+              <button className={styles.primary} type="submit"><MessageCircle size={15} /> Обсудить</button>
             </form>
           </>
         ) : null}
         {item.direction === "outgoing" && pending ? (
           <form action={cancelCollabInviteAction}>
             <input type="hidden" name="inviteId" value={item.id} />
-            <button className="collab-v2-ghost" type="submit"><RotateCcw size={14} /> Отозвать</button>
+            <button className={styles.ghost} type="submit"><RotateCcw size={14} /> Отозвать</button>
           </form>
         ) : null}
         {accepted && item.chatThread ? (
-          <Link className="collab-v2-primary" href={`/chats?thread=${item.chatThread.id}&type=collabs`}>
+          <Link className={styles.primary} href={`/chats?thread=${item.chatThread.id}&type=collabs`}>
             <MessageCircle size={15} /> В обсуждение
           </Link>
         ) : null}
         {accepted ? (
           <form action={endCollabAction}>
             <input type="hidden" name="inviteId" value={item.id} />
-            <button className="collab-v2-ghost" type="submit"><Square size={13} /> Завершить</button>
+            <button className={styles.ghost} type="submit"><Square size={13} /> Завершить</button>
           </form>
         ) : null}
       </div>
@@ -104,13 +113,13 @@ export default async function CollabsPage({
   const [incomingRaw, outgoingRaw, archiveRaw] = await Promise.all([
     prisma.collabInvite.findMany({
       where: { workerId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
-      include: { client: { select: { name: true, handle: true, avatar: true } }, chatThread: { select: { id: true } } },
+      include: { client: { select: { name: true, handle: true, avatar: true } }, campaign: { select: { id: true, title: true } }, chatThread: { select: { id: true } } },
       orderBy: { createdAt: "desc" },
       take: 50
     }),
     prisma.collabInvite.findMany({
       where: { clientId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
-      include: { worker: { select: { name: true, handle: true, avatar: true } }, chatThread: { select: { id: true } } },
+      include: { worker: { select: { name: true, handle: true, avatar: true } }, campaign: { select: { id: true, title: true } }, chatThread: { select: { id: true } } },
       orderBy: { createdAt: "desc" },
       take: 50
     }),
@@ -122,6 +131,7 @@ export default async function CollabsPage({
       include: {
         client: { select: { name: true, handle: true, avatar: true } },
         worker: { select: { name: true, handle: true, avatar: true } },
+        campaign: { select: { id: true, title: true } },
         chatThread: { select: { id: true } }
       },
       orderBy: { createdAt: "desc" },
@@ -140,33 +150,33 @@ export default async function CollabsPage({
 
   return (
     <AppShell>
-      <section className="section collabs-v2-page">
-        <header className="collabs-v2-hero">
+      <section className={`section ${styles.page}`}>
+        <header className={styles.hero}>
           <span><Handshake size={15} /> Коллабы</span>
           <h1>Создавайте вместе</h1>
-          <p>Принимайте приглашения, обсуждайте роли и выпускайте совместные клипы в одном рабочем процессе.</p>
-          <Link href="/leaderboard">Найти партнёра <Send size={15} /></Link>
+          <p>Заказчик приглашает подходящего клиппера, после чего условия и следующий шаг остаются в одном обсуждении.</p>
+          <Link href="/leaderboard">Найти клиппера <Send size={15} /></Link>
         </header>
 
-        <nav className="collabs-v2-tabs" aria-label="Разделы коллабов">
-          <Link className={tab === "incoming" ? "active" : ""} href="/collabs">
-            <Inbox size={16} /> Входящие <b>{incoming.length}</b>
+        <nav className={styles.tabs} aria-label="Разделы коллабов">
+          <Link data-active={tab === "incoming"} href="/collabs">
+            <Inbox size={16} /> <span>Входящие</span> <b>{incoming.length}</b>
           </Link>
-          <Link className={tab === "outgoing" ? "active" : ""} href="/collabs?tab=outgoing">
-            <Send size={16} /> Исходящие <b>{outgoing.length}</b>
+          <Link data-active={tab === "outgoing"} href="/collabs?tab=outgoing">
+            <Send size={16} /> <span>Исходящие</span> <b>{outgoing.length}</b>
           </Link>
-          <Link className={tab === "archive" ? "active" : ""} href="/collabs?tab=archive">
-            <Archive size={16} /> Архив <b>{archive.length}</b>
+          <Link data-active={tab === "archive"} href="/collabs?tab=archive">
+            <Archive size={16} /> <span>Архив</span> <b>{archive.length}</b>
           </Link>
         </nav>
 
-        <section className="collabs-v2-list">
+        <section className={styles.list}>
           <header>
             <div><small>{tab === "incoming" ? "Новые предложения" : tab === "outgoing" ? "Ваши приглашения" : "История"}</small><h2>{tab === "incoming" ? "Входящие" : tab === "outgoing" ? "Исходящие" : "Архив"}</h2></div>
             <span>{items.length} коллабов</span>
           </header>
           {items.length ? items.map((item) => <CollabCard item={item} key={item.id} />) : (
-            <div className="collabs-v2-empty">
+            <div className={styles.empty}>
               <Handshake size={28} />
               <strong>Здесь пока пусто</strong>
               <p>{tab === "incoming" ? "Новые приглашения появятся здесь." : tab === "outgoing" ? "Выберите исполнителя на доске лидеров." : "Завершённые коллабы появятся в архиве."}</p>
@@ -174,10 +184,10 @@ export default async function CollabsPage({
           )}
         </section>
 
-        <section className="collabs-v2-how">
-          <span>1<strong>Получи или отправь</strong><small>Выберите партнёра и предложите идею.</small></span>
-          <span>2<strong>Обсудите условия</strong><small>Сроки, формат и роли — в чате.</small></span>
-          <span>3<strong>Снимайте и публикуйте</strong><small>История останется в одном месте.</small></span>
+        <section className={styles.how}>
+          <span>1<strong>Заказчик приглашает</strong><small>Выбирает клиппера на доске лидеров.</small></span>
+          <span>2<strong>Стороны уточняют условия</strong><small>Кампания, срок и требования остаются в чате.</small></span>
+          <span>3<strong>Клиппер выполняет заказ</strong><small>Публикация и проверка проходят через ReelPay.</small></span>
         </section>
       </section>
     </AppShell>

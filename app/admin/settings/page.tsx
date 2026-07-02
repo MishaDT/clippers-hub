@@ -4,6 +4,7 @@ import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { callbackUri, isConfigured, type ProviderId } from "@/lib/oauth";
+import styles from "./settings.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function AdminSettingsPage() {
 
   return (
     <AdminShell>
-      <div className="admin-screen">
+      <div className={`admin-screen ${styles.page}`}>
         <AdminPageHeader
           eyebrow="Настройки"
           title="Интеграции и готовность"

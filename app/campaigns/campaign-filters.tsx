@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
+import { Bookmark, Check, ChevronDown, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState, useTransition } from "react";
+import styles from "./campaign-filters.module.css";
 
 const CATEGORIES = [
   ["all", "Все"],
@@ -34,6 +35,16 @@ type CampaignFiltersProps = {
   resultCount: number;
 };
 
+type SavedFilter = {
+  id: string;
+  category: string;
+  deadline: string;
+  sort: string;
+  label: string;
+};
+
+const SAVED_FILTERS_KEY = "reelpay_saved_campaign_filters_v1";
+
 function labelFor(items: readonly (readonly string[])[], value: string) {
   return items.find(([key]) => key === value)?.[1] || value;
 }
@@ -43,6 +54,16 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState({ category, deadline, sort });
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || "[]") as SavedFilter[];
+      setSavedFilters(Array.isArray(stored) ? stored.slice(0, 5) : []);
+    } catch {
+      localStorage.removeItem(SAVED_FILTERS_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     setDraft({ category, deadline, sort });
@@ -85,6 +106,24 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
     startTransition(() => router.push(urlWith({ ...draft, [key]: reset })));
   }
 
+  function saveCurrentFilter() {
+    const label = [
+      draft.category !== "all" ? labelFor(CATEGORIES, draft.category) : "Все темы",
+      draft.deadline !== "any" ? labelFor(DEADLINES, draft.deadline) : null,
+      draft.sort !== "promoted" ? labelFor(SORTS, draft.sort) : null
+    ].filter(Boolean).join(" · ");
+    const id = `${draft.category}:${draft.deadline}:${draft.sort}`;
+    const next = [{ id, ...draft, label }, ...savedFilters.filter((item) => item.id !== id)].slice(0, 5);
+    setSavedFilters(next);
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(next));
+  }
+
+  function removeSavedFilter(id: string) {
+    const next = savedFilters.filter((item) => item.id !== id);
+    setSavedFilters(next);
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(next));
+  }
+
   const activeFilters = [
     category !== "all" ? { key: "category" as const, label: labelFor(CATEGORIES, category) } : null,
     deadline !== "any" ? { key: "deadline" as const, label: labelFor(DEADLINES, deadline) } : null,
@@ -103,9 +142,15 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
             </button>
           ) : null}
         </form>
-        <button className={activeFilters.length ? "has-filters" : ""} type="button" onClick={() => setOpen(true)}>
+        <button
+          className={activeFilters.length ? "has-filters" : ""}
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={activeFilters.length ? `Фильтры, выбрано: ${activeFilters.length}` : "Фильтры"}
+          title="Фильтры"
+        >
           <SlidersHorizontal size={18} />
-          Фильтры
+          <span>Фильтры</span>
           {activeFilters.length ? <b>{activeFilters.length}</b> : <ChevronDown size={16} />}
         </button>
       </div>
@@ -134,6 +179,24 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Закрыть"><X size={20} /></button>
             </header>
+
+            {savedFilters.length ? (
+              <fieldset>
+                <legend>Сохранённые подборки</legend>
+                <div className="campaign-filter-options">
+                  {savedFilters.map((filter) => (
+                    <span className={styles.saved} key={filter.id}>
+                      <button type="button" onClick={() => setDraft({ category: filter.category, deadline: filter.deadline, sort: filter.sort })}>
+                        <Bookmark size={14} /> {filter.label}
+                      </button>
+                      <button type="button" onClick={() => removeSavedFilter(filter.id)} aria-label={`Удалить подборку ${filter.label}`}>
+                        <Trash2 size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
 
             <fieldset>
               <legend>Категория</legend>
@@ -169,7 +232,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
             </fieldset>
 
             <footer>
-              <button type="button" onClick={() => setDraft({ category: "all", deadline: "any", sort: "promoted" })}>Сбросить</button>
+              <button type="button" onClick={saveCurrentFilter}><Bookmark size={14} /> Сохранить</button>
               <button className="apply" type="button" onClick={apply}>
                 Применить{resultCount ? ` · ${resultCount}` : ""}
               </button>

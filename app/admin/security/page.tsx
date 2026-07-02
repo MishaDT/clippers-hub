@@ -114,7 +114,7 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
                   <p><b>Исполнитель:</b> {check.submission.worker.email}</p>
                   <p><b>Ссылка:</b> {check.submission.postUrl}</p>
                   <p><b>Score:</b> {check.score}%</p>
-                  <p><Link href={`/campaigns/${check.submission.campaign.id}`}>Открыть заказ</Link></p>
+                  <p><Link href={`/campaigns/${check.submission.campaign.id}?returnTo=%2Fadmin%2Fsecurity`}>Открыть заказ</Link></p>
                   <form className="admin-row-form" action={adminUpdateVideoCheckAction}>
                     <input type="hidden" name="checkId" value={check.id} />
                     <select name="decision" defaultValue="PASSED">
@@ -143,7 +143,7 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
                   <p><b>Статус:</b> {statusLabel(submission.status)}</p>
                   <p><b>Просмотры:</b> {compactNumber(submission.currentViews)} / {compactNumber(submission.campaign.viewThreshold)}</p>
                   <p><b>Ссылка:</b> {submission.postUrl}</p>
-                  <p><Link href={`/campaigns/${submission.campaign.id}`}>Открыть заказ</Link></p>
+                  <p><Link href={`/campaigns/${submission.campaign.id}?returnTo=%2Fadmin%2Fsecurity`}>Открыть заказ</Link></p>
                   <form className="admin-row-form" action={adminModerateSubmissionAction}>
                     <input type="hidden" name="submissionId" value={submission.id} />
                     <select name="decision" defaultValue="approve"><option value="approve">Одобрить</option><option value="reject">Отклонить</option></select>

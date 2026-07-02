@@ -78,7 +78,7 @@ export default async function ClipperPortfolioPage({
   const user = await prisma.user.findUnique({
     where: { handle },
     select: {
-      id: true, name: true, handle: true, avatar: true, bio: true,
+      id: true, name: true, handle: true, avatar: true, bio: true, email: true,
       specialtiesJson: true, socialLinksJson: true, lifetimeViews: true,
       kycStatus: true, createdAt: true
     }
@@ -150,15 +150,27 @@ export default async function ClipperPortfolioPage({
   let pendingInviteId: string | null = null;
   let alreadyEndorsed = false;
   let viewerCanEndorse = false;
+  let clientCampaigns: Array<{ id: string; title: string; deadline: Date }> = [];
   if (viewer && isClient && !isSelf) {
-    const [pi, ae, orders] = await Promise.all([
+    const [pi, ae, orders, campaigns] = await Promise.all([
       prisma.collabInvite.findFirst({ where: { clientId: viewer.id, workerId: user.id, status: "PENDING" }, select: { id: true } }),
       prisma.endorsement.findFirst({ where: { clientId: viewer.id, workerId: user.id }, select: { id: true } }),
-      prisma.campaign.count({ where: { ownerId: viewer.id } })
+      prisma.campaign.count({ where: { ownerId: viewer.id } }),
+      prisma.campaign.findMany({
+        where: {
+          ownerId: viewer.id,
+          status: { in: ["ACTIVE", "LOW_BUDGET"] },
+          deadline: { gt: new Date() }
+        },
+        select: { id: true, title: true, deadline: true },
+        orderBy: { createdAt: "desc" },
+        take: 30
+      })
     ]);
     pendingInviteId = pi?.id || null;
     alreadyEndorsed = Boolean(ae);
     viewerCanEndorse = canEndorse(orders);
+    clientCampaigns = campaigns;
   }
 
   const showInviteForm = isClient && !isSelf && !pendingInviteId && invited !== "1";
@@ -196,6 +208,7 @@ export default async function ClipperPortfolioPage({
               </h1>
               <span className="cp-handle">@{user.handle}</span>
               <div className="cp-chips">
+                {user.email.endsWith("@clippers.local") ? <span className="cp-chip cp-chip--muted">Демо-профиль</span> : null}
                 <LeagueBadge views={user.lifetimeViews} size="sm" />
                 {verified ? <span className="cp-chip cp-chip--ok"><BadgeCheck size={13} /> Проверен</span> : null}
                 {endorsements.length ? (
@@ -292,7 +305,8 @@ export default async function ClipperPortfolioPage({
         {invited === "1" ? <div className="cp-note ok"><Check size={15} /> Приглашение отправлено — ждём ответа клиппера.</div> : null}
         {endorsed === "1" ? <div className="cp-note ok"><Award size={15} /> Рекомендация добавлена. Спасибо!</div> : null}
         {error === "tier" ? <div className="cp-note warn">Рекомендовать могут только крупные заказчики (от 10 заказов).</div> : null}
-        {error === "invite" ? <div className="cp-note warn">Не удалось отправить приглашение — добавьте текст.</div> : null}
+        {error === "invite" ? <div className="cp-note warn">Не удалось отправить приглашение — заполните все условия.</div> : null}
+        {error === "campaign" ? <div className="cp-note warn">Выберите действующую кампанию с актуальным сроком.</div> : null}
 
         {/* PORTFOLIO */}
         <section className="cp-block">
@@ -347,9 +361,28 @@ export default async function ClipperPortfolioPage({
                 <form className="cp-form" action={sendCollabInviteAction}>
                   <input type="hidden" name="workerId" value={user.id} />
                   <input type="hidden" name="handle" value={user.handle} />
-                  <label className="cp-form-label">Приглашение на совместный клип</label>
-                  <textarea name="message" required maxLength={600} placeholder="Идея коллаба, условия, сроки…" />
-                  <button className="btn btn-primary" type="submit"><Sparkles size={16} /> Пригласить на коллаб</button>
+                  <label className="cp-form-label" htmlFor="collab-campaign">Кампания</label>
+                  {clientCampaigns.length ? (
+                    <>
+                      <select id="collab-campaign" name="campaignId" required defaultValue={clientCampaigns[0]?.id}>
+                        {clientCampaigns.map((campaign) => (
+                          <option value={campaign.id} key={campaign.id}>
+                            {campaign.title} · до {campaign.deadline.toLocaleDateString("ru-RU")}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="cp-form-label" htmlFor="collab-role">Роль клиппера</label>
+                      <input id="collab-role" name="role" required minLength={2} maxLength={80} defaultValue="Монтаж и публикация короткого ролика" />
+                      <label className="cp-form-label" htmlFor="collab-message">Условия и задача</label>
+                      <textarea id="collab-message" name="message" required maxLength={600} placeholder="Что нужно сделать, формат и важные требования…" />
+                      <button className="btn btn-primary" type="submit"><Sparkles size={16} /> Пригласить в кампанию</button>
+                    </>
+                  ) : (
+                    <div className="cp-form--empty">
+                      <p>Сначала создайте действующую кампанию — приглашение обязательно связывается с заказом и сроком.</p>
+                      <Link className="btn btn-primary" href="/campaigns/new">Создать кампанию</Link>
+                    </div>
+                  )}
                 </form>
               ) : (
                 <div className="cp-form cp-form--done">

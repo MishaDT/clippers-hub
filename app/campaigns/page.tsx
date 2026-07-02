@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { unstable_cache } from "next/cache";
 import {
   ArrowRight,
@@ -14,7 +15,7 @@ import { CampaignGuide } from "./campaign-guide";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
-import { compactNumber, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, rub } from "@/lib/money";
 import styles from "./marketplace.module.css";
 import { MarketplaceBrowser, type MarketplaceCard } from "@/components/marketplace-browser";
 
@@ -55,7 +56,7 @@ async function loadActiveOrder() {
     views: sub.currentViews,
     threshold,
     pct: Math.min(100, Math.round((sub.currentViews / threshold) * 100)),
-    payout: Math.round((threshold / 1000) * sub.campaign.cpmRateCents * 0.89)
+    payout: expectedPayout(threshold, sub.campaign.cpmRateCents, user.rank)
   };
 }
 
@@ -75,6 +76,7 @@ const getCampaigns = unstable_cache(
         niche: true,
         visibility: true,
         featuredUntil: true,
+        isDemo: true,
         remainingBudgetCents: true,
         createdAt: true,
         owner: { select: { name: true, handle: true, avatar: true } },
@@ -87,7 +89,7 @@ const getCampaigns = unstable_cache(
       orderBy: { createdAt: "desc" },
       take: 80
     }),
-  ["campaigns-marketplace-v3"],
+  ["campaigns-marketplace-v5"],
   { revalidate: 30, tags: ["campaigns"] }
 );
 
@@ -110,8 +112,8 @@ function timeOf(value: Date | string) {
   return value instanceof Date ? value.getTime() : new Date(value).getTime();
 }
 
-function expectedPayout(campaign: CampaignItem) {
-  return Math.round((campaign.viewThreshold / 1000) * campaign.cpmRateCents * 0.89);
+function campaignPayout(campaign: CampaignItem, rank: string) {
+  return expectedPayout(campaign.viewThreshold, campaign.cpmRateCents, rank);
 }
 
 function deadlineMatch(daysLeft: number, deadline: string) {
@@ -222,6 +224,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   }
 
   const params = await searchParams;
+  const workerRank = user?.rank || "BRONZE";
   const query = normalize(params.q).toLowerCase();
   const category = normalize(params.category) || "all";
   const sort = normalize(params.sort) || "promoted";
@@ -244,12 +247,12 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         return timeOf(b.createdAt) - timeOf(a.createdAt);
       }
       if (sort === "rate") return b.cpmRateCents - a.cpmRateCents;
-      if (sort === "pay") return expectedPayout(b) - expectedPayout(a);
+      if (sort === "pay") return campaignPayout(b, workerRank) - campaignPayout(a, workerRank);
       if (sort === "deadline") return timeOf(a.deadline) - timeOf(b.deadline);
       return timeOf(b.createdAt) - timeOf(a.createdAt);
     });
 
-  const topPayout = Math.max(0, ...filtered.map(expectedPayout));
+  const topPayout = Math.max(0, ...filtered.map((campaign) => campaignPayout(campaign, workerRank)));
   const medianRate = median(filtered.map((campaign) => campaign.cpmRateCents));
   const quickCount = filtered.filter((campaign) => Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000) <= 3).length;
   const cards: MarketplaceCard[] = filtered.map((campaign) => ({
@@ -259,8 +262,10 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
     niche: campaign.niche,
     cpmRateCents: campaign.cpmRateCents,
     viewThreshold: campaign.viewThreshold,
+    payoutCents: campaignPayout(campaign, workerRank),
     remainingBudgetCents: campaign.remainingBudgetCents,
     featured: campaign.visibility === "FEATURED" || Boolean(campaign.featuredUntil && timeOf(campaign.featuredUntil) > Date.now()),
+    demo: campaign.isDemo,
     owner: { name: campaign.owner.name, handle: campaign.owner.handle, avatar: campaign.owner.avatar },
     submissions: campaign._count.submissions,
     deadlineMs: timeOf(campaign.deadline),
@@ -269,7 +274,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
   // Shown only on the first page; the client browser toggles it without re-rendering.
   const page1Top = (
-    <>
+    <Fragment key="page-one-top">
       {active ? (
         <Link className={`active-order ao-${active.statusKey}`} href={active.href}>
           <span className="ao-glow" aria-hidden="true" />
@@ -294,11 +299,11 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         </Link>
       ) : null}
       <CampaignGuide variant="worker" initiallyCollapsed={Boolean(user?.marketGuideSeenAt)} persistSeen={Boolean(user)} />
-    </>
+    </Fragment>
   );
 
   const alwaysTop = (
-    <>
+    <Fragment key="orders-full-top">
       <header className="mk-head">
         <div>
           <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>
@@ -321,7 +326,22 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         sort={sort}
         resultCount={filtered.length}
       /></div>
-    </>
+    </Fragment>
+  );
+  const compactTop = (
+    <div className="mk-compact-top" id="orders" key="orders-compact-top">
+      <div>
+        <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>
+        <b>{filtered.length} заказов</b>
+      </div>
+      <CampaignFilters
+        query={query}
+        category={category}
+        deadline={deadline}
+        sort={sort}
+        resultCount={filtered.length}
+      />
+    </div>
   );
 
   return (
@@ -335,6 +355,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           initialPage={initialPage}
           page1Top={page1Top}
           alwaysTop={alwaysTop}
+          compactTop={compactTop}
         />
       </section>
     </AppShell>
