@@ -7,7 +7,7 @@ import { CampaignChat } from "@/components/campaign-chat";
 import { WorkspaceJourney } from "@/components/workspace-journey";
 import { TakeOrderButton } from "@/components/take-order-button";
 import { SubmissionDispute } from "@/components/submission-dispute";
-import { ClipVelocityChart } from "@/components/clip-velocity-chart";
+import { ClipReport } from "@/components/clip-report";
 import { closeCampaignAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/admin";
@@ -134,6 +134,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           id: true,
           postUrl: true,
           status: true,
+          platform: true,
           currentViews: true,
           currentLikes: true,
           currentComments: true,
@@ -159,6 +160,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           id: submission.id,
           postUrl: submission.postUrl,
           status: submission.status,
+          platform: submission.platform,
           currentViews: submission.currentViews,
           currentLikes: submission.currentLikes,
           currentComments: submission.currentComments,
@@ -381,7 +383,18 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                         </span>
                       )) : <span><Clock3 size={13} /> Проверки ещё не запускались</span>}
                     </div>
-                    <ClipVelocityChart data={report.viewVelocityJson} />
+                    <ClipReport
+                      input={{
+                        status: report.status,
+                        fraudScore: report.fraudScore,
+                        currentViews: report.currentViews,
+                        viewThreshold: campaign.viewThreshold,
+                        platform: report.platform,
+                        videoChecks: report.videoChecks.map((check) => ({ checkType: check.checkType, status: check.status })),
+                        disputeOpen: report.disputes.some((dispute) => dispute.status === "OPEN")
+                      }}
+                      velocity={report.viewVelocityJson}
+                    />
                     <footer>
                       <small>Обновлено {report.lastSyncedAt.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
                       {post && !report.postUrl.includes("post-link-waiting") ? <a href={post.url} target="_blank" rel="noreferrer">Открыть ролик <ArrowUpRight size={13} /></a> : null}
