@@ -387,3 +387,59 @@ export async function adminResolveModerationAction(formData: FormData) {
   if (moderationCase.authorId) revalidatePath(`/admin/users/${moderationCase.authorId}`);
   redirect("/admin/moderation?saved=1");
 }
+
+// Manual result verification for platforms with no metrics API (TikTok / Instagram): a
+// moderator records the real view count from the public post. This records a manual ownership
+// PASS and, once the goal is reached, moves the clip to THRESHOLD_MET so the next sync mints
+// the payout through the reserved budget (same safe path as auto-tracked clips).
+export async function adminVerifyResultAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const submissionId = clean(formData.get("submissionId"));
+  const views = Math.max(0, Math.round(Number(clean(formData.get("views"), "0")) || 0));
+  if (!submissionId) redirect("/admin/moderation?error=submission");
+
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    include: { campaign: { select: { viewThreshold: true } } }
+  });
+  if (!submission) redirect("/admin/moderation?error=submission");
+  if (submission.status === "PAID") redirect("/admin/moderation?error=already_paid");
+
+  const nextViews = Math.max(submission.currentViews, views);
+  const reached = nextViews >= submission.campaign.viewThreshold;
+  const nextStatus = reached && ["ACCEPTED", "POSTED", "VERIFIED"].includes(submission.status)
+    ? "THRESHOLD_MET"
+    : submission.status;
+
+  await prisma.$transaction(async (db) => {
+    const proof = stringify({ reason: "manual_admin_verification", verifiedViews: views, by: admin.id, at: new Date().toISOString() });
+    const existing = await db.videoCheck.findFirst({ where: { submissionId, checkType: "OWNERSHIP" }, select: { id: true } });
+    if (existing) {
+      await db.videoCheck.update({ where: { id: existing.id }, data: { status: "PASS", score: 100, resultJson: proof } });
+    } else {
+      await db.videoCheck.create({ data: { submissionId, checkType: "OWNERSHIP", status: "PASS", score: 100, resultJson: proof } });
+    }
+    await db.submission.update({
+      where: { id: submissionId },
+      data: {
+        currentViews: nextViews,
+        peakViews: Math.max(nextViews, submission.peakViews),
+        status: nextStatus,
+        verifiedAt: submission.verifiedAt ?? new Date(),
+        lastSyncedAt: new Date()
+      }
+    });
+  });
+
+  await logAdmin(admin.id, "VERIFY_RESULT", "Submission", submissionId, { views: nextViews, status: nextStatus, platform: submission.platform });
+  await notify({
+    userId: submission.workerId,
+    groupKey: notificationGroup("manual-verify", `${submissionId}:${nextViews}`),
+    title: "Просмотры подтверждены вручную",
+    body: `Модератор подтвердил ${nextViews.toLocaleString("ru-RU")} просмотров по вашей публикации.`,
+    kind: "SUBMISSION",
+    href: `/campaigns/${submission.campaignId}`
+  });
+  revalidatePath("/admin/moderation");
+  redirect("/admin/moderation?verified=1");
+}

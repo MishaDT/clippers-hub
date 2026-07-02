@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { Search, ShieldAlert } from "lucide-react";
-import { adminResolveModerationAction } from "@/app/admin/actions";
+import { adminResolveModerationAction, adminVerifyResultAction } from "@/app/admin/actions";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
@@ -43,8 +43,41 @@ export default async function ModerationPage({ searchParams }: {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const base = { status, severity, q };
 
+  // TikTok / Instagram have no public metrics API, so their view counts are confirmed here by
+  // a moderator from the public post (see adminVerifyResultAction / lib/view-providers.ts).
+  const manualQueue = await prisma.submission.findMany({
+    where: {
+      platform: { in: ["TIKTOK", "INSTAGRAM"] },
+      status: { in: ["POSTED", "VERIFIED", "THRESHOLD_MET"] },
+      campaign: { status: { in: ["ACTIVE", "LOW_BUDGET", "PAUSED", "COMPLETED"] } }
+    },
+    select: {
+      id: true, platform: true, postUrl: true, currentViews: true,
+      worker: { select: { handle: true } },
+      campaign: { select: { title: true, viewThreshold: true } }
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 30
+  });
+
   return <AdminShell><div className="admin-screen admin-dense-screen">
     <AdminPageHeader eyebrow="Безопасность" title="Модерация" description="Жалобы и автоматические срабатывания. Высокий риск отображается первым." />
+    {manualQueue.length ? <Card className="admin-panel">
+      <div className="section-head compact"><div><span className="eyebrow">Ручная проверка</span><h2>Просмотры TikTok / Instagram</h2></div><span>{manualQueue.length}</span></div>
+      <p className="muted">У этих площадок нет метрик-API — подтвердите просмотры из публичного поста. При достижении цели выплата уйдёт через резерв кампании.</p>
+      <div className="manual-verify-list">
+        {manualQueue.map((item) => <form className="manual-verify-row" action={adminVerifyResultAction} key={item.id}>
+          <input type="hidden" name="submissionId" value={item.id} />
+          <div className="manual-verify-info">
+            <b>{item.campaign.title}</b>
+            <span>{item.platform} · @{item.worker.handle} · сейчас {item.currentViews.toLocaleString("ru-RU")} / цель {item.campaign.viewThreshold.toLocaleString("ru-RU")}</span>
+            <a href={item.postUrl} target="_blank" rel="noreferrer">Открыть публикацию</a>
+          </div>
+          <input name="views" type="number" min={0} placeholder="Просмотры" required />
+          <button className="btn btn-primary">Подтвердить</button>
+        </form>)}
+      </div>
+    </Card> : null}
     <Card className="admin-panel admin-filter-panel">
       <form className="admin-filter-bar" action="/admin/moderation">
         <label><Search size={17} /><input name="q" defaultValue={q} placeholder="Текст, категория или email" /></label>

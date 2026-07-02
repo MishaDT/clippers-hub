@@ -14666,3 +14666,18 @@ body:has(.wallet-screen) {
   .admin-kpi-strip { grid-template-columns:1fr 1fr!important; }
   .admin-kpi-strip .admin-metric strong { font-size:24px!important; }
 }
+
+/* Admin manual view-verification queue (TikTok/Instagram) */
+.manual-verify-list { display: grid; gap: 8px; }
+.manual-verify-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 10px; align-items: center;
+  padding: 10px 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(255,255,255,.02);
+}
+.manual-verify-info { display: grid; gap: 2px; min-width: 0; }
+.manual-verify-info b { font-size: 13px; }
+.manual-verify-info span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manual-verify-info a { font-size: 12px; color: var(--primary); }
+.manual-verify-row input[type="number"] { min-height: 40px; padding: 8px 10px; }
+@media (max-width: 640px) {
+  .manual-verify-row { grid-template-columns: 1fr; }
+}

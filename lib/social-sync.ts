@@ -138,10 +138,18 @@ export async function syncViews() {
       demoSynced += 1;
     }
 
-    if (providerMode !== "api" && !allowDemoSync()) {
+    // Don't skip a submission that already reached the goal (e.g. via manual admin
+    // verification on TikTok/Instagram, which has no metrics API) — it still needs the
+    // settlement mint below to pay out through the reserved budget.
+    if (providerMode !== "api" && !allowDemoSync() && submission.status !== "THRESHOLD_MET") {
       skipped += 1;
       continue;
     }
+
+    // Demo (randomised) views are for a sandbox showcase only. In production they may animate
+    // the counter for display, but must NEVER verify a clip or drive a real payout from real
+    // escrow. Guard both the earning transition and the verified flag.
+    const demoInProd = providerMode.includes("demo") && process.env.NODE_ENV === "production";
 
     const ratio = likes === 0 ? 999 : views / likes;
     let fraudScore = Math.min(96, Math.max(4, Math.round(ratio > 200 ? 75 : 8 + Math.random() * 24)));
@@ -194,7 +202,7 @@ export async function syncViews() {
     let status = submission.status;
     if (fraudScore >= 70) {
       status = "REJECTED";
-    } else if (!ownershipOk) {
+    } else if (!ownershipOk || demoInProd) {
       status = submission.status; // accumulate views for display, never enter earning states
     } else if (submission.status === "THRESHOLD_MET") {
       status = "SETTLING";
@@ -219,7 +227,7 @@ export async function syncViews() {
         peakViews: Math.max(views, submission.peakViews),
         fraudScore,
         status: metricStatus,
-        verifiedAt: ownershipOk && !submission.verifiedAt ? new Date() : submission.verifiedAt,
+        verifiedAt: ownershipOk && !demoInProd && !submission.verifiedAt ? new Date() : submission.verifiedAt,
         lastSyncedAt: new Date(),
         viewVelocityJson: stringify([
           ...JSON.parse(submission.viewVelocityJson || "[]").slice(-20),
@@ -227,7 +235,7 @@ export async function syncViews() {
         ])
       }
     });
-    if (ownershipOk && !submission.verifiedAt) {
+    if (ownershipOk && !demoInProd && !submission.verifiedAt) {
       const verifiedForClient = await prisma.submission.count({
         where: {
           campaign: { ownerId: submission.campaign.ownerId },
