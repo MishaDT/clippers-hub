@@ -11,9 +11,7 @@ import { eventLabel, providerLabel, shortDate } from "@/lib/admin-format";
 export const dynamic = "force-dynamic";
 
 function startOfDay() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
+  return new Date(`${moscowDay(new Date())}T00:00:00+03:00`);
 }
 
 function daysAgo(days: number) {

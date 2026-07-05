@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { clientIp } from "@/lib/rate-limit";
+import { sanitizeAnalyticsMetadata } from "@/lib/analytics-metadata";
 
 export const ANALYTICS_TYPES = new Set([
   "PAGE_VIEW",
@@ -47,7 +48,7 @@ function clampMetadata(metadata?: Record<string, unknown>) {
   if (!metadata) return "{}";
   let serialized: string;
   try {
-    serialized = JSON.stringify(metadata);
+    serialized = JSON.stringify(sanitizeAnalyticsMetadata(metadata));
   } catch {
     return "{}";
   }

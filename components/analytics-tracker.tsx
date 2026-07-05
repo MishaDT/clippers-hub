@@ -14,7 +14,17 @@ export function AnalyticsTracker() {
     const payload = JSON.stringify({
       type: "PAGE_VIEW",
       path,
-      metadata: { referrer: document.referrer || null }
+      metadata: {
+        referrerHost: document.referrer
+          ? (() => {
+              try {
+                return new URL(document.referrer).hostname;
+              } catch {
+                return null;
+              }
+            })()
+          : null
+      }
     });
 
     if (navigator.sendBeacon) {
