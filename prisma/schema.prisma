@@ -478,6 +478,7 @@ model Transaction {
   type         TransactionType
   status       TransactionStatus @default(COMPLETED)
   provider     String?
+  providerRef  String?
   providerData String            @default("{}")
   createdAt    DateTime          @default(now())
 
@@ -488,6 +489,7 @@ model Transaction {
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([submissionId, type])
+  @@unique([provider, providerRef])
 }
 
 model ReferralProgramConfig {

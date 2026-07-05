@@ -86,11 +86,13 @@ export default async function AdminFinancePage({
                 <div><strong>{rub(tx.netCents)}</strong><span>gross {rub(tx.amountCents)} · fee {rub(tx.feeCents)}</span></div>
                 <div><Tag tone={tx.status === "COMPLETED" ? "good" : tx.status === "PENDING" ? "warn" : "soft"}>{statusLabel(tx.status)}</Tag></div>
                 <div>
-                  <form className="admin-row-form" action={adminUpdateTransactionAction}>
-                    <input type="hidden" name="transactionId" value={tx.id} />
-                    <select name="status" defaultValue={tx.status}><option value="PENDING">Ожидает</option><option value="COMPLETED">Успешно</option><option value="FAILED">Ошибка</option><option value="REVERSED">Возврат</option></select>
-                    <button type="submit">OK</button>
-                  </form>
+                  {tx.type === "WITHDRAWAL" && tx.status === "PENDING" ? (
+                    <form className="admin-row-form" action={adminUpdateTransactionAction}>
+                      <input type="hidden" name="transactionId" value={tx.id} />
+                      <select name="status" defaultValue="COMPLETED"><option value="COMPLETED">Выполнено</option><option value="FAILED">Ошибка — вернуть деньги</option><option value="REVERSED">Отменено — вернуть деньги</option></select>
+                      <button type="submit">OK</button>
+                    </form>
+                  ) : <span className="muted">Автоматически</span>}
                 </div>
               </div>
             ))}
@@ -104,11 +106,13 @@ export default async function AdminFinancePage({
                   <p><b>Пользователь:</b> <Link href={`/admin/users/${tx.user.id}`}>{tx.user.email}</Link></p>
                   <p><b>Дата:</b> {fullDate(tx.createdAt)}</p>
                   <p><b>Провайдер:</b> {tx.provider || "internal"}</p>
-                  <form className="admin-row-form" action={adminUpdateTransactionAction}>
-                    <input type="hidden" name="transactionId" value={tx.id} />
-                    <select name="status" defaultValue={tx.status}><option value="PENDING">Ожидает</option><option value="COMPLETED">Успешно</option><option value="FAILED">Ошибка</option><option value="REVERSED">Возврат</option></select>
-                    <button type="submit">Сохранить</button>
-                  </form>
+                  {tx.type === "WITHDRAWAL" && tx.status === "PENDING" ? (
+                    <form className="admin-row-form" action={adminUpdateTransactionAction}>
+                      <input type="hidden" name="transactionId" value={tx.id} />
+                      <select name="status" defaultValue="COMPLETED"><option value="COMPLETED">Выполнено</option><option value="FAILED">Ошибка — вернуть деньги</option><option value="REVERSED">Отменено — вернуть деньги</option></select>
+                      <button type="submit">Сохранить</button>
+                    </form>
+                  ) : <p className="muted">Статус изменяется системой.</p>}
                 </div>
               </details>
             ))}

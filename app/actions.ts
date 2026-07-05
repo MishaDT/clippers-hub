@@ -112,6 +112,14 @@ export async function openDisputeAction(formData: FormData) {
   let disputeId = "";
   try {
     const dispute = await prisma.$transaction(async (db) => {
+      await db.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "Submission" WHERE "id" = ${submissionId} FOR UPDATE
+      `);
+      const lockedSubmission = await db.submission.findUnique({
+        where: { id: submissionId },
+        select: { status: true }
+      });
+      if (!lockedSubmission || lockedSubmission.status === "PAID") throw new Error("DISPUTE_PAID");
       const created = await db.disputeCase.create({
         data: {
           userId: user.id,
@@ -133,6 +141,9 @@ export async function openDisputeAction(formData: FormData) {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     disputeId = dispute.id;
   } catch (error) {
+    if (error instanceof Error && error.message === "DISPUTE_PAID") {
+      redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}error=dispute_paid`);
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}dispute=already_open`);
     }
@@ -1417,8 +1428,9 @@ export async function depositAction(formData: FormData) {
       feeCents: provider === "stripe" ? Math.round(amountCents * 0.029) : 0,
       netCents: amountCents,
       type: "DEPOSIT",
-        status: intent.mode === "demo" ? "COMPLETED" : "PENDING",
+      status: intent.mode === "demo" ? "COMPLETED" : "PENDING",
       provider,
+      providerRef: intent.id,
       providerData: stringify(intent)
     }
   });

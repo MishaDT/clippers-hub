@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { commissionRate, settlementGross, settlementReservationSplit } from "@/lib/money";
 import { stringify } from "@/lib/json";
@@ -6,6 +7,7 @@ import { checkOwnership, platformIsVerifiable, type OwnershipResult } from "@/li
 import { trackEvent } from "@/lib/analytics";
 import { fetchTikTokSnapshotForUser } from "@/lib/social-platforms";
 import { releaseReferralCommissions } from "@/lib/referrals";
+import { evaluateViewRisk, VIEW_RISK_REVIEW_THRESHOLD } from "@/lib/view-validation";
 
 function canUseProvider(platform: string): platform is ViewPlatform {
   return platform === "YOUTUBE" || platform === "VK" || platform === "TIKTOK" || platform === "INSTAGRAM";
@@ -62,17 +64,26 @@ async function settlePendingEarnings() {
     if (!tx.submission || tx.submission.fraudScore >= 70 || tx.submission.status === "REJECTED") continue;
     // Final ownership gate before money actually leaves hold: never release if the
     // latest tracking-code check on this clip failed.
-    const ownershipFail = await prisma.videoCheck.findFirst({
-      where: { submissionId: tx.submission.id, checkType: "OWNERSHIP", status: "FAIL" },
+    const blockingCheck = await prisma.videoCheck.findFirst({
+      where: {
+        submissionId: tx.submission.id,
+        OR: [
+          { checkType: "OWNERSHIP", status: "FAIL" },
+          { checkType: "METRICS_RISK", status: { in: ["NEEDS_REVIEW", "FAILED"] } }
+        ]
+      },
       select: { id: true }
     });
-    if (ownershipFail) continue;
+    if (blockingCheck) continue;
     const submissionId = tx.submission.id;
     const campaignId = tx.submission.campaignId;
     // Atomic claim: only the run that flips this earning PENDING -> COMPLETED moves the
     // money out of hold. Concurrent settlement passes that lose the race update 0 rows and
     // release nothing, so a single earning can never be paid out twice.
     const releasedOk = await prisma.$transaction(async (db) => {
+      await db.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "Submission" WHERE "id" = ${submissionId} FOR UPDATE
+      `);
       const openDispute = await db.disputeCase.findFirst({
         where: { submissionId, status: "OPEN" },
         select: { id: true }
@@ -84,13 +95,14 @@ async function settlePendingEarnings() {
       });
       if (claim.count === 0) return false;
       await db.submission.update({ where: { id: submissionId }, data: { status: "PAID", paidAt: new Date() } });
-      await db.user.update({
-        where: { id: tx.userId },
+      const moved = await db.user.updateMany({
+        where: { id: tx.userId, holdBalanceCents: { gte: tx.netCents } },
         data: {
           holdBalanceCents: { decrement: tx.netCents },
           balanceCents: { increment: tx.netCents }
         }
       });
+      if (!moved.count) throw new Error("HOLD_BALANCE_INVARIANT");
       const campaign = await db.campaign.findUnique({
         where: { id: campaignId },
         select: { ownerId: true }
@@ -129,6 +141,7 @@ export async function syncViews() {
     let views = submission.currentViews;
     let likes = submission.currentLikes;
     let comments = submission.currentComments;
+    let observedViews = submission.currentViews;
     let connectedOwnership: OwnershipResult | null = null;
 
     if (canUseProvider(submission.platform)) {
@@ -137,7 +150,8 @@ export async function syncViews() {
           ? await fetchTikTokSnapshotForUser(submission.workerId, submission.postUrl)
           : await viewProviders[submission.platform].fetchSnapshot(submission.postUrl);
         providerMode = "api";
-        views = Math.max(submission.currentViews, snapshot.views);
+        observedViews = snapshot.views;
+        views = Math.max(submission.currentViews, observedViews);
         likes = Math.max(submission.currentLikes, snapshot.likes || 0);
         comments = Math.max(submission.currentComments, snapshot.comments || 0);
         velocity = Math.max(0, views - submission.currentViews);
@@ -195,9 +209,6 @@ export async function syncViews() {
     // escrow. Guard both the earning transition and the verified flag.
     const demoInProd = providerMode.includes("demo") && process.env.NODE_ENV === "production";
 
-    const ratio = likes === 0 ? 999 : views / likes;
-    let fraudScore = Math.min(96, Math.max(4, Math.round(ratio > 200 ? 75 : 8 + Math.random() * 24)));
-
     // ---- Ownership gate ----------------------------------------------------
     // A clip may only advance toward payout once we've confirmed its tracking
     // code is present in the published video's description (proves the clipper
@@ -216,7 +227,6 @@ export async function syncViews() {
       } else if (connectedOwnership) {
         ownershipOk = connectedOwnership.matched;
         ownershipNote = connectedOwnership.reason;
-        fraudScore = connectedOwnership.matched ? Math.min(fraudScore, 30) : Math.max(fraudScore, 60);
         await recordOwnershipCheck(
           submission.id,
           connectedOwnership.matched ? "PASS" : "FAIL",
@@ -231,13 +241,11 @@ export async function syncViews() {
         if (proof.matched) {
           ownershipOk = true;
           ownershipNote = "code_found";
-          fraudScore = Math.min(fraudScore, 30);
           await recordOwnershipCheck(submission.id, "PASS", proof);
         } else if (proof.reason.startsWith("fetch_failed")) {
           ownershipNote = proof.reason; // transient (quota/private/deleted) — hold, no penalty
         } else {
           ownershipNote = "code_missing"; // genuinely absent — flag, block earning, allow recovery
-          fraudScore = Math.max(fraudScore, 60);
           await recordOwnershipCheck(submission.id, "FAIL", proof);
         }
       } else {
@@ -251,10 +259,66 @@ export async function syncViews() {
       }
     }
 
+    const risk = evaluateViewRisk({
+      previousViews: submission.currentViews,
+      observedViews,
+      views,
+      likes,
+      comments,
+      elapsedSeconds: Math.max(1, Math.round((Date.now() - submission.lastSyncedAt.getTime()) / 1000)),
+      ownershipVerified: ownershipOk
+    });
+    let fraudScore = risk.fraudScore;
+    let requiresRiskReview = risk.requiresReview;
+    if (requiresRiskReview) {
+      const existingRiskCheck = await prisma.videoCheck.findFirst({
+        where: { submissionId: submission.id, checkType: "METRICS_RISK" },
+        orderBy: { updatedAt: "desc" }
+      });
+      const reviewedAfterPreviousSnapshot = existingRiskCheck?.status === "PASSED"
+        && existingRiskCheck.updatedAt.getTime() >= submission.lastSyncedAt.getTime();
+      if (reviewedAfterPreviousSnapshot) {
+        requiresRiskReview = false;
+        fraudScore = Math.min(fraudScore, 25);
+      } else if (existingRiskCheck) {
+        await prisma.videoCheck.update({
+          where: { id: existingRiskCheck.id },
+          data: {
+            status: "NEEDS_REVIEW",
+            score: fraudScore,
+            resultJson: stringify({
+              reasons: risk.reasons,
+              previousViews: submission.currentViews,
+              observedViews,
+              views,
+              checkedAt: new Date().toISOString()
+            })
+          }
+        });
+      } else {
+        await prisma.videoCheck.create({
+          data: {
+            submissionId: submission.id,
+            checkType: "METRICS_RISK",
+            status: "NEEDS_REVIEW",
+            score: fraudScore,
+            resultJson: stringify({
+              reasons: risk.reasons,
+              previousViews: submission.currentViews,
+              observedViews,
+              views,
+              checkedAt: new Date().toISOString()
+            })
+          }
+        });
+      }
+    }
     const reachedThreshold = views >= submission.campaign.viewThreshold;
     let status = submission.status;
-    if (fraudScore >= 70) {
-      status = "REJECTED";
+    if (requiresRiskReview) {
+      // A heuristic is not proof of manipulation. Freeze the workflow and let
+      // a moderator decide instead of automatically rejecting the worker.
+      status = submission.status;
     } else if (!ownershipOk || demoInProd) {
       status = submission.status; // accumulate views for display, never enter earning states
     } else if (submission.status === "THRESHOLD_MET") {
@@ -274,7 +338,7 @@ export async function syncViews() {
       && submission.campaign.minimumGuaranteeCents > 0
       && ownershipOk
       && !demoInProd
-      && fraudScore < 70
+      && fraudScore < VIEW_RISK_REVIEW_THRESHOLD
       && ["POSTED", "VERIFIED"].includes(submission.status);
     const willMint = thresholdMint || guaranteeMint;
     const metricStatus = thresholdMint ? "THRESHOLD_MET" : status;
@@ -292,7 +356,15 @@ export async function syncViews() {
         lastSyncedAt: new Date(),
         viewVelocityJson: stringify([
           ...JSON.parse(submission.viewVelocityJson || "[]").slice(-20),
-          { at: new Date().toISOString(), from: submission.currentViews, to: views, mode: providerMode, ownership: ownershipNote }
+          {
+            at: new Date().toISOString(),
+            from: submission.currentViews,
+            observed: observedViews,
+            to: views,
+            mode: providerMode,
+            ownership: ownershipNote,
+            riskReasons: risk.reasons
+          }
         ])
       }
     });

@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
 import { stringify } from "@/lib/json";
 import { CampaignReservationError, releaseSubmissionReservation, restoreSubmissionReservation } from "@/lib/campaign-reservations";
+import { adminTransactionTransition } from "@/lib/transaction-rules";
 import { parseRubToCents } from "@/lib/money";
 import { notificationGroup, notify } from "@/lib/notifications";
 
@@ -112,41 +113,27 @@ export async function adminUpdateTransactionAction(formData: FormData) {
   const status = txStatuses.includes(statusInput as (typeof txStatuses)[number]) ? statusInput : "PENDING";
   const tx = await prisma.$transaction(async (db) => {
     const current = await db.transaction.findUniqueOrThrow({ where: { id: transactionId } });
-    const updated = await db.transaction.update({ where: { id: transactionId }, data: { status: status as "PENDING" | "COMPLETED" | "FAILED" | "REVERSED" } });
-    if (
-      current.type === "EARNING"
-      && current.status === "COMPLETED"
-      && (status === "FAILED" || status === "REVERSED")
-    ) {
-      const commissions = await db.referralCommission.findMany({
-        where: { transactionId, status: "AVAILABLE" },
-        select: { id: true, referrerId: true, amountCents: true }
+    const transition = adminTransactionTransition({
+      type: current.type,
+      currentStatus: current.status,
+      nextStatus: status
+    });
+    if (!transition) return null;
+    const claimed = await db.transaction.updateMany({
+      where: { id: transactionId, status: "PENDING", type: "WITHDRAWAL" },
+      data: { status: transition.nextStatus }
+    });
+    if (!claimed.count) return null;
+    if (transition.refundBalance) {
+      await db.user.update({
+        where: { id: current.userId },
+        data: { balanceCents: { increment: current.amountCents } }
       });
-      for (const commission of commissions) {
-        const reversed = await db.referralCommission.updateMany({
-          where: { id: commission.id, status: "AVAILABLE" },
-          data: { status: "REVERSED", reversedAt: new Date() }
-        });
-        if (!reversed.count) continue;
-        await db.user.update({
-          where: { id: commission.referrerId },
-          data: { balanceCents: { decrement: commission.amountCents } }
-        });
-        await db.transaction.create({
-          data: {
-            userId: commission.referrerId,
-            amountCents: -commission.amountCents,
-            feeCents: 0,
-            netCents: -commission.amountCents,
-            type: "ADJUSTMENT",
-            status: "COMPLETED",
-            providerData: stringify({ referralCommissionReversal: commission.id, sourceTransactionId: transactionId })
-          }
-        });
-      }
     }
+    const updated = await db.transaction.findUniqueOrThrow({ where: { id: transactionId } });
     return updated;
   });
+  if (!tx) redirect("/admin/finance?error=invalid_transition");
   await logAdmin(admin.id, "ADMIN_TRANSACTION_UPDATE", "Transaction", transactionId, { status, userId: tx.userId });
   revalidatePath("/admin/finance");
   revalidatePath("/admin/referrals");
@@ -162,15 +149,49 @@ export async function adminModerateSubmissionAction(formData: FormData) {
   const note = clean(formData.get("note")).slice(0, 180);
   if (!submissionId) redirect("/admin/security");
 
-  const status = decision === "approve" ? "VERIFIED" : "REJECTED";
+  const current = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    select: { status: true }
+  });
+  if (!current) redirect("/admin/security?error=submission");
+  const status = decision === "approve"
+    ? current.status === "REJECTED" ? "VERIFIED" : current.status
+    : "REJECTED";
   try {
     await prisma.$transaction(async (db) => {
-      if (decision === "approve") await restoreSubmissionReservation(db, submissionId);
-      else await releaseSubmissionReservation(db, submissionId);
+      if (decision === "approve") {
+        if (current.status === "REJECTED") {
+          await restoreSubmissionReservation(db, submissionId);
+        }
+      } else {
+        await releaseSubmissionReservation(db, submissionId);
+      }
+      if (decision === "approve") {
+        const riskCheck = await db.videoCheck.findFirst({
+          where: { submissionId, checkType: "METRICS_RISK" },
+          orderBy: { updatedAt: "desc" },
+          select: { id: true }
+        });
+        if (riskCheck) {
+          await db.videoCheck.update({
+            where: { id: riskCheck.id },
+            data: {
+              status: "PASSED",
+              score: 5,
+              resultJson: stringify({
+                adminDecision: "PASSED",
+                note,
+                decidedAt: new Date().toISOString(),
+                adminId: admin.id
+              })
+            }
+          });
+        }
+      }
       await db.submission.update({
       where: { id: submissionId },
       data: {
-        status: status as "VERIFIED" | "REJECTED",
+        status,
         fraudScore: decision === "approve" ? 20 : 95,
         verifiedAt: decision === "approve" ? new Date() : null
       }
@@ -245,10 +266,14 @@ export async function adminResolveDisputeAction(formData: FormData) {
             data: { status: "REVERSED" }
           });
           if (reversed.count) {
-            await db.user.update({
-              where: { id: dispute.submission.workerId },
+            const holdReleased = await db.user.updateMany({
+              where: {
+                id: dispute.submission.workerId,
+                holdBalanceCents: { gte: pendingEarning.netCents }
+              },
               data: { holdBalanceCents: { decrement: pendingEarning.netCents } }
             });
+            if (!holdReleased.count) throw new Error("HOLD_BALANCE_INVARIANT");
             await db.campaign.update({
               where: { id: dispute.submission.campaignId },
               data: {

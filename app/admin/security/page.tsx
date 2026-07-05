@@ -87,7 +87,7 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
 
         <div className="admin-grid compact admin-kpi-strip">
           <Card className="admin-metric"><ShieldAlert /><span>Fraud 50+</span><strong>{riskySubmissions.length}</strong><small>работ</small></Card>
-          <Card className="admin-metric"><ShieldAlert /><span>Watermark</span><strong>{videoChecks.length}</strong><small>проверок</small></Card>
+          <Card className="admin-metric"><ShieldAlert /><span>Проверки</span><strong>{videoChecks.length}</strong><small>в очереди</small></Card>
           <Card className="admin-metric"><Fingerprint /><span>Повторы 24ч</span><strong>{repeatedHigh.length}</strong><small>частые IP hash</small></Card>
           <Card className="admin-metric"><KeyRound /><span>OAuth 7д</span><strong>{oauthLogins}</strong><small>входы</small></Card>
         </div>
@@ -105,7 +105,7 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
         </Card>
 
         <Card className="admin-panel">
-          <div className="section-head compact"><h2>Очередь watermark</h2></div>
+          <div className="section-head compact"><h2>Очередь проверок</h2></div>
           <div className="admin-dense-list always">
             {videoChecks.map((check) => (
               <details className="admin-dense-row" key={check.id}>
@@ -118,7 +118,7 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
                   <form className="admin-row-form" action={adminUpdateVideoCheckAction}>
                     <input type="hidden" name="checkId" value={check.id} />
                     <select name="decision" defaultValue="PASSED">
-                      <option value="PASSED">Watermark есть</option>
+                      <option value="PASSED">Проверка пройдена</option>
                       <option value="NEEDS_REVIEW">Нужно ревью</option>
                       <option value="FAILED">Отклонить</option>
                     </select>
@@ -128,7 +128,7 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
                 </div>
               </details>
             ))}
-            {!videoChecks.length ? <p className="muted">Очередь watermark пустая.</p> : null}
+            {!videoChecks.length ? <p className="muted">Очередь проверок пустая.</p> : null}
           </div>
         </Card>
 

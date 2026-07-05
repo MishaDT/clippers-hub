@@ -15,9 +15,9 @@ async function completeDepositByProviderId(provider: string, providerPaymentId: 
   const tx = await prisma.transaction.findFirst({
     where: {
       provider,
+      providerRef: providerPaymentId,
       type: "DEPOSIT",
-      status: "PENDING",
-      providerData: { contains: providerPaymentId }
+      status: "PENDING"
     }
   });
   if (!tx) return { completed: false, reason: "transaction_not_found" };

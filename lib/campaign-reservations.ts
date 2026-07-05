@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { grossPayout } from "@/lib/money";
 import { nextCampaignStatusAfterReservation } from "@/lib/reservation-rules";
 
@@ -13,6 +13,11 @@ export async function reserveCampaignSlot(
   campaignId: string,
   workerId: string
 ) {
+  // Lock the campaign row until this transaction finishes. Without this lock two workers
+  // could both observe the last slot as free before either submission is created.
+  await db.$queryRaw(Prisma.sql`
+    SELECT "id" FROM "Campaign" WHERE "id" = ${campaignId} FOR UPDATE
+  `);
   const campaign = await db.campaign.findUnique({
     where: { id: campaignId },
     select: {

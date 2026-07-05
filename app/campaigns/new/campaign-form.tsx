@@ -18,7 +18,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { createCampaignAction } from "@/app/actions";
-import { compactNumber, rub } from "@/lib/money";
+import { compactNumber, grossPayout, rub } from "@/lib/money";
 import styles from "./campaign-form.module.css";
 
 const platformOptions = [
@@ -109,7 +109,7 @@ export function CampaignForm({
   }, [preferInitial]);
 
   useEffect(() => {
-    const maximum = Math.max(0, Math.round((viewThreshold / 1000) * cpm));
+    const maximum = grossPayout(viewThreshold, Math.max(0, cpm) * 100) / 100;
     setMinimumGuarantee((current) => Math.min(current, maximum));
   }, [cpm, viewThreshold]);
 
@@ -143,7 +143,7 @@ export function CampaignForm({
   }
 
   const estimate = useMemo(() => {
-    const payout = Math.max(0, Math.round((viewThreshold / 1000) * cpm * 100));
+    const payout = grossPayout(viewThreshold, Math.max(0, cpm) * 100);
     const guarantee = Math.min(payout, Math.max(0, Math.round(minimumGuarantee * 100)));
     const grossViews = cpm > 0 ? Math.floor((budget / cpm) * 1000) : 0;
     const requiredBudget = Math.max(0, Math.round((payout * deliverableCount) / 100));
