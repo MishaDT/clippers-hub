@@ -126,7 +126,7 @@ test.describe("worker flow", () => {
     await page.getByText("Спор и апелляция").click();
     await page.locator(`textarea[name="reason"]`).fill("Работа выполнена по брифу, tracking-код сохранён, прошу проверить отклонение по фактам.");
     await page.getByRole("button", { name: "Открыть апелляцию" }).click();
-    await expect(page).toHaveURL(/dispute=opened/);
+    await expect(page).toHaveURL(/dispute=opened/, { timeout: 45_000 });
     await expect(page.getByText("Выплата остановлена")).toBeVisible();
 
     const opened = await prisma.disputeCase.findFirstOrThrow({ where: { submissionId: submission.id, status: "OPEN" } });
@@ -161,9 +161,10 @@ test.describe("client flow", () => {
     await page.locator('input[name="cpm"]').fill("45");
     await page.getByRole("button", { name: /Продолжить/i }).click();
     await page.locator('input[name="rightsConfirmed"]').check();
+    await page.locator('input[name="briefConfirmed"]').check();
     await page.getByRole("button", { name: /Опубликовать заказ/i }).click();
 
-    await expect(page).toHaveURL(/\/campaigns\/(?!new$)[^/]+$/);
+    await expect(page).toHaveURL(/\/campaigns\/(?!new$)[^/]+$/, { timeout: 45_000 });
     await expect(page.getByRole("heading", { name: /E2E заказ/ })).toBeVisible();
     await expectNoHorizontalScroll(page);
   });

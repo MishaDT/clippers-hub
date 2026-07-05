@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 
 export default async function globalSetup() {
+  if (process.env.E2E_SKIP_SETUP === "1") return;
   const testUrl = process.env.DATABASE_URL;
   if (!testUrl) throw new Error("E2E requires DATABASE_URL_TEST.");
   const parsed = new URL(testUrl);
@@ -11,5 +12,5 @@ export default async function globalSetup() {
     stdio: "inherit",
     env: process.env
   });
-  execFileSync("node", ["prisma/seed.js"], { stdio: "inherit", env: process.env });
+  execFileSync(process.execPath, ["scripts/seed-e2e.js"], { stdio: "inherit", env: process.env });
 }
