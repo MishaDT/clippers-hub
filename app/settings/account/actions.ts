@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { MAX_AVATAR_BYTES, processAvatarImage } from "@/lib/avatar-image";
 import { prisma } from "@/lib/prisma";
 import { stringify } from "@/lib/json";
+import { revokeTikTokConnection } from "@/lib/social-platforms";
 
 function refreshAvatarPages(handle: string) {
   revalidateTag("campaigns");
@@ -74,4 +75,34 @@ export async function unlinkAccountProviderAction(formData: FormData) {
   });
   revalidatePath("/settings/account");
   redirect("/settings/account?updated=oauth");
+}
+
+export async function unlinkSocialPlatformAction(formData: FormData) {
+  const user = await requireUser();
+  const socialAccountId = String(formData.get("socialAccountId") || "");
+  if (!socialAccountId) redirect("/settings/account?social=failed");
+
+  const account = await prisma.socialAccount.findFirst({
+    where: { id: socialAccountId, userId: user.id },
+    select: { id: true, platform: true, accessToken: true }
+  });
+  if (!account) redirect("/settings/account?social=failed");
+
+  if (account.platform === "TIKTOK") {
+    await revokeTikTokConnection(account.accessToken);
+  }
+  await prisma.$transaction([
+    prisma.socialAccount.delete({ where: { id: account.id } }),
+    prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "SOCIAL_ACCOUNT_DISCONNECTED",
+        entity: "SocialAccount",
+        entityId: account.id,
+        metadata: stringify({ platform: account.platform })
+      }
+    })
+  ]);
+  revalidatePath("/settings/account");
+  redirect("/settings/account?social=disconnected");
 }

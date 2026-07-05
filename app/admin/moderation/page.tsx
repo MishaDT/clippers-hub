@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { Search, ShieldAlert } from "lucide-react";
 import { adminResolveModerationAction, adminVerifyResultAction } from "@/app/admin/actions";
+import { reviewDraftAction } from "@/app/actions";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
@@ -59,9 +60,46 @@ export default async function ModerationPage({ searchParams }: {
     orderBy: { updatedAt: "desc" },
     take: 30
   });
+  const draftQueue = await prisma.submission.findMany({
+    where: {
+      draftStatus: "PENDING",
+      campaign: { reviewMode: { in: ["FAST", "STANDARD"] } }
+    },
+    select: {
+      id: true,
+      draftUrl: true,
+      draftRevision: true,
+      draftSubmittedAt: true,
+      worker: { select: { name: true, handle: true, trustScore: true } },
+      campaign: { select: { id: true, title: true, reviewMode: true, maxRevisionRounds: true } }
+    },
+    orderBy: { draftSubmittedAt: "asc" },
+    take: 30
+  });
 
   return <AdminShell><div className="admin-screen admin-dense-screen">
     <AdminPageHeader eyebrow="Безопасность" title="Модерация" description="Жалобы и автоматические срабатывания. Высокий риск отображается первым." />
+    {draftQueue.length ? <Card className="admin-panel">
+      <div className="section-head compact"><div><span className="eyebrow">До публикации</span><h2>Черновики роликов</h2></div><span>{draftQueue.length}</span></div>
+      <p className="muted">Проверяйте соответствие зафиксированному брифу. Новые требования нельзя добавлять через правки.</p>
+      <div className="manual-verify-list">
+        {draftQueue.map((item) => <form className="manual-verify-row" action={reviewDraftAction} key={item.id}>
+          <input type="hidden" name="submissionId" value={item.id} />
+          <input type="hidden" name="returnTo" value="/admin/moderation" />
+          <div className="manual-verify-info">
+            <b>{item.campaign.title}</b>
+            <span>{item.campaign.reviewMode} · версия {item.draftRevision + 1} · @{item.worker.handle} · доверие {item.worker.trustScore}</span>
+            {item.draftUrl ? <a href={item.draftUrl} target="_blank" rel="noreferrer">Открыть черновик</a> : null}
+          </div>
+          <input name="note" maxLength={700} placeholder="Причина правок или отклонения" />
+          <div className="admin-inline-actions">
+            <button className="btn btn-primary" name="decision" value="approve">Принять</button>
+            <button className="btn" name="decision" value="changes" disabled={item.draftRevision >= item.campaign.maxRevisionRounds}>На правки</button>
+            <button className="btn danger" name="decision" value="reject">Отклонить</button>
+          </div>
+        </form>)}
+      </div>
+    </Card> : null}
     {manualQueue.length ? <Card className="admin-panel">
       <div className="section-head compact"><div><span className="eyebrow">Ручная проверка</span><h2>Просмотры TikTok / Instagram</h2></div><span>{manualQueue.length}</span></div>
       <p className="muted">У этих площадок нет метрик-API — подтвердите просмотры из публичного поста. При достижении цели выплата уйдёт через резерв кампании.</p>

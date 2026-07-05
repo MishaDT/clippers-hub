@@ -1,0 +1,120 @@
+.draftStep {
+  border-color: rgba(186, 255, 0, .2);
+  background:
+    radial-gradient(circle at 95% 0, rgba(186, 255, 0, .08), transparent 34%),
+    rgba(255, 255, 255, .018);
+}
+
+.draftStatus {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 12px;
+  color: #eef2e9;
+  background: rgba(255, 255, 255, .025);
+}
+
+.draftStatus svg {
+  color: #baff00;
+}
+
+.draftStatus b,
+.draftStatus span {
+  display: block;
+}
+
+.draftStatus span {
+  margin-top: 3px;
+  color: #8e948a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.draftNote {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid #baff00;
+  border-radius: 0 9px 9px 0;
+  color: #dce2d7;
+  background: rgba(186, 255, 0, .055);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.draftFields {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.draftFields label {
+  display: grid;
+  gap: 6px;
+  color: #dce1d8;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.draftFields input,
+.draftFields textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 11px;
+  color: #f4f6f2;
+  background: #101310;
+}
+
+.draftFields textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.draftFields small {
+  color: #858b82;
+}
+
+.draftSubmit {
+  min-height: 46px;
+  justify-self: start;
+}
+
+@media (max-width: 640px) {
+  .draftSubmit {
+    width: 100%;
+  }
+}
+.fileUpload {
+  padding: 12px;
+  border: 1px dashed rgba(186, 255, 0, .28);
+  border-radius: 12px;
+  background: rgba(186, 255, 0, .035);
+}
+
+.fileUpload input[type="file"] {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 7px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 9px;
+  color: #cbd0c8;
+  background: #0d100d;
+}
+
+.fileUpload small {
+  display: block;
+  margin-top: 5px;
+  color: #858b82;
+  font-size: 11px;
+}
+
+.uploadError {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 12px;
+}

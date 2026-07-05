@@ -83,7 +83,7 @@ export async function notifyModerators(
 
 export async function runWatermarkQueue(prisma: PrismaClient, limit = 20) {
   const jobs = await prisma.videoCheck.findMany({
-    where: { status: "PENDING" },
+    where: { status: "PENDING", checkType: "WATERMARK" },
     include: { submission: true },
     orderBy: { createdAt: "asc" },
     take: limit

@@ -15,7 +15,9 @@ import { CampaignGuide } from "./campaign-guide";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
-import { compactNumber, expectedPayout, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, minimumGuaranteedPayout, rub } from "@/lib/money";
+import { parseJson } from "@/lib/json";
+import { campaignMatch } from "@/lib/campaign-matching";
 import styles from "./marketplace.module.css";
 import { MarketplaceBrowser, type MarketplaceCard } from "@/components/marketplace-browser";
 
@@ -39,12 +41,22 @@ async function loadActiveOrder() {
     select: {
       status: true,
       currentViews: true,
-      campaign: { select: { id: true, title: true, viewThreshold: true, cpmRateCents: true, niche: true } }
+      draftStatus: true,
+      campaign: { select: { id: true, title: true, viewThreshold: true, cpmRateCents: true, minimumGuaranteeCents: true, niche: true, draftRequired: true } }
     }
   });
   if (!sub) return null;
   const threshold = Math.max(1, sub.campaign.viewThreshold);
-  const meta = ACTIVE_META[sub.status] ?? ACTIVE_META.POSTED;
+  const draftMeta = sub.status === "ACCEPTED" && sub.campaign.draftRequired
+    ? sub.draftStatus === "APPROVED"
+      ? { label: "Черновик принят — опубликуй ролик", cta: "Опубликовать", href: () => "/upload" }
+      : sub.draftStatus === "PENDING"
+        ? { label: "Черновик проверяется", cta: "Открыть статус", href: () => "/upload" }
+        : sub.draftStatus === "CHANGES_REQUESTED"
+          ? { label: "Нужны изменения в черновике", cta: "Исправить", href: () => "/upload" }
+          : { label: "Заказ взят — отправь черновик", cta: "Отправить черновик", href: () => "/upload" }
+    : null;
+  const meta = draftMeta ?? ACTIVE_META[sub.status] ?? ACTIVE_META.POSTED;
   return {
     status: sub.status,
     statusKey: sub.status.toLowerCase(),
@@ -56,7 +68,16 @@ async function loadActiveOrder() {
     views: sub.currentViews,
     threshold,
     pct: Math.min(100, Math.round((sub.currentViews / threshold) * 100)),
-    payout: expectedPayout(threshold, sub.campaign.cpmRateCents, user.rank)
+    payout: expectedPayout(threshold, sub.campaign.cpmRateCents, user.rank),
+    guarantee: minimumGuaranteedPayout(sub.campaign.minimumGuaranteeCents, user.rank)
+    ,
+    nextStep: sub.status === "ACCEPTED" && sub.campaign.draftRequired && sub.draftStatus !== "APPROVED"
+      ? sub.draftStatus === "PENDING"
+        ? "Дождись решения перед публикацией"
+        : sub.draftStatus === "CHANGES_REQUESTED"
+          ? "Открой комментарий и отправь новую версию"
+          : "Отправь закрытую ссылку на черновик"
+      : "Выложи ролик, чтобы начать считать просмотры"
   };
 }
 
@@ -71,9 +92,11 @@ const getCampaigns = unstable_cache(
         description: true,
         sourcePlatform: true,
         cpmRateCents: true,
+        minimumGuaranteeCents: true,
         viewThreshold: true,
         deadline: true,
         niche: true,
+        reviewMode: true,
         visibility: true,
         featuredUntil: true,
         isDemo: true,
@@ -89,7 +112,7 @@ const getCampaigns = unstable_cache(
       orderBy: { createdAt: "desc" },
       take: 80
     }),
-  ["campaigns-marketplace-v5"],
+  ["campaigns-marketplace-v6"],
   { revalidate: 30, tags: ["campaigns"] }
 );
 
@@ -232,7 +255,27 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const initialPage = Math.max(1, Number(params.page || 1));
   const pageSize = 12;
 
-  const [baseCampaigns, active] = await Promise.all([getCampaigns(), loadActiveOrder()]);
+  const [baseCampaigns, active, completedExperience] = await Promise.all([
+    getCampaigns(),
+    loadActiveOrder(),
+    user ? prisma.submission.findMany({
+      where: {
+        workerId: user.id,
+        status: { in: ["VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"] }
+      },
+      select: {
+        platform: true,
+        campaign: { select: { niche: true } }
+      },
+      take: 50
+    }) : Promise.resolve([])
+  ]);
+  const matchProfile = {
+    specialties: user ? parseJson<string[]>(user.specialtiesJson, []) : [],
+    completedNiches: completedExperience.map((item) => item.campaign.niche || ""),
+    completedPlatforms: completedExperience.map((item) => item.platform),
+    trustScore: user?.trustScore || 0
+  };
   const filtered = baseCampaigns
     .filter((campaign) => {
       const text = `${campaign.title} ${campaign.description} ${campaign.niche || ""} ${campaign.owner.name}`.toLowerCase();
@@ -244,6 +287,10 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         const visibilityDelta = Number(b.visibility === "FEATURED" || Boolean(b.featuredUntil && timeOf(b.featuredUntil) > Date.now()))
           - Number(a.visibility === "FEATURED" || Boolean(a.featuredUntil && timeOf(a.featuredUntil) > Date.now()));
         if (visibilityDelta) return visibilityDelta;
+        if (user) {
+          const matchDelta = campaignMatch(b, matchProfile).score - campaignMatch(a, matchProfile).score;
+          if (matchDelta) return matchDelta;
+        }
         return timeOf(b.createdAt) - timeOf(a.createdAt);
       }
       if (sort === "rate") return b.cpmRateCents - a.cpmRateCents;
@@ -255,7 +302,9 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const topPayout = Math.max(0, ...filtered.map((campaign) => campaignPayout(campaign, workerRank)));
   const medianRate = median(filtered.map((campaign) => campaign.cpmRateCents));
   const quickCount = filtered.filter((campaign) => Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000) <= 3).length;
-  const cards: MarketplaceCard[] = filtered.map((campaign) => ({
+  const cards: MarketplaceCard[] = filtered.map((campaign) => {
+    const match = user ? campaignMatch(campaign, matchProfile) : null;
+    return {
     id: campaign.id,
     title: campaign.title,
     description: campaign.description,
@@ -263,14 +312,18 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
     cpmRateCents: campaign.cpmRateCents,
     viewThreshold: campaign.viewThreshold,
     payoutCents: campaignPayout(campaign, workerRank),
+    minimumGuaranteeCents: minimumGuaranteedPayout(campaign.minimumGuaranteeCents, workerRank),
     remainingBudgetCents: campaign.remainingBudgetCents,
     featured: campaign.visibility === "FEATURED" || Boolean(campaign.featuredUntil && timeOf(campaign.featuredUntil) > Date.now()),
     demo: campaign.isDemo,
     owner: { name: campaign.owner.name, handle: campaign.owner.handle, avatar: campaign.owner.avatar },
     submissions: campaign._count.submissions,
     deadlineMs: timeOf(campaign.deadline),
-    createdAtMs: timeOf(campaign.createdAt)
-  }));
+    createdAtMs: timeOf(campaign.createdAt),
+    matchScore: match?.score,
+    matchReasons: match?.reasons
+  };
+  });
 
   // Shown only on the first page; the client browser toggles it without re-rendering.
   const page1Top = (
@@ -288,12 +341,12 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
             <div className="ao-bar"><i style={{ width: `${active.pct}%` }} /></div>
             <span>
               {active.status === "ACCEPTED"
-                ? "Выложи ролик, чтобы начать считать просмотры"
+                ? active.nextStep
                 : `${compactNumber(active.views)} / ${compactNumber(active.threshold)} просмотров`}
             </span>
           </div>
           <div className="ao-foot">
-            <span className="ao-payout"><b>{rub(active.payout)}</b> к выплате</span>
+            <span className="ao-payout"><b>{rub(active.payout)}</b> максимум{active.guarantee > 0 ? ` · гарантия ${rub(active.guarantee)}` : ""}</span>
             <span className="ao-cta">{active.cta} <ArrowRight size={16} /></span>
           </div>
         </Link>

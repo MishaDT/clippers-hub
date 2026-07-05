@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       skip: (page - 1) * take,
       take,
       select: {
-        id: true, title: true, description: true, cpmRateCents: true, viewThreshold: true,
+        id: true, title: true, description: true, cpmRateCents: true, viewThreshold: true, minimumGuaranteeCents: true,
         deadline: true, niche: true, visibility: true, featuredUntil: true, remainingBudgetCents: true,
         owner: { select: { name: true, handle: true, avatar: true } },
         _count: { select: { submissions: true } }

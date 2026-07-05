@@ -12,18 +12,20 @@ import {
   Gauge,
   Play,
   Sparkles,
+  Star,
   TrendingUp
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { ReportDialog } from "@/components/report-dialog";
 import { LeagueBadge } from "@/components/league-badge";
-import { cancelCollabInviteAction, endorseClipperAction, sendCollabInviteAction } from "@/app/actions";
+import { cancelCollabInviteAction, endorseClipperAction, sendCollabInviteAction, sendWorkerPitchAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, canManageClient } from "@/lib/auth";
+import { getCurrentUser, canManageClient, canWork } from "@/lib/auth";
 import { canEndorse } from "@/lib/leagues";
 import { compactNumber } from "@/lib/money";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { safeReturnTo } from "@/lib/navigation";
+import ratingStyles from "./profile-ratings.module.css";
 
 const PLATFORM_LABEL: Record<string, string> = {
   TIKTOK: "TikTok",
@@ -61,7 +63,7 @@ function dicebear(handle: string, avatar: string | null) {
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
-  return { title: `@${handle} — клиппер` };
+  return { title: `@${handle} — профиль ReelPay` };
 }
 
 export default async function ClipperPortfolioPage({
@@ -69,10 +71,10 @@ export default async function ClipperPortfolioPage({
   searchParams
 }: {
   params: Promise<{ handle: string }>;
-  searchParams: Promise<{ invited?: string; endorsed?: string; error?: string; returnTo?: string }>;
+  searchParams: Promise<{ invited?: string; endorsed?: string; error?: string; returnTo?: string; campaign?: string }>;
 }) {
   const { handle } = await params;
-  const { invited, endorsed, error, returnTo: rawReturnTo } = await searchParams;
+  const { invited, endorsed, error, returnTo: rawReturnTo, campaign: preferredCampaign } = await searchParams;
   const returnTo = safeReturnTo(rawReturnTo, "/leaderboard");
 
   const user = await prisma.user.findUnique({
@@ -80,7 +82,8 @@ export default async function ClipperPortfolioPage({
     select: {
       id: true, name: true, handle: true, avatar: true, bio: true, email: true,
       specialtiesJson: true, socialLinksJson: true, lifetimeViews: true,
-      kycStatus: true, createdAt: true
+      kycStatus: true, createdAt: true, preferredRoleMode: true,
+      collabAvailability: true, role: true
     }
   });
   if (!user) {
@@ -91,8 +94,9 @@ export default async function ClipperPortfolioPage({
     if (alias) permanentRedirect(`/clippers/${alias.user.handle}`);
     notFound();
   }
+  const publicRoleIsClient = user.preferredRoleMode === "client";
 
-  const [pins, automaticSubs, stats, platformGroups, endorsements, viewer] = await Promise.all([
+  const [pins, automaticSubs, stats, platformGroups, endorsements, viewer, ownedCampaigns, activeCampaigns, receivedStats, ratingStats, recentRatings] = await Promise.all([
     prisma.portfolioPin.findMany({
       where: { userId: user.id },
       orderBy: { position: "asc" },
@@ -125,7 +129,34 @@ export default async function ClipperPortfolioPage({
       orderBy: { createdAt: "desc" },
       take: 8
     }),
-    getCurrentUser()
+    getCurrentUser(),
+    prisma.campaign.count({ where: { ownerId: user.id } }),
+    prisma.campaign.count({ where: { ownerId: user.id, status: { in: ["ACTIVE", "LOW_BUDGET"] } } }),
+    prisma.submission.aggregate({
+      where: { campaign: { ownerId: user.id } },
+      _count: { _all: true },
+      _sum: { currentViews: true }
+    }),
+    prisma.userRating.aggregate({
+      where: { subjectId: user.id, authorRole: publicRoleIsClient ? "WORKER" : "CLIENT" },
+      _avg: { score: true },
+      _count: { _all: true }
+    }),
+    prisma.userRating.findMany({
+      where: {
+        subjectId: user.id,
+        authorRole: publicRoleIsClient ? "WORKER" : "CLIENT",
+        comment: { not: null }
+      },
+      select: {
+        id: true,
+        score: true,
+        comment: true,
+        author: { select: { name: true, handle: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 3
+    })
   ]);
   const pinned = pins.map((item) => item.submission);
   const pinnedIds = new Set(pinned.map((item) => item.id));
@@ -145,13 +176,17 @@ export default async function ClipperPortfolioPage({
   const avatar = dicebear(user.handle, user.avatar);
 
   const isClient = viewer ? canManageClient(viewer.role) && (await getActiveRoleMode(viewer)) === "client" : false;
+  const isWorkerViewer = viewer ? canWork(viewer.role) && (await getActiveRoleMode(viewer)) === "worker" : false;
   const isSelf = viewer?.id === user.id;
+  const targetIsClient = publicRoleIsClient;
+  const acceptsAsWorker = user.collabAvailability === "BOTH" || (user.collabAvailability === "ACTIVE_ROLE" && !targetIsClient);
+  const acceptsAsClient = user.collabAvailability === "BOTH" || (user.collabAvailability === "ACTIVE_ROLE" && targetIsClient);
 
   let pendingInviteId: string | null = null;
   let alreadyEndorsed = false;
   let viewerCanEndorse = false;
   let clientCampaigns: Array<{ id: string; title: string; deadline: Date }> = [];
-  if (viewer && isClient && !isSelf) {
+  if (viewer && isClient && !isSelf && acceptsAsWorker) {
     const [pi, ae, orders, campaigns] = await Promise.all([
       prisma.collabInvite.findFirst({ where: { clientId: viewer.id, workerId: user.id, status: "PENDING" }, select: { id: true } }),
       prisma.endorsement.findFirst({ where: { clientId: viewer.id, workerId: user.id }, select: { id: true } }),
@@ -172,13 +207,25 @@ export default async function ClipperPortfolioPage({
     viewerCanEndorse = canEndorse(orders);
     clientCampaigns = campaigns;
   }
+  let workerPitchPendingId: string | null = null;
+  if (viewer && isWorkerViewer && !isSelf && acceptsAsClient) {
+    const pending = await prisma.collabInvite.findFirst({
+      where: { clientId: user.id, workerId: viewer.id, initiatorId: viewer.id, status: "PENDING" },
+      select: { id: true }
+    });
+    workerPitchPendingId = pending?.id || null;
+  }
 
-  const showInviteForm = isClient && !isSelf && !pendingInviteId && invited !== "1";
+  const showInviteForm = isClient && acceptsAsWorker && !isSelf && !pendingInviteId && invited !== "1";
+  const showWorkerPitch = isWorkerViewer && acceptsAsClient && !isSelf && !workerPitchPendingId && invited !== "1";
   const showEndorseForm = isClient && !isSelf && viewerCanEndorse && !alreadyEndorsed && endorsed !== "1";
 
   // A single, honest read for a client deciding whether to work with this clipper.
-  const verdict =
-    avg >= 100_000
+  const verdict = targetIsClient
+    ? activeCampaigns > 0
+      ? { tone: "good" as const, text: `Заказчик ведёт ${activeCampaigns} активн. камп.` }
+      : { tone: "neutral" as const, text: ownedCampaigns > 0 ? "Заказчик с опытом кампаний" : "Новый заказчик" }
+    : avg >= 100_000
       ? { tone: "strong" as const, text: "Стабильно вирусит — высокая отдача с каждого клипа" }
       : avg >= 25_000
         ? { tone: "good" as const, text: "Уверенный исполнитель с хорошим средним охватом" }
@@ -208,6 +255,7 @@ export default async function ClipperPortfolioPage({
               </h1>
               <span className="cp-handle">@{user.handle}</span>
               <div className="cp-chips">
+                <span className="cp-chip cp-chip--ok">{targetIsClient ? "Заказчик" : "Исполнитель"}</span>
                 {user.email.endsWith("@clippers.local") ? <span className="cp-chip cp-chip--muted">Демо-профиль</span> : null}
                 <LeagueBadge views={user.lifetimeViews} size="sm" />
                 {verified ? <span className="cp-chip cp-chip--ok"><BadgeCheck size={13} /> Проверен</span> : null}
@@ -270,6 +318,31 @@ export default async function ClipperPortfolioPage({
 
         {/* SNAPSHOT */}
         <div className="cp-metrics">
+          {targetIsClient ? (
+            <>
+              <div className="cp-metric">
+                <span className="cp-metric-ico"><Film size={16} /></span>
+                <b>{ownedCampaigns}</b>
+                <em>кампаний создано</em>
+              </div>
+              <div className="cp-metric cp-metric--hl">
+                <span className="cp-metric-ico"><Sparkles size={16} /></span>
+                <b>{activeCampaigns}</b>
+                <em>активных кампаний</em>
+              </div>
+              <div className="cp-metric">
+                <span className="cp-metric-ico"><Play size={16} /></span>
+                <b>{receivedStats._count._all}</b>
+                <em>роликов получено</em>
+              </div>
+              <div className="cp-metric">
+                <span className="cp-metric-ico"><Eye size={16} /></span>
+                <b>{compactNumber(receivedStats._sum.currentViews || 0)}</b>
+                <em>просмотров кампаний</em>
+              </div>
+            </>
+          ) : (
+            <>
           <div className="cp-metric">
             <span className="cp-metric-ico"><Eye size={16} /></span>
             <b>{compactNumber(totalViews)}</b>
@@ -290,9 +363,36 @@ export default async function ClipperPortfolioPage({
             <b>{compactNumber(best)}</b>
             <em>лучший клип</em>
           </div>
+            </>
+          )}
         </div>
 
-        {platforms.length ? (
+        {ratingStats._count._all ? (
+          <section className={ratingStyles.summary} aria-label="Рейтинг пользователя">
+            <div className={ratingStyles.score}>
+              <Star size={25} />
+              <div>
+                <strong>{(ratingStats._avg.score || 0).toFixed(1)}</strong>
+                <span>{ratingStats._count._all} проверенных оценок</span>
+              </div>
+            </div>
+            {recentRatings.length ? (
+              <div className={ratingStyles.reviews}>
+                {recentRatings.map((rating) => (
+                  <article className={ratingStyles.review} key={rating.id}>
+                    <header>
+                      <strong>{rating.author.name}</strong>
+                      <span>{rating.score}/5</span>
+                    </header>
+                    <p>{rating.comment}</p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {!targetIsClient && platforms.length ? (
           <div className="cp-platforms">
             <span className="cp-platforms-label">Площадки</span>
             {platforms.map((p) => (
@@ -307,9 +407,11 @@ export default async function ClipperPortfolioPage({
         {error === "tier" ? <div className="cp-note warn">Рекомендовать могут только крупные заказчики (от 10 заказов).</div> : null}
         {error === "invite" ? <div className="cp-note warn">Не удалось отправить приглашение — заполните все условия.</div> : null}
         {error === "campaign" ? <div className="cp-note warn">Выберите действующую кампанию с актуальным сроком.</div> : null}
+        {error === "availability" ? <div className="cp-note warn">Пользователь не принимает предложения для выбранной роли.</div> : null}
+        {error === "limit" ? <div className="cp-note warn">Слишком много приглашений за сутки. Попробуйте позже.</div> : null}
 
         {/* PORTFOLIO */}
-        <section className="cp-block">
+        {!targetIsClient ? <section className="cp-block">
           <h2 className="cp-h2">Лучшие работы</h2>
           {topSubs.length === 0 ? (
             <p className="cp-empty">Пока нет опубликованных работ.</p>
@@ -329,10 +431,10 @@ export default async function ClipperPortfolioPage({
               )})}
             </div>
           )}
-        </section>
+        </section> : null}
 
         {/* SOCIAL PROOF */}
-        {endorsements.length ? (
+        {!targetIsClient && endorsements.length ? (
           <section className="cp-block">
             <h2 className="cp-h2">Рекомендуют заказчики</h2>
             <div className="cp-endorse-grid">
@@ -353,7 +455,7 @@ export default async function ClipperPortfolioPage({
         ) : null}
 
         {/* CLIENT ACTIONS */}
-        {isClient && !isSelf ? (
+        {isClient && acceptsAsWorker && !isSelf ? (
           <section className="cp-block cp-actions" id="cp-invite">
             <h2 className="cp-h2">Работа с клиппером</h2>
             <div className="cp-actions-grid">
@@ -364,7 +466,12 @@ export default async function ClipperPortfolioPage({
                   <label className="cp-form-label" htmlFor="collab-campaign">Кампания</label>
                   {clientCampaigns.length ? (
                     <>
-                      <select id="collab-campaign" name="campaignId" required defaultValue={clientCampaigns[0]?.id}>
+                      <select
+                        id="collab-campaign"
+                        name="campaignId"
+                        required
+                        defaultValue={clientCampaigns.some((campaign) => campaign.id === preferredCampaign) ? preferredCampaign : clientCampaigns[0]?.id}
+                      >
                         {clientCampaigns.map((campaign) => (
                           <option value={campaign.id} key={campaign.id}>
                             {campaign.title} · до {campaign.deadline.toLocaleDateString("ru-RU")}
@@ -409,6 +516,35 @@ export default async function ClipperPortfolioPage({
                 <p className="cp-actions-hint"><Award size={14} /> Рекомендовать клипперов могут заказчики от 10 заказов.</p>
               ) : null}
             </div>
+          </section>
+        ) : null}
+
+        {isWorkerViewer && acceptsAsClient && !isSelf ? (
+          <section className="cp-block cp-actions" id="cp-invite">
+            <h2 className="cp-h2">Предложить сотрудничество заказчику</h2>
+            {showWorkerPitch ? (
+              <form className="cp-form" action={sendWorkerPitchAction}>
+                <input type="hidden" name="clientId" value={user.id} />
+                <input type="hidden" name="handle" value={user.handle} />
+                <label className="cp-form-label" htmlFor="pitch-role">Что вы можете сделать</label>
+                <input id="pitch-role" name="role" required minLength={2} maxLength={80} defaultValue="Монтаж и публикация коротких роликов" />
+                <label className="cp-form-label" htmlFor="pitch-message">Краткое предложение</label>
+                <textarea id="pitch-message" name="message" required maxLength={600} placeholder="Опишите опыт, формат и идею сотрудничества." />
+                <p className="cp-actions-hint">Это предложение для обсуждения, а не оплаченный заказ. После принятия заказчик сможет прикрепить кампанию.</p>
+                <button className="btn btn-primary" type="submit"><Sparkles size={16} /> Отправить предложение</button>
+              </form>
+            ) : (
+              <div className="cp-form cp-form--done">
+                <span><Check size={18} /> Предложение уже отправлено — ждём ответа заказчика.</span>
+                {workerPitchPendingId ? (
+                  <form action={cancelCollabInviteAction}>
+                    <input type="hidden" name="inviteId" value={workerPitchPendingId} />
+                    <input type="hidden" name="returnTo" value={`/profiles/${user.handle}`} />
+                    <button className="btn btn-ghost btn-small" type="submit">Отменить</button>
+                  </form>
+                ) : null}
+              </div>
+            )}
           </section>
         ) : null}
       </section>

@@ -19,6 +19,14 @@ async function run() {
   const retentionDays = Math.max(7, Number(process.env.ANALYTICS_RETENTION_DAYS || 90));
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
   let deleted = 0;
+  const expiredEmailTokens = await prisma.emailVerificationToken.deleteMany({
+    where: {
+      OR: [
+        { expiresAt: { lt: new Date() } },
+        { usedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+      ]
+    }
+  });
   // Batch-delete with a hard cap on iterations so one run can't exceed maxDuration.
   for (let i = 0; i < 20; i += 1) {
     const batch = await prisma.analyticsEvent.findMany({
@@ -68,7 +76,13 @@ async function run() {
       reminders += 1;
     }
   }
-  return { deleted, reminders, retentionDays, cutoff: cutoff.toISOString() };
+  return {
+    deleted,
+    expiredEmailTokens: expiredEmailTokens.count,
+    reminders,
+    retentionDays,
+    cutoff: cutoff.toISOString()
+  };
 }
 
 export async function GET(request: Request) {

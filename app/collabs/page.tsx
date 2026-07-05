@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Archive, Check, Clock3, Handshake, Inbox, MessageCircle, RotateCcw, Send, Sparkles, Square, X } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { cancelCollabInviteAction, endCollabAction, respondCollabInviteAction } from "@/app/actions";
+import { attachCollabCampaignAction, cancelCollabInviteAction, endCollabAction, respondCollabInviteAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
 import styles from "./collabs.module.css";
 
@@ -31,6 +31,7 @@ function relativeDate(date: Date) {
 
 type CardItem = {
   id: string;
+  clientId: string;
   direction: "incoming" | "outgoing";
   status: string;
   message: string;
@@ -42,7 +43,7 @@ type CardItem = {
   chatThread: { id: string } | null;
 };
 
-function CollabCard({ item }: { item: CardItem }) {
+function CollabCard({ item, viewerId, campaigns }: { item: CardItem; viewerId: string; campaigns: Array<{ id: string; title: string }> }) {
   const pending = item.status === "PENDING";
   const accepted = item.status === "ACCEPTED";
   return (
@@ -64,6 +65,16 @@ function CollabCard({ item }: { item: CardItem }) {
         <span><small>Срок</small><strong>{item.deadline ? item.deadline.toLocaleDateString("ru-RU") : "Не указан"}</strong></span>
       </div>
       <p>{item.message}</p>
+      {accepted && !item.campaign && item.clientId === viewerId ? (
+        <form className={styles.attach} action={attachCollabCampaignAction}>
+          <input type="hidden" name="inviteId" value={item.id} />
+          <select name="campaignId" required defaultValue="">
+            <option value="" disabled>Прикрепить кампанию</option>
+            {campaigns.map((campaign) => <option value={campaign.id} key={campaign.id}>{campaign.title}</option>)}
+          </select>
+          <button className={styles.primary} type="submit">Прикрепить</button>
+        </form>
+      ) : null}
       <div className={styles.actions}>
         {item.direction === "incoming" && pending ? (
           <>
@@ -110,16 +121,20 @@ export default async function CollabsPage({
   const params = await searchParams;
   const tab = params.tab === "outgoing" ? "outgoing" : params.tab === "archive" ? "archive" : "incoming";
   const terminal = ["DECLINED", "CANCELLED", "COMPLETED"];
-  const [incomingRaw, outgoingRaw, archiveRaw] = await Promise.all([
+  const [incomingRaw, outgoingRaw, archiveRaw, clientCampaigns] = await Promise.all([
     prisma.collabInvite.findMany({
-      where: { workerId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
-      include: { client: { select: { name: true, handle: true, avatar: true } }, campaign: { select: { id: true, title: true } }, chatThread: { select: { id: true } } },
+      where: {
+        initiatorId: { not: user.id },
+        status: { in: ["PENDING", "ACCEPTED"] },
+        OR: [{ workerId: user.id }, { clientId: user.id }]
+      },
+      include: { client: { select: { name: true, handle: true, avatar: true } }, worker: { select: { name: true, handle: true, avatar: true } }, campaign: { select: { id: true, title: true } }, chatThread: { select: { id: true } } },
       orderBy: { createdAt: "desc" },
       take: 50
     }),
     prisma.collabInvite.findMany({
-      where: { clientId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
-      include: { worker: { select: { name: true, handle: true, avatar: true } }, campaign: { select: { id: true, title: true } }, chatThread: { select: { id: true } } },
+      where: { initiatorId: user.id, status: { in: ["PENDING", "ACCEPTED"] } },
+      include: { client: { select: { name: true, handle: true, avatar: true } }, worker: { select: { name: true, handle: true, avatar: true } }, campaign: { select: { id: true, title: true } }, chatThread: { select: { id: true } } },
       orderBy: { createdAt: "desc" },
       take: 50
     }),
@@ -136,14 +151,20 @@ export default async function CollabsPage({
       },
       orderBy: { createdAt: "desc" },
       take: 80
+    }),
+    prisma.campaign.findMany({
+      where: { ownerId: user.id, status: { in: ["ACTIVE", "LOW_BUDGET"] }, deadline: { gt: new Date() } },
+      select: { id: true, title: true },
+      orderBy: { createdAt: "desc" },
+      take: 30
     })
   ]);
 
-  const incoming: CardItem[] = incomingRaw.map((item) => ({ ...item, direction: "incoming", partner: item.client }));
-  const outgoing: CardItem[] = outgoingRaw.map((item) => ({ ...item, direction: "outgoing", partner: item.worker }));
+  const incoming: CardItem[] = incomingRaw.map((item) => ({ ...item, direction: "incoming", partner: item.clientId === user.id ? item.worker : item.client }));
+  const outgoing: CardItem[] = outgoingRaw.map((item) => ({ ...item, direction: "outgoing", partner: item.clientId === user.id ? item.worker : item.client }));
   const archive: CardItem[] = archiveRaw.map((item) => ({
     ...item,
-    direction: item.clientId === user.id ? "outgoing" : "incoming",
+    direction: item.initiatorId === user.id ? "outgoing" : "incoming",
     partner: item.clientId === user.id ? item.worker : item.client
   }));
   const items = tab === "incoming" ? incoming : tab === "outgoing" ? outgoing : archive;
@@ -175,7 +196,7 @@ export default async function CollabsPage({
             <div><small>{tab === "incoming" ? "Новые предложения" : tab === "outgoing" ? "Ваши приглашения" : "История"}</small><h2>{tab === "incoming" ? "Входящие" : tab === "outgoing" ? "Исходящие" : "Архив"}</h2></div>
             <span>{items.length} коллабов</span>
           </header>
-          {items.length ? items.map((item) => <CollabCard item={item} key={item.id} />) : (
+          {items.length ? items.map((item) => <CollabCard item={item} viewerId={user.id} campaigns={clientCampaigns} key={item.id} />) : (
             <div className={styles.empty}>
               <Handshake size={28} />
               <strong>Здесь пока пусто</strong>

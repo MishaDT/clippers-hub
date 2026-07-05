@@ -36,3 +36,56 @@ export function expectedPayout(viewThreshold: number, cpmRateCents: number, rank
   const gross = grossPayout(viewThreshold, cpmRateCents);
   return gross - Math.floor(gross * commissionRate(rank));
 }
+
+export function netPayout(grossCents: number, rank = "BRONZE") {
+  const gross = Math.max(0, Math.round(grossCents));
+  return gross - Math.floor(gross * commissionRate(rank));
+}
+
+export function minimumGuaranteedPayout(minimumGuaranteeCents: number, rank = "BRONZE") {
+  return netPayout(minimumGuaranteeCents, rank);
+}
+
+export function settlementGross({
+  views,
+  viewThreshold,
+  cpmRateCents,
+  minimumGuaranteeCents,
+  reservedPayoutCents,
+  deadlineReached
+}: {
+  views: number;
+  viewThreshold: number;
+  cpmRateCents: number;
+  minimumGuaranteeCents: number;
+  reservedPayoutCents: number;
+  deadlineReached: boolean;
+}) {
+  const reserved = Math.max(0, reservedPayoutCents);
+  if (reserved <= 0) return 0;
+  if (views >= viewThreshold) return reserved;
+  if (!deadlineReached || minimumGuaranteeCents <= 0) return 0;
+
+  const actualByViews = Math.max(0, Math.floor((views / 1000) * cpmRateCents));
+  return Math.min(reserved, Math.max(minimumGuaranteeCents, actualByViews));
+}
+
+export function settlementReservationSplit({
+  reservedPayoutCents,
+  grossPayoutCents,
+  campaignCompleted
+}: {
+  reservedPayoutCents: number;
+  grossPayoutCents: number;
+  campaignCompleted: boolean;
+}) {
+  const reserved = Math.max(0, reservedPayoutCents);
+  const gross = Math.min(reserved, Math.max(0, grossPayoutCents));
+  const unused = reserved - gross;
+  return {
+    reserved,
+    gross,
+    returnToCampaignCents: campaignCompleted ? 0 : unused,
+    refundOwnerCents: campaignCompleted ? unused : 0
+  };
+}

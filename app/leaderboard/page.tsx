@@ -116,7 +116,7 @@ async function loadMyProgress(user: { id: string; name: string; lifetimeViews: n
       where: { workerId: user.id, createdAt: { gte: since } },
       _sum: { currentViews: true }
     }),
-    prisma.user.count({ where: { referredBy: user.referralCode } }),
+    prisma.referralRelation.count({ where: { referrerId: user.id } }),
     prisma.rpTransaction.aggregate({
       where: { userId: user.id, type: "REFERRAL_REWARD" },
       _sum: { amount: true }

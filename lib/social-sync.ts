@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { commissionRate } from "@/lib/money";
+import { commissionRate, settlementGross, settlementReservationSplit } from "@/lib/money";
 import { stringify } from "@/lib/json";
 import { viewProviders, type ViewPlatform } from "@/lib/view-providers";
 import { checkOwnership, platformIsVerifiable, type OwnershipResult } from "@/lib/antifraud";
 import { trackEvent } from "@/lib/analytics";
+import { fetchTikTokSnapshotForUser } from "@/lib/social-platforms";
+import { releaseReferralCommissions } from "@/lib/referrals";
 
 function canUseProvider(platform: string): platform is ViewPlatform {
   return platform === "YOUTUBE" || platform === "VK" || platform === "TIKTOK" || platform === "INSTAGRAM";
@@ -66,6 +68,7 @@ async function settlePendingEarnings() {
     });
     if (ownershipFail) continue;
     const submissionId = tx.submission.id;
+    const campaignId = tx.submission.campaignId;
     // Atomic claim: only the run that flips this earning PENDING -> COMPLETED moves the
     // money out of hold. Concurrent settlement passes that lose the race update 0 rows and
     // release nothing, so a single earning can never be paid out twice.
@@ -88,6 +91,18 @@ async function settlePendingEarnings() {
           balanceCents: { increment: tx.netCents }
         }
       });
+      const campaign = await db.campaign.findUnique({
+        where: { id: campaignId },
+        select: { ownerId: true }
+      });
+      if (campaign) {
+        await releaseReferralCommissions(db, {
+          transactionId: tx.id,
+          workerId: tx.userId,
+          clientId: campaign.ownerId,
+          platformFeeCents: tx.feeCents
+        });
+      }
       return true;
     }, { isolationLevel: "Serializable" });
     if (releasedOk) released += 1;
@@ -114,15 +129,35 @@ export async function syncViews() {
     let views = submission.currentViews;
     let likes = submission.currentLikes;
     let comments = submission.currentComments;
+    let connectedOwnership: OwnershipResult | null = null;
 
     if (canUseProvider(submission.platform)) {
       try {
-        const snapshot = await viewProviders[submission.platform].fetchSnapshot(submission.postUrl);
+        const snapshot = submission.platform === "TIKTOK"
+          ? await fetchTikTokSnapshotForUser(submission.workerId, submission.postUrl)
+          : await viewProviders[submission.platform].fetchSnapshot(submission.postUrl);
         providerMode = "api";
         views = Math.max(submission.currentViews, snapshot.views);
         likes = Math.max(submission.currentLikes, snapshot.likes || 0);
         comments = Math.max(submission.currentComments, snapshot.comments || 0);
         velocity = Math.max(0, views - submission.currentViews);
+        if (submission.platform === "TIKTOK") {
+          const video = snapshot.raw as { title?: string; video_description?: string } | undefined;
+          const description = `${video?.title || ""} ${video?.video_description || ""}`;
+          const normalizedDescription = description.toLowerCase().replace(/\s+/g, "");
+          const normalizedCode = submission.trackingCode.toLowerCase().replace(/\s+/g, "");
+          const matched = normalizedCode.length >= 4 && normalizedDescription.includes(normalizedCode);
+          connectedOwnership = {
+            platform: "TIKTOK",
+            verifiable: true,
+            matched,
+            reason: matched ? "code_found" : "code_missing",
+            evidence: {
+              title: String(video?.title || "").slice(0, 140),
+              snippet: String(video?.video_description || "").slice(0, 240)
+            }
+          };
+        }
         apiSynced += 1;
       } catch (error) {
         providerMode = `fallback:${error instanceof Error ? error.message : "unknown"}`;
@@ -141,7 +176,16 @@ export async function syncViews() {
     // Don't skip a submission that already reached the goal (e.g. via manual admin
     // verification on TikTok/Instagram, which has no metrics API) — it still needs the
     // settlement mint below to pay out through the reserved budget.
-    if (providerMode !== "api" && !allowDemoSync() && submission.status !== "THRESHOLD_MET") {
+    const deadlineReached = submission.campaign.deadline.getTime() <= Date.now();
+    const guaranteeCandidate = deadlineReached
+      && submission.campaign.minimumGuaranteeCents > 0
+      && ["POSTED", "VERIFIED"].includes(submission.status);
+    if (
+      providerMode !== "api"
+      && !allowDemoSync()
+      && submission.status !== "THRESHOLD_MET"
+      && !guaranteeCandidate
+    ) {
       skipped += 1;
       continue;
     }
@@ -169,6 +213,15 @@ export async function syncViews() {
       if (providerMode.includes("demo")) {
         ownershipOk = true; // sandbox economy — no real platform to check against
         ownershipNote = "demo_bypass";
+      } else if (connectedOwnership) {
+        ownershipOk = connectedOwnership.matched;
+        ownershipNote = connectedOwnership.reason;
+        fraudScore = connectedOwnership.matched ? Math.min(fraudScore, 30) : Math.max(fraudScore, 60);
+        await recordOwnershipCheck(
+          submission.id,
+          connectedOwnership.matched ? "PASS" : "FAIL",
+          connectedOwnership
+        );
       } else if (platformIsVerifiable(submission.platform)) {
         const proof = await checkOwnership({
           platform: submission.platform,
@@ -215,8 +268,16 @@ export async function syncViews() {
     // The THRESHOLD_MET -> SETTLING transition is the only one that mints money. Keep the
     // metric write at THRESHOLD_MET for that case and let the atomic block below claim the
     // transition, so exactly one concurrent run can create the earning.
-    const willMint = status === "SETTLING" && submission.status === "THRESHOLD_MET";
-    const metricStatus = willMint ? "THRESHOLD_MET" : status;
+    const thresholdMint = status === "SETTLING" && submission.status === "THRESHOLD_MET";
+    const guaranteeMint = !thresholdMint
+      && deadlineReached
+      && submission.campaign.minimumGuaranteeCents > 0
+      && ownershipOk
+      && !demoInProd
+      && fraudScore < 70
+      && ["POSTED", "VERIFIED"].includes(submission.status);
+    const willMint = thresholdMint || guaranteeMint;
+    const metricStatus = thresholdMint ? "THRESHOLD_MET" : status;
 
     const updated = await prisma.submission.update({
       where: { id: submission.id },
@@ -259,7 +320,10 @@ export async function syncViews() {
       // concurrent run updates 0 rows and mints nothing.
       await prisma.$transaction(async (db) => {
         const claim = await db.submission.updateMany({
-          where: { id: submission.id, status: "THRESHOLD_MET" },
+          where: {
+            id: submission.id,
+            status: guaranteeMint ? { in: ["POSTED", "VERIFIED"] } : "THRESHOLD_MET"
+          },
           data: { status: "SETTLING" }
         });
         if (claim.count === 0) return;
@@ -268,18 +332,39 @@ export async function syncViews() {
 
         const campaign = await db.campaign.findUnique({
           where: { id: submission.campaignId },
-          select: { remainingBudgetCents: true, reservedBudgetCents: true, totalBudgetCents: true, status: true }
+          select: {
+            ownerId: true,
+            remainingBudgetCents: true,
+            reservedBudgetCents: true,
+            totalBudgetCents: true,
+            status: true
+          }
         });
         const remaining = Math.max(0, campaign?.remainingBudgetCents ?? 0);
         const rawGross = Math.floor((views / 1000) * submission.campaign.cpmRateCents);
         const reserved = Math.max(0, submission.reservedPayoutCents || 0);
         // New submissions are paid strictly from their addressable reservation. Legacy
         // submissions created before reservations keep the old escrow fallback.
-        const gross = reserved > 0 ? reserved : Math.min(rawGross, remaining);
+        const gross = reserved > 0
+          ? settlementGross({
+              views,
+              viewThreshold: submission.campaign.viewThreshold,
+              cpmRateCents: submission.campaign.cpmRateCents,
+              minimumGuaranteeCents: submission.campaign.minimumGuaranteeCents,
+              reservedPayoutCents: reserved,
+              deadlineReached
+            })
+          : Math.min(rawGross, remaining);
         if (gross <= 0) return; // budget exhausted — nothing is owed for this clip
 
         const fee = Math.floor(gross * commissionRate(submission.worker.rank));
         const net = gross - fee;
+        const completedCampaign = campaign?.status === "COMPLETED";
+        const reservationSplit = settlementReservationSplit({
+          reservedPayoutCents: reserved,
+          grossPayoutCents: gross,
+          campaignCompleted: completedCampaign
+        });
         await db.transaction.create({
           data: {
             userId: submission.workerId,
@@ -289,7 +374,13 @@ export async function syncViews() {
             netCents: net,
             type: "EARNING",
             status: "PENDING",
-            providerData: stringify({ settlementHours: 48, fraudScore, rawGross })
+            providerData: stringify({
+              settlementHours: 48,
+              fraudScore,
+              rawGross,
+              paymentModel: guaranteeMint ? "MINIMUM_GUARANTEE" : "PERFORMANCE",
+              minimumGuaranteeCents: submission.campaign.minimumGuaranteeCents
+            })
           }
         });
         await db.user.update({
@@ -299,24 +390,53 @@ export async function syncViews() {
             lifetimeViews: { increment: velocity }
           }
         });
-        const nextRemaining = reserved > 0 ? remaining : remaining - gross;
+        const nextRemaining = reserved > 0
+          ? remaining + reservationSplit.returnToCampaignCents
+          : remaining - gross;
         await db.campaign.update({
           where: { id: submission.campaignId },
           data: {
             ...(reserved > 0
-              ? { reservedBudgetCents: { decrement: gross } }
+              ? {
+                  reservedBudgetCents: { decrement: reserved },
+                  ...(reservationSplit.returnToCampaignCents > 0
+                    ? { remainingBudgetCents: { increment: reservationSplit.returnToCampaignCents } }
+                    : {})
+                }
               : { remainingBudgetCents: { decrement: gross } }),
-            status: nextRemaining <= 0
-              ? "PAUSED"
-              : nextRemaining < submission.campaign.totalBudgetCents * 0.2
-                ? "LOW_BUDGET"
-                : (campaign?.status ?? submission.campaign.status)
+            status: completedCampaign
+              ? "COMPLETED"
+              : nextRemaining <= 0
+                ? "PAUSED"
+                : nextRemaining < submission.campaign.totalBudgetCents * 0.2
+                  ? "LOW_BUDGET"
+                  : (campaign?.status ?? submission.campaign.status)
           }
         });
         if (reserved > 0) {
           await db.submission.update({
             where: { id: submission.id },
-            data: { reservedPayoutCents: { decrement: gross } }
+            data: { reservedPayoutCents: 0 }
+          });
+        }
+        if (reservationSplit.refundOwnerCents > 0 && campaign) {
+          await db.user.update({
+            where: { id: campaign.ownerId },
+            data: { balanceCents: { increment: reservationSplit.refundOwnerCents } }
+          });
+          await db.transaction.create({
+            data: {
+              userId: campaign.ownerId,
+              amountCents: reservationSplit.refundOwnerCents,
+              feeCents: 0,
+              netCents: reservationSplit.refundOwnerCents,
+              type: "ADJUSTMENT",
+              status: "COMPLETED",
+              providerData: stringify({
+                escrowRefundAfterGuarantee: submission.id,
+                campaignId: submission.campaignId
+              })
+            }
           });
         }
       });

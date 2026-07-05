@@ -16,8 +16,8 @@ const emptyStats = {
   streakDays: 0,
   referrals: 0,
   campaigns: 0,
-  clipsReceived: 0
-  ,completedOrders: 0
+  clipsReceived: 0,
+  completedOrders: 0
 };
 
 test("achievement unlocks exactly at its target", () => {
@@ -27,8 +27,12 @@ test("achievement unlocks exactly at its target", () => {
 });
 
 test("catalogue has stable RP rewards", () => {
-  assert.equal(ACHIEVEMENTS.length, 9);
+  assert.equal(ACHIEVEMENTS.length, 12);
   assert.equal(ACHIEVEMENTS.find((item) => item.code === "MILLION_CLUB")?.reward, 300);
+  assert.equal(ACHIEVEMENTS.find((item) => item.code === "REFERRAL_FIRST")?.reward, 50);
+  assert.equal(ACHIEVEMENTS.find((item) => item.code === "REFERRAL_TEAM")?.reward, 150);
+  assert.equal(ACHIEVEMENTS.find((item) => item.code === "REFERRAL_PRO")?.reward, 500);
+  assert.equal(ACHIEVEMENTS.find((item) => item.code === "REFERRAL_AMBASSADOR")?.reward, 1500);
   assert.equal(RP_BOOST_COST, 100);
 });
 

@@ -5,7 +5,7 @@ import { Check, Copy, Share2, Users } from "lucide-react";
 
 export function ReferralCard({ code, invited, rewardRp }: { code: string; invited: number; rewardRp: number }) {
   const [copied, setCopied] = useState(false);
-  const link = typeof window !== "undefined" ? `${window.location.origin}/register?ref=${code}` : `/register?ref=${code}`;
+  const link = typeof window !== "undefined" ? `${window.location.origin}/r/${code}` : `/r/${code}`;
 
   async function copy() {
     try {
@@ -51,6 +51,7 @@ export function ReferralCard({ code, invited, rewardRp }: { code: string; invite
         <span><b>{invited}</b> зарегистрировано</span>
         <span><b>{rewardRp} RP</b> получено</span>
       </div>
+      <a className="btn referral-share" href="/referrals">Открыть партнёрский кабинет</a>
     </div>
   );
 }

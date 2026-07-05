@@ -11,6 +11,7 @@ const primaryLinks = [
 const secondaryLinks = [
   ["/support", "Поддержка"],
   ["/store", "Магазин"],
+  ["/referrals", "Партнёрам"],
   ["/legal/terms", "Условия"],
   ["/legal/privacy", "Конфиденциальность"],
   ["/legal/cookies", "Cookie"]

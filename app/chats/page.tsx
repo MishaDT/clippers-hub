@@ -129,10 +129,10 @@ export default async function ChatsPage({
   const threadsQuery = prisma.chatThread.findMany({
     where,
     include: {
-      campaign: { select: { id: true, title: true, viewThreshold: true } },
+      campaign: { select: { id: true, title: true, viewThreshold: true, draftRequired: true, reviewMode: true } },
       client: { select: { id: true, name: true, handle: true, avatar: true } },
       worker: { select: { id: true, name: true, handle: true, avatar: true } },
-      submission: { select: { status: true, currentViews: true, fraudScore: true } },
+      submission: { select: { status: true, currentViews: true, fraudScore: true, draftStatus: true } },
       messages: { orderBy: { createdAt: "desc" }, take: 1 }
     },
     orderBy: { updatedAt: "desc" },
@@ -147,10 +147,10 @@ export default async function ChatsPage({
           OR: [{ clientId: user.id }, { workerId: user.id }]
         },
         include: {
-          campaign: { select: { id: true, title: true, viewThreshold: true } },
+          campaign: { select: { id: true, title: true, viewThreshold: true, draftRequired: true, reviewMode: true } },
           client: { select: { id: true, name: true, handle: true, avatar: true } },
           worker: { select: { id: true, name: true, handle: true, avatar: true } },
-          submission: { select: { status: true, currentViews: true, fraudScore: true } },
+          submission: { select: { status: true, currentViews: true, fraudScore: true, draftStatus: true } },
           collabInvite: { select: { id: true, status: true } },
           messages: {
             include: { sender: { select: { id: true, name: true } } },
@@ -195,6 +195,8 @@ export default async function ChatsPage({
     ? selectedAsClient ? selectedThread.clientClearedAt : selectedThread.workerClearedAt
     : null;
   const selectedStatus = selectedThread?.submission?.status;
+  const selectedDraftStatus = selectedThread?.submission?.draftStatus;
+  const selectedDraftDone = !selectedThread?.campaign?.draftRequired || selectedDraftStatus === "APPROVED";
   const selectedIsCollab = selectedThread?.kind === "COLLAB";
   const collabInExecution = Boolean(selectedThread?.messages.some(
     (message) => message.type === "SYSTEM" && message.body === "Условия согласованы. Коллаб перешёл к выполнению."
@@ -202,7 +204,12 @@ export default async function ChatsPage({
   const collabCompleted = selectedThread?.collabInvite?.status === "COMPLETED";
   const progressSteps = [
     { title: "Заказ взят", done: Boolean(selectedThread?.submission), active: selectedStatus === "ACCEPTED" },
-    { title: "Работа", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(selectedStatus || ""), active: selectedStatus === "POSTED" },
+    ...(selectedThread?.campaign?.draftRequired ? [{
+      title: "Черновик",
+      done: selectedDraftDone,
+      active: selectedStatus === "ACCEPTED" && !selectedDraftDone
+    }] : []),
+    { title: "Публикация", done: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(selectedStatus || ""), active: selectedStatus === "POSTED" || (selectedStatus === "ACCEPTED" && selectedDraftDone) },
     { title: "Просмотры", done: ["THRESHOLD_MET", "SETTLING", "PAID"].includes(selectedStatus || ""), active: ["VERIFIED", "POSTED"].includes(selectedStatus || "") },
     { title: "Выплата", done: selectedStatus === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(selectedStatus || "") }
   ];

@@ -46,7 +46,7 @@ export function CampaignForm({
   initial,
   preferInitial = false
 }: {
-  initial?: { deliverableCount?: number; viewThreshold?: number; budget?: number; cpm?: number; deadlineDays?: number };
+  initial?: { deliverableCount?: number; viewThreshold?: number; budget?: number; cpm?: number; minimumGuarantee?: number; deadlineDays?: number };
   preferInitial?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -59,6 +59,7 @@ export function CampaignForm({
   const [deliverableCount, setDeliverableCount] = useState(initial?.deliverableCount || 3);
   const [budget, setBudget] = useState(initial?.budget || 15000);
   const [cpm, setCpm] = useState(initial?.cpm || 50);
+  const [minimumGuarantee, setMinimumGuarantee] = useState(initial?.minimumGuarantee ?? 100);
   const [deadlineDays, setDeadlineDays] = useState(initial?.deadlineDays || 7);
   const [niche, setNiche] = useState("Gaming");
   const [requiredTags, setRequiredTags] = useState("#reelpay, #clips");
@@ -82,6 +83,7 @@ export function CampaignForm({
       if (typeof draft.deliverableCount === "string") setDeliverableCount(Number(draft.deliverableCount) || 3);
       if (typeof draft.budget === "string") setBudget(Number(draft.budget) || 15000);
       if (typeof draft.cpm === "string") setCpm(Number(draft.cpm) || 50);
+      if (typeof draft.minimumGuarantee === "string") setMinimumGuarantee(Math.max(0, Number(draft.minimumGuarantee) || 0));
       if (typeof draft.deadlineDays === "string") setDeadlineDays(Number(draft.deadlineDays) || 7);
       if (typeof draft.niche === "string") setNiche(draft.niche);
       if (typeof draft.requiredTags === "string") setRequiredTags(draft.requiredTags);
@@ -105,6 +107,11 @@ export function CampaignForm({
       localStorage.removeItem(DRAFT_KEY);
     }
   }, [preferInitial]);
+
+  useEffect(() => {
+    const maximum = Math.max(0, Math.round((viewThreshold / 1000) * cpm));
+    setMinimumGuarantee((current) => Math.min(current, maximum));
+  }, [cpm, viewThreshold]);
 
   function saveDraft() {
     if (!draftTrackedRef.current) {
@@ -137,11 +144,12 @@ export function CampaignForm({
 
   const estimate = useMemo(() => {
     const payout = Math.max(0, Math.round((viewThreshold / 1000) * cpm * 100));
+    const guarantee = Math.min(payout, Math.max(0, Math.round(minimumGuarantee * 100)));
     const grossViews = cpm > 0 ? Math.floor((budget / cpm) * 1000) : 0;
     const requiredBudget = Math.max(0, Math.round((payout * deliverableCount) / 100));
     const quality = cpm >= 70 ? "Высокий интерес" : cpm >= 45 ? "Нормальная ставка" : "Ставка низкая";
-    return { payout, grossViews, requiredBudget, quality };
-  }, [budget, cpm, deliverableCount, viewThreshold]);
+    return { payout, guarantee, grossViews, requiredBudget, quality };
+  }, [budget, cpm, deliverableCount, minimumGuarantee, viewThreshold]);
 
   function togglePlatform(value: string) {
     setPlatforms((current) => {
@@ -380,6 +388,19 @@ export function CampaignForm({
               <span>Ставка за 1000 просмотров, ₽</span>
               <input name="cpm" type="number" min={10} step={5} value={cpm} onChange={(event) => setCpm(Number(event.target.value))} required />
             </label>
+            <label className="order-field">
+              <span>Минимальная гарантия за проверенный ролик, ₽</span>
+              <input
+                name="minimumGuarantee"
+                type="number"
+                min={0}
+                max={Math.max(0, Math.round(estimate.payout / 100))}
+                step={50}
+                value={minimumGuarantee}
+                onChange={(event) => setMinimumGuarantee(Math.max(0, Number(event.target.value)))}
+              />
+              <small>Если цель не достигнута к сроку, выплата считается по фактическим просмотрам, но не ниже этой суммы.</small>
+            </label>
           </div>
 
           <div className="order-hint" hidden={step !== 6}>
@@ -394,9 +415,39 @@ export function CampaignForm({
             </select>
           </label>
 
+          <fieldset className={styles.reviewModes} data-wizard-field="7" hidden={step !== 7}>
+            <legend>Кто проверяет черновик до публикации</legend>
+            <label>
+              <input type="radio" name="reviewMode" value="FAST" />
+              <span><b>Быстрый</b><small>Проверенные клипперы проходят автоматически, остальные — через модератора.</small></span>
+            </label>
+            <label>
+              <input type="radio" name="reviewMode" value="STANDARD" defaultChecked />
+              <span><b>Стандартный</b><small>Черновик проверяет модератор ReelPay.</small></span>
+            </label>
+            <label>
+              <input type="radio" name="reviewMode" value="STRICT" />
+              <span><b>Строгий</b><small>Вы лично принимаете черновик перед публикацией.</small></span>
+            </label>
+          </fieldset>
+
+          <label className="order-field" data-wizard-field="7" hidden={step !== 7}>
+            <span>Допустимое число кругов правок</span>
+            <select name="maxRevisionRounds" defaultValue="2">
+              <option value="1">1 круг</option>
+              <option value="2">2 круга</option>
+              <option value="3">3 круга</option>
+            </select>
+            <small>Правки разрешены только в рамках опубликованного брифа.</small>
+          </label>
+
           <label className="order-check" data-wizard-field="7" hidden={step !== 7}>
             <input type="checkbox" name="rightsConfirmed" required />
             <span><ShieldCheck size={18} /> Подтверждаю права на исходный материал и разрешаю его монтаж</span>
+          </label>
+          <label className="order-check" data-wizard-field="7" hidden={step !== 7}>
+            <input type="checkbox" name="briefConfirmed" required />
+            <span><Check size={18} /> Подтверждаю бриф версии 1. Правки за его пределами потребуют отдельной договорённости.</span>
           </label>
         </section>
         <div className={styles.nav}>
@@ -419,6 +470,7 @@ export function CampaignForm({
           <span className="summary-kicker">Прогноз заказа</span>
           <h2>{rub(estimate.payout)}</h2>
           <p>максимальная стоимость одной успешной публикации до комиссии платформы</p>
+          <p><b>Гарантия: {rub(estimate.guarantee)}</b> за проверенный ролик к дедлайну</p>
 
           <div className="summary-metrics">
             <span><Target size={17} /><b>{compactNumber(viewThreshold)}</b><em>цель</em></span>
@@ -437,7 +489,7 @@ export function CampaignForm({
 
           <div className="summary-checklist">
             <span><Check size={15} /> Деньги резервируются</span>
-            <span><Check size={15} /> Платишь только за результат</span>
+            <span><Check size={15} /> Гарантия платится только за проверенный ролик</span>
             <span><Check size={15} /> Просмотры проверяются</span>
           </div>
 

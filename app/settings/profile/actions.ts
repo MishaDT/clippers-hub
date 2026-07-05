@@ -22,6 +22,10 @@ export async function updateProfileAction(formData: FormData) {
   const { handle, ok } = validateHandle(formData.get("handle"));
   const specialties = parseSpecialties(formData.getAll("specialties"));
   const socialLinks = parseSocialLinks(formData.get("socialLinks"));
+  const availabilityInput = String(formData.get("collabAvailability") || "ACTIVE_ROLE");
+  const collabAvailability = (["ACTIVE_ROLE", "BOTH", "NONE"].includes(availabilityInput)
+    ? availabilityInput
+    : "ACTIVE_ROLE") as "ACTIVE_ROLE" | "BOTH" | "NONE";
 
   if (name.length < 2 || !ok) redirect("/settings/profile?error=fields");
   const moderation = await moderateText({
@@ -58,6 +62,7 @@ export async function updateProfileAction(formData: FormData) {
           bio,
           specialtiesJson: JSON.stringify(specialties),
           socialLinksJson: JSON.stringify(socialLinks),
+          collabAvailability,
           handleChangedAt: changed ? new Date() : user.handleChangedAt
         }
       });
@@ -70,6 +75,7 @@ export async function updateProfileAction(formData: FormData) {
   }
   revalidatePath("/profile");
   revalidatePath(`/clippers/${handle}`);
+  revalidatePath(`/profiles/${handle}`);
   redirect("/settings/profile?saved=1");
 }
 

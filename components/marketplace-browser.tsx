@@ -15,6 +15,7 @@ export type MarketplaceCard = {
   cpmRateCents: number;
   viewThreshold: number;
   payoutCents: number;
+  minimumGuaranteeCents: number;
   remainingBudgetCents: number;
   featured: boolean;
   demo: boolean;
@@ -22,6 +23,8 @@ export type MarketplaceCard = {
   submissions: number;
   deadlineMs: number;
   createdAtMs: number;
+  matchScore?: number;
+  matchReasons?: string[];
 };
 
 const DAY = 86_400_000;
@@ -135,6 +138,11 @@ export function MarketplaceBrowser({
                     </div>
                   </div>
                   <div className="mk-card-signals">
+                    {typeof card.matchScore === "number" && card.matchScore >= 65 ? (
+                      <span className="mk-match" title={card.matchReasons?.join(" · ")}>
+                        <Sparkles size={12} /> Подходит вам
+                      </span>
+                    ) : null}
                     {card.demo ? <span className="mk-demo">Демо</span> : null}
                     {signal && SignalIcon ? (
                       <span className={`mk-signal mk-signal--${signal.cls}`} title={signal.title}><SignalIcon size={12} /> {signal.text}</span>
@@ -146,7 +154,7 @@ export function MarketplaceBrowser({
                 <div className="mk-payline">
                   <div className="mk-pay">
                     <b>{rub(payout)}</b>
-                    <em>за результат · {cpm} ₽ / 1000</em>
+                    <em>{card.minimumGuaranteeCents > 0 ? `гарантия ${rub(card.minimumGuaranteeCents)} · ` : ""}{cpm} ₽ / 1000</em>
                   </div>
                   <span className="mk-go">Открыть <ArrowRight size={15} /></span>
                 </div>

@@ -12,6 +12,7 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
+import { REFERRAL_COOKIE, verifyReferralCookie } from "@/lib/referral-attribution";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
@@ -51,7 +52,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   jar.set("oauth_intent", intent, cookieOpts);
   if (roleIntent) jar.set("oauth_role_intent", roleIntent, cookieOpts);
   jar.set("oauth_return_to", returnTo, cookieOpts);
-  const referralCode = url.searchParams.get("ref")?.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 12);
+  const referralCode = url.searchParams.get("ref")?.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 12)
+    || verifyReferralCookie(jar.get(REFERRAL_COOKIE)?.value);
   if (referralCode) jar.set("oauth_referral", referralCode, cookieOpts);
 
   const authorizeUrl = buildAuthorizeUrl(provider, {

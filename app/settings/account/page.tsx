@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft, Link2, Mail, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Link2, Mail, ShieldCheck, Trash2, Video } from "lucide-react";
 import { deleteAccountAction } from "@/app/actions";
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { isConfigured, type ProviderId } from "@/lib/oauth";
 import { prisma } from "@/lib/prisma";
-import { unlinkAccountProviderAction } from "./actions";
+import { socialPlatformConfigured } from "@/lib/social-platforms";
+import { unlinkAccountProviderAction, unlinkSocialPlatformAction } from "./actions";
 import { AvatarUpload } from "./avatar-upload";
 import styles from "./settings.module.css";
 
@@ -27,6 +28,22 @@ export default async function AccountSettingsPage({
     select: { id: true, provider: true, createdAt: true },
     orderBy: { createdAt: "desc" }
   });
+  const socialAccounts = await prisma.socialAccount.findMany({
+    where: {
+      userId: user.id,
+      platform: { in: ["TIKTOK", "INSTAGRAM"] },
+      accessToken: { not: null }
+    },
+    select: {
+      id: true,
+      platform: true,
+      handle: true,
+      verifiedAt: true,
+      tokenExpiresAt: true,
+      scopesJson: true
+    },
+    orderBy: { updatedAt: "desc" }
+  });
 
   return (
     <AppShell>
@@ -43,6 +60,11 @@ export default async function AccountSettingsPage({
         {params.avatar === "updated" ? <p className={styles.success}>Логотип профиля обновлён.</p> : null}
         {params.avatar === "removed" ? <p className={styles.success}>Логотип удалён. Используются инициалы.</p> : null}
         {params.avatar === "invalid" ? <p className={styles.error}>Файл не прошёл проверку. Выберите обычный JPG, PNG или WebP до 2 МБ.</p> : null}
+        {params.social === "connected" ? <p className={styles.success}>TikTok подключён. ReelPay сможет проверять ваши ролики и просмотры.</p> : null}
+        {params.social === "disconnected" ? <p className={styles.success}>Соцсеть отключена, сохранённые токены удалены.</p> : null}
+        {params.social && !["connected", "disconnected"].includes(String(params.social)) ? (
+          <p className={styles.error}>Подключение не завершено. Проверьте доступ приложения и попробуйте ещё раз.</p>
+        ) : null}
 
         <Card className={styles.card}>
           <AvatarUpload avatar={user.avatar} name={user.name} handle={user.handle} />
@@ -51,9 +73,18 @@ export default async function AccountSettingsPage({
         <Card className={styles.card}>
           <div className={styles.cardTitle}>
             <Mail size={20} />
-            <div><h2>Основной аккаунт</h2><p>{user.email}</p></div>
+            <div>
+              <h2>Основной аккаунт</h2>
+              <p>{user.email} · {user.emailVerifiedAt ? "подтверждён" : "не подтверждён"}</p>
+            </div>
           </div>
           <p className={styles.note}>Email используется для входа и важных уведомлений об аккаунте.</p>
+          {!user.emailVerifiedAt ? (
+            <form action="/api/auth/verify-email" method="post">
+              <input type="hidden" name="returnTo" value="/settings/account" />
+              <button className="btn btn-primary" type="submit"><Mail size={16} /> Подтвердить email</button>
+            </form>
+          ) : null}
         </Card>
 
         <Card className={styles.card}>
@@ -92,6 +123,54 @@ export default async function AccountSettingsPage({
           </div>
           <p className={styles.note}>
             ReelPay хранит только связь с вашим аккаунтом. Доступ к сообщениям и публикациям не запрашивается.
+          </p>
+        </Card>
+
+        <Card className={styles.card}>
+          <div className={styles.cardTitle}>
+            <Video size={20} />
+            <div>
+              <h2>Площадки для проверки роликов</h2>
+              <p>Подключение нужно только для подтверждения ваших публикаций и их статистики.</p>
+            </div>
+          </div>
+          <div className={styles.providers}>
+            {(["TIKTOK", "INSTAGRAM"] as const).map((platform) => {
+              const account = socialAccounts.find((item) => item.platform === platform);
+              const configured = platform === "TIKTOK" && socialPlatformConfigured(platform);
+              const label = platform === "TIKTOK" ? "TikTok" : "Instagram Reels";
+              return (
+                <div className={styles.provider} key={platform}>
+                  <div>
+                    <strong>{label}</strong>
+                    <span>
+                      {account
+                        ? `${account.handle} · подключено`
+                        : configured
+                          ? "Можно подключить"
+                          : platform === "INSTAGRAM"
+                            ? "Будет доступно после проверки приложения Meta"
+                            : "Нужны ключи приложения"}
+                    </span>
+                  </div>
+                  {account ? (
+                    <form action={unlinkSocialPlatformAction}>
+                      <input type="hidden" name="socialAccountId" value={account.id} />
+                      <button className="btn btn-small btn-ghost" type="submit">Отключить</button>
+                    </form>
+                  ) : configured ? (
+                    <Link className="btn btn-small" href={`/api/social/oauth/${platform.toLowerCase()}`}>
+                      <Link2 size={15} /> Подключить
+                    </Link>
+                  ) : (
+                    <span className={styles.unavailable}>Недоступно</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className={styles.note}>
+            Токены хранятся на сервере в зашифрованном виде. ReelPay не получает пароль и не публикует ролики от вашего имени.
           </p>
         </Card>
 

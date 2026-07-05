@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
+import { availablePaymentProviders } from "@/lib/payment-readiness";
 
 const transactionLabels: Record<string, string> = {
   DEPOSIT: "Пополнение",
@@ -29,6 +30,7 @@ export default async function WalletPage({
   const pageSize = 10;
   const requestedDepositCents = Math.max(0, Number(params.need || 0));
   const depositDefaultRub = requestedDepositCents > 0 ? Math.ceil(requestedDepositCents / 100) : 50000;
+  const paymentProviders = availablePaymentProviders();
   const visibleTypes = mode === "client"
     ? ["DEPOSIT", "ADJUSTMENT"] as const
     : ["EARNING", "WITHDRAWAL", "REFERRAL_BONUS", "STREAK_BONUS"] as const;
@@ -90,6 +92,12 @@ export default async function WalletPage({
             <span>Пополните баланс минимум на {rub(requestedDepositCents)}. После оплаты вернитесь к созданию кампании.</span>
           </Card>
         ) : null}
+        {params.error === "payments_unavailable" ? (
+          <Card className="upload-status warn">
+            <strong>Пополнение пока недоступно</strong>
+            <span>Ни один платёжный способ ещё не подключён. Деньги не списывались.</span>
+          </Card>
+        ) : null}
         <div className="wallet-hero">
           <div className="wallet-title-block">
             <span className="eyebrow"><WalletCards size={15} /> Финансы ReelPay</span>
@@ -121,17 +129,25 @@ export default async function WalletPage({
           {mode === "client" ? (
             <Card className="wallet-action-card">
               <div className="wallet-action-head"><CreditCard /><h2>Пополнить баланс</h2></div>
-              <form className="form" action={depositAction}>
-                <label className="field">Сумма, ₽<input name="amount" type="number" min="100" step="100" defaultValue={depositDefaultRub} /></label>
-                <label className="field">
-                  Способ оплаты
-                  <select name="provider">
-                    <option value="yookassa">ЮKassa</option>
-                    <option value="stripe">Stripe</option>
-                  </select>
-                </label>
-                <button className="btn btn-primary" type="submit"><ArrowDownToLine size={18} /> Перейти к оплате</button>
-              </form>
+              {paymentProviders.length ? (
+                <form className="form" action={depositAction}>
+                  <label className="field">Сумма, ₽<input name="amount" type="number" min="100" step="100" defaultValue={depositDefaultRub} /></label>
+                  <label className="field">
+                    Способ оплаты
+                    <select name="provider">
+                      {paymentProviders.map((provider) => (
+                        <option value={provider.id} key={provider.id}>{provider.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button className="btn btn-primary" type="submit"><ArrowDownToLine size={18} /> Перейти к оплате</button>
+                </form>
+              ) : (
+                <div className="safe-note">
+                  <ShieldCheck size={18} />
+                  <span>Пополнение включится после безопасного подключения ЮKassa или Stripe администратором.</span>
+                </div>
+              )}
             </Card>
           ) : (
             <Card className="wallet-action-card">

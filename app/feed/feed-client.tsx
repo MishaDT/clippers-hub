@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Flame, Play } from "lucide-react";
-import { compactNumber, expectedPayout, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, minimumGuaranteedPayout, rub } from "@/lib/money";
 type RoleMode = "worker" | "client";
 
 type FeedCampaign = {
@@ -13,6 +13,7 @@ type FeedCampaign = {
   niche: string | null;
   viewThreshold: number;
   cpmRateCents: number;
+  minimumGuaranteeCents: number;
   deadline: string;
   ownerName: string;
   ownerAvatar: string;
@@ -105,6 +106,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
       <div className="reel-feed" ref={feedRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {visible.map((campaign) => {
           const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
+          const guarantee = minimumGuaranteedPayout(campaign.minimumGuaranteeCents);
           const days = Math.max(1, Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / 86400000));
           const isPlaying = playingId === campaign.id;
           return (
@@ -144,7 +146,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
                   {mode === "worker" ? (
                     <>
                       <b>до {rub(expected)}</b>
-                      <span>за выполнение · {days} дн.</span>
+                      <span>{guarantee > 0 ? `гарантия ${rub(guarantee)} · ` : ""}{days} дн.</span>
                     </>
                   ) : (
                     <>

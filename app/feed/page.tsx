@@ -37,6 +37,7 @@ const getFeedCampaigns = unstable_cache(
       niche: campaign.niche,
       viewThreshold: campaign.viewThreshold,
       cpmRateCents: campaign.cpmRateCents,
+      minimumGuaranteeCents: campaign.minimumGuaranteeCents,
       deadline: campaign.deadline.toISOString(),
       ownerName: campaign.owner.name,
       ownerAvatar: campaign.owner.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(campaign.owner.handle)}`,
@@ -46,7 +47,7 @@ const getFeedCampaigns = unstable_cache(
       video: videos[index % videos.length]
     }));
   },
-  ["feed-campaigns-v2"],
+  ["feed-campaigns-v3"],
   { revalidate: 30, tags: ["campaigns"] }
 );
 

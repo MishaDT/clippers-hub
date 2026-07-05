@@ -19,7 +19,7 @@ export async function loadAchievementStats(user: {
     prisma.submission.count({ where: { workerId: user.id } }),
     prisma.submission.aggregate({ where: { workerId: user.id, createdAt: { gte: since } }, _sum: { currentViews: true } }),
     prisma.submission.aggregate({ where: { workerId: user.id }, _max: { currentViews: true } }),
-    prisma.user.count({ where: { referredBy: user.referralCode } }),
+    prisma.referralRelation.count({ where: { referrerId: user.id, status: "ACTIVE" } }),
     prisma.campaign.count({ where: { ownerId: user.id } }),
     prisma.submission.count({ where: { campaign: { ownerId: user.id } } }),
     prisma.submission.count({ where: { workerId: user.id, status: "PAID", updatedAt: { gte: since } } })

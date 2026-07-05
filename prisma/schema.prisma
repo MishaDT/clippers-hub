@@ -13,6 +13,7 @@ datasource db {
 model User {
   id                String        @id @default(cuid())
   email             String        @unique
+  emailVerifiedAt   DateTime?
   passwordHash      String
   name              String
   handle            String        @unique
@@ -30,6 +31,7 @@ model User {
   rpBalance         Int           @default(0)
   rpPurchasedBalance Int          @default(0)
   preferredRoleMode String?
+  collabAvailability CollabAvailability @default(ACTIVE_ROLE)
   marketGuideSeenAt DateTime?
   rank              Rank          @default(BRONZE)
   trustScore        Int           @default(100)
@@ -73,25 +75,53 @@ model User {
   rpTransactions         RpTransaction[]
   recurringRewardClaims  RecurringRewardClaim[]
   storeRedemptions       StoreRedemption[]
+  emailVerificationTokens EmailVerificationToken[]
+  referralsSent           ReferralRelation[]   @relation("ReferralReferrer")
+  referralRelation        ReferralRelation?    @relation("ReferralReferred")
+  referralCommissions     ReferralCommission[] @relation("ReferralCommissionOwner")
+  referralCommissionSources ReferralCommission[] @relation("ReferralCommissionSource")
+  referralClicks          ReferralClick[]
+  collabInitiated         CollabInvite[]        @relation("CollabInitiator")
+  ratingsGiven            UserRating[]          @relation("RatingAuthor")
+  ratingsReceived         UserRating[]          @relation("RatingSubject")
 
   @@index([role, createdAt])
   @@index([createdAt])
 }
 
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
 model SocialAccount {
-  id           String    @id @default(cuid())
-  userId       String
-  platform     Platform
-  externalId   String
-  handle       String
-  accessToken  String?
-  refreshToken String?
-  verifiedAt   DateTime?
-  createdAt    DateTime  @default(now())
+  id                    String    @id @default(cuid())
+  userId                String
+  platform              Platform
+  externalId            String
+  handle                String
+  accessToken           String?
+  refreshToken          String?
+  tokenExpiresAt        DateTime?
+  refreshTokenExpiresAt DateTime?
+  scopesJson            String    @default("[]")
+  verifiedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([platform, externalId])
+  @@index([userId, platform])
 }
 
 // Social login (Google / VK / Yandex). Stores ONLY the identity link —
@@ -120,6 +150,11 @@ model Campaign {
   rulesJson            String
   cpmRateCents         Int
   viewThreshold        Int
+  minimumGuaranteeCents Int           @default(0)
+  reviewMode            ReviewMode    @default(STANDARD)
+  maxRevisionRounds     Int           @default(2)
+  briefVersion          Int           @default(1)
+  draftRequired         Boolean       @default(true)
   totalBudgetCents     Int
   remainingBudgetCents Int
   reservedBudgetCents  Int            @default(0)
@@ -190,6 +225,14 @@ model Submission {
   fraudScore       Int              @default(0)
   reservedPayoutCents Int           @default(0)
   reservationReleasedAt DateTime?
+  draftUrl          String?
+  draftStatus       DraftReviewStatus @default(NOT_SUBMITTED)
+  draftRevision     Int               @default(0)
+  draftSubmittedAt  DateTime?
+  draftReviewedAt   DateTime?
+  draftReviewNote   String?
+  draftReviewedById String?
+  publishApprovedAt DateTime?
   viewVelocityJson String           @default("[]")
   lastSyncedAt     DateTime         @default(now())
   verifiedAt       DateTime?
@@ -204,12 +247,34 @@ model Submission {
   chatThreads   ChatThread[]
   videoChecks   VideoCheck[]
   portfolioPins PortfolioPin[]
+  ratings       UserRating[]
 
   @@unique([campaignId, workerId])
   @@index([workerId, createdAt])
   @@index([workerId, currentViews])
   @@index([campaignId, currentViews])
   @@index([status, fraudScore])
+  @@index([draftStatus, draftSubmittedAt])
+}
+
+model UserRating {
+  id           String     @id @default(cuid())
+  submissionId String
+  authorId     String
+  subjectId    String
+  authorRole   RatingRole
+  score        Int
+  comment      String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  author     User       @relation("RatingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  subject    User       @relation("RatingSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, authorId])
+  @@index([subjectId, createdAt])
+  @@index([subjectId, score])
 }
 
 model VideoCheck {
@@ -418,10 +483,91 @@ model Transaction {
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   submission Submission? @relation(fields: [submissionId], references: [id])
+  referralCommissions ReferralCommission[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([submissionId, type])
+}
+
+model ReferralProgramConfig {
+  id                 String   @id @default("default")
+  enabled            Boolean  @default(true)
+  attributionDays    Int      @default(30)
+  activationRewardRp Int      @default(25)
+  updatedAt          DateTime @updatedAt
+}
+
+model ReferralTier {
+  id                 String   @id @default(cuid())
+  title              String
+  minActiveReferrals Int      @unique
+  rateBps            Int
+  sortOrder          Int      @default(0)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([active, minActiveReferrals])
+}
+
+model ReferralRelation {
+  id             String         @id @default(cuid())
+  referrerId     String
+  referredUserId String         @unique
+  codeSnapshot   String
+  status         ReferralStatus @default(REGISTERED)
+  qualifiedAt    DateTime?
+  flaggedAt      DateTime?
+  flagReason     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  referrer     User                 @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser User                 @relation("ReferralReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
+  commissions ReferralCommission[]
+
+  @@index([referrerId, status, createdAt])
+}
+
+model ReferralCommission {
+  id             String                   @id @default(cuid())
+  referrerId     String
+  referredUserId String
+  relationId     String
+  transactionId  String
+  side           ReferralCommissionSide
+  rateBps        Int
+  baseFeeCents   Int
+  amountCents    Int
+  status         ReferralCommissionStatus @default(AVAILABLE)
+  releasedAt     DateTime?
+  reversedAt     DateTime?
+  createdAt      DateTime                 @default(now())
+
+  referrer     User             @relation("ReferralCommissionOwner", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser User             @relation("ReferralCommissionSource", fields: [referredUserId], references: [id], onDelete: Cascade)
+  relation     ReferralRelation @relation(fields: [relationId], references: [id], onDelete: Cascade)
+  transaction  Transaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, referredUserId])
+  @@index([referrerId, status, createdAt])
+  @@index([referredUserId, createdAt])
+}
+
+model ReferralClick {
+  id            String   @id @default(cuid())
+  referrerId    String
+  codeSnapshot  String
+  ipHash        String?
+  userAgentHash String?
+  landingPath   String?
+  createdAt     DateTime @default(now())
+
+  referrer User @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId, createdAt])
+  @@index([ipHash, createdAt])
 }
 
 model Notification {
@@ -644,6 +790,7 @@ model CollabInvite {
   id          String    @id @default(cuid())
   clientId    String
   workerId    String
+  initiatorId String
   campaignId  String?
   role        String    @default("Клиппер")
   deadline    DateTime?
@@ -656,12 +803,14 @@ model CollabInvite {
 
   client User @relation("CollabClient", fields: [clientId], references: [id], onDelete: Cascade)
   worker User @relation("CollabWorker", fields: [workerId], references: [id], onDelete: Cascade)
+  initiator User @relation("CollabInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
   campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   chatThread ChatThread?
 
   @@index([workerId, status])
   @@index([clientId, status])
   @@index([campaignId, status])
+  @@index([initiatorId, status])
 }
 
 // A large client endorsing a clipper ("{client} рекомендует").
@@ -684,6 +833,35 @@ enum Role {
   WORKER
   BOTH
   ADMIN
+}
+
+enum CollabAvailability {
+  ACTIVE_ROLE
+  BOTH
+  NONE
+}
+
+enum RatingRole {
+  CLIENT
+  WORKER
+}
+
+enum ReferralStatus {
+  REGISTERED
+  ACTIVE
+  FLAGGED
+  BLOCKED
+}
+
+enum ReferralCommissionSide {
+  CLIENT
+  WORKER
+}
+
+enum ReferralCommissionStatus {
+  HELD
+  AVAILABLE
+  REVERSED
 }
 
 enum AccountStatus {
@@ -736,6 +914,20 @@ enum SubmissionStatus {
   THRESHOLD_MET
   SETTLING
   PAID
+  REJECTED
+}
+
+enum ReviewMode {
+  FAST
+  STANDARD
+  STRICT
+}
+
+enum DraftReviewStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
   REJECTED
 }
 

@@ -4,7 +4,7 @@ import { AppShell } from "@/components/ui";
 
 export default function RpHelpPage() {
   return (
-    <AppShell>
+    <AppShell publicOnly>
       <main className="section legal-page">
         <Link className="wallet-back" href="/wallet?tab=rp"><ArrowLeft size={17} /> В кошелёк</Link>
         <span className="eyebrow"><Coins size={15} /> Бонусная система</span>

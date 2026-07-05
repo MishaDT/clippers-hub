@@ -29,12 +29,16 @@
     "test:auth-intent": "node --experimental-strip-types --test tests/auth-intent.test.mts",
     "test:reports": "node --experimental-strip-types --test tests/report-reasons.test.mts",
     "test:notifications": "node --experimental-strip-types --test tests/notifications.test.mts",
-    "test:money": "node --experimental-strip-types --test tests/financial-model.test.mts"
+    "test:money": "node --experimental-strip-types --test tests/financial-model.test.mts",
+    "test:drafts": "node --experimental-strip-types --test tests/draft-workflow.test.mts",
+    "test:matching": "node --experimental-strip-types --test tests/campaign-matching.test.mts",
+    "test:referrals": "node --experimental-strip-types --test tests/referrals.test.mts tests/referral-attribution.test.mts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",
     "@prisma/client": "^6.10.1",
+    "@vercel/blob": "^2.5.0",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
     "libphonenumber-js": "^1.13.7",

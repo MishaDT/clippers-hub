@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { isPaymentProviderAvailable, type PaymentProvider } from "@/lib/payment-readiness";
 
 type PaymentInput = {
   amountCents: number;
   userId: string;
-  provider: "yookassa" | "stripe";
+  provider: PaymentProvider;
   description: string;
 };
 
@@ -86,6 +87,8 @@ async function createYooKassaPayment(input: PaymentInput) {
 }
 
 export async function createPaymentIntent(input: PaymentInput) {
+  if (!isPaymentProviderAvailable(input.provider)) return null;
+
   const liveIntent = input.provider === "yookassa" ? await createYooKassaPayment(input) : await createStripeCheckout(input);
 
   if (!liveIntent) {

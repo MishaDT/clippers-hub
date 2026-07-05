@@ -7,6 +7,7 @@ import { trackEvent } from "@/lib/analytics";
 import { callbackUri, exchangeAndFetchProfile, isConfigured, isProvider, redirectBase } from "@/lib/oauth";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
+import { REFERRAL_COOKIE } from "@/lib/referral-attribution";
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
@@ -69,6 +70,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
           data: { userId: currentUser.id, provider, providerAccountId: profile.providerAccountId }
         });
       }
+      if (
+        !currentUser.emailVerifiedAt &&
+        profile.emailVerified &&
+        profile.email?.toLowerCase() === currentUser.email.toLowerCase()
+      ) {
+        await prisma.user.update({
+          where: { id: currentUser.id },
+          data: { emailVerifiedAt: new Date() }
+        });
+      }
       await trackEvent({ request, userId: currentUser.id, type: "OAUTH_LINK", path: "/profile", provider });
       return NextResponse.redirect(new URL("/profile?settings=account", base), 303);
     }
@@ -85,12 +96,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
         const handleBase = email.split("@")[0].replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 12) || "user";
         const handle = `${handleBase}${Math.floor(Math.random() * 9000 + 1000)}`;
         const validReferrer = referralCode
-          ? await prisma.user.findUnique({ where: { referralCode }, select: { referralCode: true } })
+          ? await prisma.user.findUnique({ where: { referralCode }, select: { id: true, referralCode: true } })
           : null;
         user = await prisma.$transaction(async (tx) => {
           const created = await tx.user.create({
             data: {
               email,
+              emailVerifiedAt: new Date(),
               name: profile.name || handleBase,
               handle,
               avatar: profile.avatar ?? undefined,
@@ -102,6 +114,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
               preferredRoleMode: roleIntent
             }
           });
+          if (validReferrer && validReferrer.id !== created.id) {
+            await tx.referralRelation.create({
+              data: {
+                referrerId: validReferrer.id,
+                referredUserId: created.id,
+                codeSnapshot: validReferrer.referralCode
+              }
+            });
+          }
           // Referral reward is deferred to a qualifying action (first real clip), not paid at
           // signup — see submitClipAction. This blocks fake-signup farming of referral RP.
           return created;
@@ -110,6 +131,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
       }
       await prisma.oAuthAccount.create({
         data: { userId: user.id, provider, providerAccountId: profile.providerAccountId }
+      });
+    }
+
+    if (!user.emailVerifiedAt) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerifiedAt: new Date() }
       });
     }
 
@@ -135,6 +163,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
       path: "/",
       maxAge: 31536000
     });
+    jar.delete(REFERRAL_COOKIE);
     return NextResponse.redirect(new URL(safeAuthReturnTo(requestedReturnTo, selectedMode), base), 303);
   } catch {
     return fail("oauth_failed");

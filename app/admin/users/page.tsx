@@ -13,12 +13,16 @@ export const dynamic = "force-dynamic";
 const pageSize = 60;
 const roles = ["ALL", "ADMIN", "CLIENT", "WORKER", "BOTH"] as const;
 const providers = ["all", "google", "email"] as const;
+const verificationStates = ["all", "verified", "unverified"] as const;
 
 export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const q = String(params.q || "").trim();
   const role = roles.includes(String(params.role) as (typeof roles)[number]) ? String(params.role) : "ALL";
   const provider = providers.includes(String(params.provider) as (typeof providers)[number]) ? String(params.provider) : "all";
+  const verification = verificationStates.includes(String(params.verification) as (typeof verificationStates)[number])
+    ? String(params.verification)
+    : "all";
   const page = clampPage(params.page);
 
   const where: Prisma.UserWhereInput = {};
@@ -32,8 +36,10 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   if (role !== "ALL") where.role = role as Prisma.EnumRoleFilter["equals"];
   if (provider === "google") where.oauthAccounts = { some: { provider: "google" } };
   if (provider === "email") where.oauthAccounts = { none: {} };
+  if (verification === "verified") where.emailVerifiedAt = { not: null };
+  if (verification === "unverified") where.emailVerifiedAt = null;
 
-  const [total, users, googleUsers, roleGroups, allUsers] = await Promise.all([
+  const [total, users, googleUsers, unverifiedUsers, roleGroups, allUsers] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
@@ -46,6 +52,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
         balanceCents: true,
         holdBalanceCents: true,
         trustScore: true,
+        emailVerifiedAt: true,
         createdAt: true,
         oauthAccounts: { select: { provider: true } },
         _count: { select: { ownedCampaigns: true, submissions: true, transactions: true } }
@@ -55,6 +62,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
       take: pageSize
     }),
     prisma.oAuthAccount.count({ where: { provider: "google" } }),
+    prisma.user.count({ where: { emailVerifiedAt: null } }),
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
     prisma.user.count()
   ]);
@@ -81,7 +89,12 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   });
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const baseParams = { q, role: role === "ALL" ? "" : role, provider: provider === "all" ? "" : provider };
+  const baseParams = {
+    q,
+    role: role === "ALL" ? "" : role,
+    provider: provider === "all" ? "" : provider,
+    verification: verification === "all" ? "" : verification
+  };
 
   return (
     <AdminShell>
@@ -95,6 +108,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
         <div className="admin-grid compact admin-kpi-strip">
           <Card className="admin-metric"><UserRound /><span>Найдено</span><strong>{total}</strong><small>по фильтрам</small></Card>
           <Card className="admin-metric"><UserRound /><span>Google</span><strong>{googleUsers}</strong><small>соц-входы</small></Card>
+          <Card className="admin-metric"><UserRound /><span>Без проверки</span><strong>{unverifiedUsers}</strong><small>email не подтверждён</small></Card>
         </div>
 
         <nav className="admin-user-role-tabs" aria-label="Быстрый выбор роли">
@@ -102,6 +116,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
             const query = new URLSearchParams();
             if (q) query.set("q", q);
             if (provider !== "all") query.set("provider", provider);
+            if (verification !== "all") query.set("verification", verification);
             if (item.value !== "ALL") query.set("role", item.value);
             return <Link className={role === item.value ? "active" : ""} href={`/admin/users${query.size ? `?${query}` : ""}`} key={item.value}><span>{item.label}</span><b>{item.count}</b></Link>;
           })}
@@ -121,6 +136,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
               <option value="all">Любой вход</option>
               <option value="google">Google</option>
               <option value="email">Email</option>
+            </select>
+            <select name="verification" defaultValue={verification}>
+              <option value="all">Любой email</option>
+              <option value="verified">Подтверждён</option>
+              <option value="unverified">Не подтверждён</option>
             </select>
             <button className="btn btn-primary" type="submit">Найти</button>
           </form>
@@ -161,7 +181,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                     <div>
                       <strong>{user.name}</strong>
                       <span>{user.email}</span>
-                      <small>@{user.handle} · {fullDate(user.createdAt)}</small>
+                      <small>@{user.handle} · {fullDate(user.createdAt)} · {user.emailVerifiedAt ? "email ✓" : "email не проверен"}</small>
                     </div>
                   </div>
                   <div><Tag tone={user.role === "ADMIN" ? "warn" : "soft"}>{roleLabel(user.role)}</Tag><span>trust {user.trustScore}</span></div>
@@ -178,7 +198,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
               const last = lastByUser.get(user.id);
               return (
                 <Link className="admin-mobile-row" href={`/admin/users/${user.id}`} key={user.id}>
-                  <span>{user.name}<em>{user.email}</em></span>
+                  <span>{user.name}<em>{user.email} · {user.emailVerifiedAt ? "✓" : "не проверен"}</em></span>
                   <b>{roleLabel(user.role)}</b>
                   <small>{last ? fullDate(last.createdAt) : "нет входов"}</small>
                 </Link>

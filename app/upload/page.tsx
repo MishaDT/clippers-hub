@@ -4,7 +4,7 @@ import { Send } from "lucide-react";
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { compactNumber, expectedPayout, rub } from "@/lib/money";
+import { compactNumber, expectedPayout, minimumGuaranteedPayout, rub } from "@/lib/money";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { UploadForm } from "./upload-form";
 
@@ -49,11 +49,21 @@ export default async function UploadPage({
       title: submission.campaign.title,
       trackingCode: submission.trackingCode,
       payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents, user.rank)),
+      guarantee: submission.campaign.minimumGuaranteeCents > 0
+        ? rub(minimumGuaranteedPayout(submission.campaign.minimumGuaranteeCents, user.rank))
+        : null,
       target: compactNumber(submission.campaign.viewThreshold),
       daysLeft: Math.max(1, Math.ceil((submission.campaign.deadline.getTime() - Date.now()) / 86400000)),
       platforms: parsePlatforms(submission.campaign.allowedPlatformsJson),
       watermarkRequired: Boolean(rules.watermarkBonus),
-      requiredTags: rules.requiredTags || []
+      requiredTags: rules.requiredTags || [],
+      draftRequired: submission.campaign.draftRequired,
+      draftStatus: submission.draftStatus,
+      draftRevision: submission.draftRevision,
+      maxRevisionRounds: submission.campaign.maxRevisionRounds,
+      reviewMode: submission.campaign.reviewMode,
+      draftReviewNote: submission.draftReviewNote,
+      draftUrl: submission.draftUrl
     };
   });
 
@@ -94,8 +104,27 @@ export default async function UploadPage({
           </Card>
         ) : null}
 
+        {params.draft === "approved" ? (
+          <Card className="upload-status ok">
+            <strong>Черновик принят</strong>
+            <span>Теперь можно публиковать ролик и отправлять ссылку на проверку просмотров.</span>
+          </Card>
+        ) : null}
+        {params.draft === "pending" ? (
+          <Card className="upload-status warn">
+            <strong>Черновик отправлен</strong>
+            <span>Дождитесь решения в уведомлениях или чате. До принятия публиковать ролик не нужно.</span>
+          </Card>
+        ) : null}
+        {params.draft && !["approved", "pending"].includes(String(params.draft)) ? (
+          <Card className="upload-status warn">
+            <strong>Не удалось изменить черновик</strong>
+            <span>Проверьте HTTPS-ссылку, текущий статус и доступное число правок.</span>
+          </Card>
+        ) : null}
+
         {orders.length ? (
-          <UploadForm orders={orders} />
+          <UploadForm orders={orders} blobEnabled={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} />
         ) : (
           <Card className="empty-box">
             <h2>Пока нет взятых заказов</h2>

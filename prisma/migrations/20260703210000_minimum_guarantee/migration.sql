@@ -1,0 +1,2 @@
+ALTER TABLE "Campaign"
+ADD COLUMN "minimumGuaranteeCents" INTEGER NOT NULL DEFAULT 0;

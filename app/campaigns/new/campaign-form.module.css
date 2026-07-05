@@ -98,7 +98,62 @@
   text-align: center;
 }
 
+.reviewModes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reviewModes legend {
+  grid-column: 1 / -1;
+  margin-bottom: 4px;
+  color: #f1f3ee;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.reviewModes label {
+  position: relative;
+  display: block;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.reviewModes input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.reviewModes span {
+  min-height: 112px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 13px;
+  color: #f1f3ee;
+  background: rgba(255, 255, 255, .025);
+}
+
+.reviewModes small {
+  color: #8f948c;
+  line-height: 1.45;
+}
+
+.reviewModes input:checked + span {
+  border-color: rgba(186, 255, 0, .55);
+  background: rgba(186, 255, 0, .08);
+  box-shadow: 0 0 0 1px rgba(186, 255, 0, .1);
+}
+
 @media (max-width: 700px) {
   .wizard { padding: 12px; border-radius: 13px; }
   .labels { margin-inline: -4px; }
+  .reviewModes { grid-template-columns: 1fr; }
+  .reviewModes span { min-height: 0; }
 }

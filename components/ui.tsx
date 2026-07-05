@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { unstable_cache } from "next/cache";
 import { clsx } from "clsx";
 import { BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { BottomNav, DesktopNav } from "@/components/app-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { getActiveRoleMode } from "@/lib/role-mode";
@@ -14,14 +12,6 @@ import { getUnreadSummary } from "@/lib/unread";
 import { NotificationBell } from "@/components/notification-bell";
 import { ReadStateTracker } from "@/components/read-state-tracker";
 import { RoleModeSwitcher } from "@/components/role-mode-switcher";
-
-const loadAdminAlerts = unstable_cache(
-  (userId: string) => prisma.notification.count({
-    where: { userId, readAt: null, archivedAt: null, priority: "HIGH" }
-  }),
-  ["admin-alert-count-v1"],
-  { revalidate: 15, tags: ["admin-alerts"] }
-);
 
 export async function AppShell({
   children,
@@ -39,18 +29,9 @@ export async function AppShell({
   const user = publicOnly ? null : await getCurrentUser();
   const isAdmin = canAccessAdmin(user);
   const mode = user ? await getActiveRoleMode(user) : "worker";
-  const [adminAlerts, unread, notifications] = user
-    ? await Promise.all([
-        isAdmin ? loadAdminAlerts(user.id) : Promise.resolve(0),
-        getUnreadSummary(user.id),
-        prisma.notification.findMany({
-          where: { userId: user.id, archivedAt: null },
-          orderBy: { lastOccurredAt: "desc" },
-          take: 6,
-          select: { id: true, title: true, body: true, href: true, readAt: true, occurrenceCount: true, lastOccurredAt: true }
-        })
-      ])
-    : [0, { chats: 0, support: 0, chatBadge: 0, notifications: 0 }, []];
+  const unread = user
+    ? await getUnreadSummary(user.id)
+    : { chats: 0, support: 0, chatBadge: 0, notifications: 0, adminAlerts: 0 };
   const roleLabel = mode === "client" ? "Заказчик" : "Исполнитель";
 
   return (
@@ -71,19 +52,8 @@ export async function AppShell({
         <div className="top-actions">
           {user ? (
             <>
-              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span>{adminAlerts ? <b className="admin-alert-badge" title={`${adminAlerts} важных событий`}>{adminAlerts > 99 ? "99+" : adminAlerts}</b> : null}</Link> : null}
-              <NotificationBell
-                unread={unread.notifications}
-                items={notifications.map((item) => ({
-                  id: item.id,
-                  title: item.title,
-                  body: item.body,
-                  href: item.href,
-                  read: Boolean(item.readAt),
-                  occurrenceCount: item.occurrenceCount,
-                  createdAt: item.lastOccurredAt.toLocaleString("ru-RU", { day: "2-digit", month: "short" })
-                }))}
-              />
+              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span>{unread.adminAlerts ? <b className="admin-alert-badge" title={`${unread.adminAlerts} важных событий`}>{unread.adminAlerts > 99 ? "99+" : unread.adminAlerts}</b> : null}</Link> : null}
+              <NotificationBell unread={unread.notifications} />
               {user.role === "BOTH" || user.role === "ADMIN" ? (
                 <Suspense fallback={<Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>}>
                   <RoleModeSwitcher mode={mode} />

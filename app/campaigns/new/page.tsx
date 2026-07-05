@@ -32,11 +32,12 @@ export default async function NewCampaignPage({
             <span>Минимальный резерв для этих условий: {rub(Number(params.need || 0))}. Увеличьте бюджет или уменьшите количество публикаций.</span>
           </Card>
         ) : null}
-        <CampaignForm preferInitial={Boolean(params.deliverableCount || params.viewThreshold || params.budget || params.cpm || params.deadlineDays)} initial={{
+        <CampaignForm preferInitial={Boolean(params.deliverableCount || params.viewThreshold || params.budget || params.cpm || params.minimumGuarantee || params.deadlineDays)} initial={{
           deliverableCount: Math.max(1, Math.min(20, Number(params.deliverableCount || 3))),
           viewThreshold: [5000, 10000, 25000, 50000].includes(Number(params.viewThreshold)) ? Number(params.viewThreshold) : 10000,
           budget: Math.max(1000, Number(params.budget || 15000)),
           cpm: Math.max(10, Number(params.cpm || 50)),
+          minimumGuarantee: Math.max(0, Number(params.minimumGuarantee || 100)),
           deadlineDays: [3, 7, 14, 30].includes(Number(params.deadlineDays)) ? Number(params.deadlineDays) : 7
         }} />
       </section>

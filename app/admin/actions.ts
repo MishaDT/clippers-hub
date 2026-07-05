@@ -110,9 +110,47 @@ export async function adminUpdateTransactionAction(formData: FormData) {
   const transactionId = clean(formData.get("transactionId"));
   const statusInput = clean(formData.get("status"));
   const status = txStatuses.includes(statusInput as (typeof txStatuses)[number]) ? statusInput : "PENDING";
-  const tx = await prisma.transaction.update({ where: { id: transactionId }, data: { status: status as "PENDING" | "COMPLETED" | "FAILED" | "REVERSED" } });
+  const tx = await prisma.$transaction(async (db) => {
+    const current = await db.transaction.findUniqueOrThrow({ where: { id: transactionId } });
+    const updated = await db.transaction.update({ where: { id: transactionId }, data: { status: status as "PENDING" | "COMPLETED" | "FAILED" | "REVERSED" } });
+    if (
+      current.type === "EARNING"
+      && current.status === "COMPLETED"
+      && (status === "FAILED" || status === "REVERSED")
+    ) {
+      const commissions = await db.referralCommission.findMany({
+        where: { transactionId, status: "AVAILABLE" },
+        select: { id: true, referrerId: true, amountCents: true }
+      });
+      for (const commission of commissions) {
+        const reversed = await db.referralCommission.updateMany({
+          where: { id: commission.id, status: "AVAILABLE" },
+          data: { status: "REVERSED", reversedAt: new Date() }
+        });
+        if (!reversed.count) continue;
+        await db.user.update({
+          where: { id: commission.referrerId },
+          data: { balanceCents: { decrement: commission.amountCents } }
+        });
+        await db.transaction.create({
+          data: {
+            userId: commission.referrerId,
+            amountCents: -commission.amountCents,
+            feeCents: 0,
+            netCents: -commission.amountCents,
+            type: "ADJUSTMENT",
+            status: "COMPLETED",
+            providerData: stringify({ referralCommissionReversal: commission.id, sourceTransactionId: transactionId })
+          }
+        });
+      }
+    }
+    return updated;
+  });
   await logAdmin(admin.id, "ADMIN_TRANSACTION_UPDATE", "Transaction", transactionId, { status, userId: tx.userId });
   revalidatePath("/admin/finance");
+  revalidatePath("/admin/referrals");
+  revalidatePath("/referrals");
   revalidatePath(`/admin/users/${tx.userId}`);
   redirect(`/admin/finance?updated=1`);
 }

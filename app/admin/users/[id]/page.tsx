@@ -39,7 +39,7 @@ export default async function AdminUserDetailPage({
         <AdminPageHeader
           eyebrow="Пользователь"
           title={user.name}
-          description={`${user.email} · @${user.handle} · ${auth}`}
+          description={`${user.email} · ${user.emailVerifiedAt ? "email подтверждён" : "email не проверен"} · @${user.handle} · ${auth}`}
           action={<Link className="btn" href="/admin/users"><ArrowLeft size={16} /> Назад</Link>}
         />
 
@@ -47,6 +47,7 @@ export default async function AdminUserDetailPage({
           <Card className="admin-metric"><UserCog /><span>Роль</span><strong>{roleLabel(user.role)}</strong><small>trust {user.trustScore}</small></Card>
           <Card className="admin-metric"><Banknote /><span>Баланс</span><strong>{rub(user.balanceCents)}</strong><small>hold {rub(user.holdBalanceCents)}</small></Card>
           <Card className="admin-metric"><Shield /><span>Контент</span><strong>{compactNumber(user.lifetimeViews)}</strong><small>{user.submissions.length} последних работ</small></Card>
+          <Card className="admin-metric"><Shield /><span>Email</span><strong>{user.emailVerifiedAt ? "Проверен" : "Нет"}</strong><small>{user.emailVerifiedAt ? fullDate(user.emailVerifiedAt) : "нужна проверка"}</small></Card>
         </div>
 
         <div className="admin-two">

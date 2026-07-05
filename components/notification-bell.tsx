@@ -18,15 +18,15 @@ export type NotificationItem = {
   createdAt: string;
 };
 
-export function NotificationBell({
-  unread,
-  items
-}: {
-  unread: number;
-  items: NotificationItem[];
-}) {
+// The badge count comes from the (cheap) shell summary; the list itself is fetched only when the
+// dropdown is opened, so it never runs on the render path of every page.
+export function NotificationBell({ unread }: { unread: number }) {
   const [open, setOpen] = useState(false);
   const [visibleUnread, setVisibleUnread] = useState(unread);
+  const [items, setItems] = useState<NotificationItem[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [requestVersion, setRequestVersion] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setVisibleUnread(unread), [unread]);
@@ -37,6 +37,28 @@ export function NotificationBell({
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  useEffect(() => {
+    if (!open || items !== null) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadError(false);
+    fetch("/api/notifications/recent", { signal: controller.signal, cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Notifications failed: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => { if (!cancelled) setItems(Array.isArray(data.items) ? data.items : []); })
+      .catch((error: unknown) => {
+        if (!cancelled && !(error instanceof DOMException && error.name === "AbortError")) setLoadError(true);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [open, items, requestVersion]);
 
   return (
     <div className={styles.wrap} ref={wrapRef}>
@@ -59,13 +81,21 @@ export function NotificationBell({
               <form action={async () => {
                 await markAllNotificationsReadAction();
                 setVisibleUnread(0);
+                setItems((current) => current?.map((item) => ({ ...item, read: true })) ?? current);
               }}>
                 <button type="submit">Прочитать всё</button>
               </form>
             ) : null}
           </div>
           <div className={styles.list}>
-            {items.map((item) => (
+            {loading && items === null ? <p className={styles.empty}>Загрузка…</p> : null}
+            {loadError && !loading ? (
+              <p className={styles.empty}>
+                Не удалось загрузить.{" "}
+                <button type="button" onClick={() => setRequestVersion((value) => value + 1)}>Повторить</button>
+              </p>
+            ) : null}
+            {(items ?? []).map((item) => (
               <Link
                 className={styles.item}
                 data-unread={!item.read}
@@ -83,7 +113,7 @@ export function NotificationBell({
                 <p>{item.body}</p>
               </Link>
             ))}
-            {!items.length ? <p className={styles.empty}>Новых событий пока нет</p> : null}
+            {items !== null && !items.length && !loading ? <p className={styles.empty}>Новых событий пока нет</p> : null}
           </div>
           <div className={styles.footer}>
             <Link href="/notifications" onClick={() => setOpen(false)}>Все уведомления</Link>

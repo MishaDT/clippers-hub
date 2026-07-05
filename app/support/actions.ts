@@ -1,7 +1,7 @@
 "use server";
 
 import type { SupportCategory, SupportPriority, SupportStatus } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { canAccessAdmin, requireAdmin } from "@/lib/admin";
 import { requireUser } from "@/lib/auth";
@@ -12,6 +12,7 @@ import { supportCategories, supportPriorities, supportStatuses } from "@/lib/sup
 import { moderateText } from "@/lib/moderation";
 import { notificationGroup, notify } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
+import { unreadSummaryTag } from "@/lib/unread";
 
 function cleanSubject(value: FormDataEntryValue | null) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 120);
@@ -135,6 +136,7 @@ export async function markSupportReadAction(threadId: string) {
     where: { id: threadId, requesterId: user.id },
     data: { requesterReadAt: new Date() }
   });
+  revalidateTag(unreadSummaryTag(user.id));
   revalidatePath("/support");
 }
 
@@ -150,6 +152,7 @@ export async function markChatThreadReadAction(threadId: string) {
     create: { threadId, userId: user.id, lastReadAt: new Date() },
     update: { lastReadAt: new Date() }
   });
+  revalidateTag(unreadSummaryTag(user.id));
 }
 
 export async function adminReplySupportAction(formData: FormData) {

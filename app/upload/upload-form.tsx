@@ -3,20 +3,30 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check, CheckCircle2, ChevronDown, Clock3, Copy, Download,
-  Eye, Link2, Send, ShieldCheck, WalletCards
+  Eye, FileCheck2, Link2, RotateCcw, Send, ShieldCheck, WalletCards
 } from "lucide-react";
-import { submitClipAction } from "@/app/actions";
+import { submitClipAction, submitDraftAction } from "@/app/actions";
+import styles from "./upload-form.module.css";
+import { upload } from "@vercel/blob/client";
 
 type Order = {
   id: string;
   title: string;
   trackingCode: string;
   payout: string;
+  guarantee: string | null;
   target: string;
   daysLeft: number;
   platforms: string[];
   watermarkRequired: boolean;
   requiredTags: string[];
+  draftRequired: boolean;
+  draftStatus: "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "CHANGES_REQUESTED" | "REJECTED";
+  draftRevision: number;
+  maxRevisionRounds: number;
+  reviewMode: "FAST" | "STANDARD" | "STRICT";
+  draftReviewNote: string | null;
+  draftUrl: string | null;
 };
 
 const labels: Record<string, string> = {
@@ -36,15 +46,25 @@ function inspectUrl(value: string) {
   return null;
 }
 
-export function UploadForm({ orders }: { orders: Order[] }) {
+export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabled: boolean }) {
   const [selectedId, setSelectedId] = useState(orders[0]?.id || "");
   const [postUrl, setPostUrl] = useState("");
+  const [draftUrl, setDraftUrl] = useState(orders[0]?.draftUrl || "");
+  const [workerNote, setWorkerNote] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [uploadingDraft, setUploadingDraft] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const selectRef = useRef<HTMLDivElement>(null);
   const selected = orders.find((order) => order.id === selectedId) || orders[0];
   const platform = inspectUrl(postUrl);
+  const canPublish = !selected?.draftRequired || selected.draftStatus === "APPROVED";
+  const canSubmitDraft = Boolean(
+    selected?.draftRequired
+    && ["NOT_SUBMITTED", "CHANGES_REQUESTED"].includes(selected.draftStatus)
+    && /^https:\/\//i.test(draftUrl)
+  );
   const description = selected
     ? [selected.trackingCode, selected.requiredTags.join(" ")].filter(Boolean).join("\n\n")
     : "";
@@ -62,6 +82,10 @@ export function UploadForm({ orders }: { orders: Order[] }) {
     if (!order) return;
     setSelectedId(order.id);
     setActiveIndex(index);
+    setDraftUrl(order.draftUrl || "");
+    setWorkerNote("");
+    setUploadError("");
+    setPostUrl("");
     setOpen(false);
   };
 
@@ -69,6 +93,30 @@ export function UploadForm({ orders }: { orders: Order[] }) {
     await navigator.clipboard.writeText(description);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  const uploadDraftFile = async (file: File | null) => {
+    if (!file || !selected) return;
+    setUploadError("");
+    if (file.size > 500 * 1024 * 1024) {
+      setUploadError("Файл больше 500 МБ. Сожмите видео или используйте HTTPS-ссылку.");
+      return;
+    }
+    setUploadingDraft(true);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-100) || "draft.mp4";
+      const blob = await upload(`drafts/${selected.id}/${Date.now()}-${safeName}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/uploads/draft",
+        clientPayload: JSON.stringify({ submissionId: selected.id }),
+        multipart: true
+      });
+      setDraftUrl(blob.url);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Не удалось загрузить видео");
+    } finally {
+      setUploadingDraft(false);
+    }
   };
 
   if (!selected) return <p className="up-empty">Сначала возьмите заказ, затем вернитесь к сдаче работы.</p>;
@@ -117,8 +165,89 @@ export function UploadForm({ orders }: { orders: Order[] }) {
             </div>
           </section>
 
+          {selected.draftRequired ? (
+            <section className={`up-step ${styles.draftStep}`} data-status={selected.draftStatus.toLowerCase()}>
+              <div className="up-step-head">
+                <span className="up-step-no">2</span>
+                <h2>Отправьте черновик до публикации</h2>
+              </div>
+              <div className={styles.draftStatus}>
+                <FileCheck2 size={18} />
+                <div>
+                  <b>
+                    {selected.draftStatus === "APPROVED"
+                      ? "Черновик принят — можно публиковать"
+                      : selected.draftStatus === "PENDING"
+                        ? "Черновик проверяется"
+                        : selected.draftStatus === "CHANGES_REQUESTED"
+                          ? "Нужны изменения"
+                          : selected.draftStatus === "REJECTED"
+                            ? "Черновик отклонён"
+                            : "Черновик ещё не отправлен"}
+                  </b>
+                  <span>
+                    Режим: {selected.reviewMode === "FAST" ? "быстрый" : selected.reviewMode === "STRICT" ? "строгий" : "стандартный"}
+                    {" · "}версия {selected.draftRevision + 1}
+                    {" · "}до {selected.maxRevisionRounds} кругов правок
+                  </span>
+                </div>
+              </div>
+              {selected.draftReviewNote ? <p className={styles.draftNote}>{selected.draftReviewNote}</p> : null}
+              {["NOT_SUBMITTED", "CHANGES_REQUESTED"].includes(selected.draftStatus) ? (
+                <div className={styles.draftFields}>
+                  {blobEnabled ? (
+                    <label className={styles.fileUpload}>
+                      <span>Загрузить видео напрямую</span>
+                      <input
+                        type="file"
+                        accept="video/mp4,video/quicktime,video/webm"
+                        disabled={uploadingDraft}
+                        onChange={(event) => void uploadDraftFile(event.target.files?.[0] || null)}
+                      />
+                      <small>{uploadingDraft ? "Загружаем файл…" : "MP4, MOV или WebM, до 500 МБ"}</small>
+                    </label>
+                  ) : null}
+                  {uploadError ? <p className={styles.uploadError}>{uploadError}</p> : null}
+                  <label>
+                    <span>Закрытая HTTPS-ссылка на видео</span>
+                    <input
+                      name="draftUrl"
+                      type="url"
+                      inputMode="url"
+                      autoComplete="off"
+                      placeholder="https://drive.google.com/... или https://youtu.be/..."
+                      value={draftUrl}
+                      onChange={(event) => setDraftUrl(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Комментарий проверяющему</span>
+                    <textarea
+                      name="workerNote"
+                      maxLength={500}
+                      value={workerNote}
+                      onChange={(event) => setWorkerNote(event.target.value)}
+                      placeholder="Что изменено или на что обратить внимание"
+                    />
+                  </label>
+                  <button
+                    className={`btn ${styles.draftSubmit}`}
+                    type="submit"
+                    formAction={submitDraftAction}
+                    formNoValidate
+                    disabled={!canSubmitDraft || uploadingDraft}
+                  >
+                    {selected.draftStatus === "CHANGES_REQUESTED" ? <RotateCcw size={17} /> : <Send size={17} />}
+                    {selected.draftStatus === "CHANGES_REQUESTED" ? "Отправить исправленную версию" : "Отправить черновик"}
+                  </button>
+                  <small>Ссылка должна открываться проверяющему без запроса пароля.</small>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           <section className="up-step">
-            <div className="up-step-head"><span className="up-step-no">2</span><h2>Опубликуйте ролик</h2></div>
+            <div className="up-step-head"><span className="up-step-no">{selected.draftRequired ? "3" : "2"}</span><h2>Опубликуйте ролик</h2></div>
             <p className="up-step-desc">Скопируйте готовое описание. Код заказа и обязательные теги уже добавлены.</p>
             <div className="up-desc">
               <div className="up-desc-head">
@@ -148,17 +277,17 @@ export function UploadForm({ orders }: { orders: Order[] }) {
             <div className="up-step-head"><span className="up-step-no">3</span><h2>Вставьте ссылку на ролик</h2></div>
             <div className={`up-url${platform ? " ok" : ""}`}>
               <Link2 size={18} />
-              <input name="postUrl" type="url" inputMode="url" autoComplete="off" placeholder="https://youtube.com/shorts/..." value={postUrl} onChange={(event) => setPostUrl(event.target.value)} required />
+              <input name="postUrl" type="url" inputMode="url" autoComplete="off" placeholder="https://youtube.com/shorts/..." value={postUrl} onChange={(event) => setPostUrl(event.target.value)} required disabled={!canPublish} />
               {platform ? <CheckCircle2 size={18} color="#22c55e" /> : null}
             </div>
-            <small className="up-hint">{platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram и VK"}</small>
+            <small className="up-hint">{!canPublish ? "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram и VK"}</small>
           </section>
 
           <label className="up-confirm">
-            <input type="checkbox" name="watermarkConfirmed" required={selected.watermarkRequired} />
+            <input type="checkbox" name="watermarkConfirmed" required={selected.watermarkRequired} disabled={!canPublish} />
             <span>Ролик опубликован с готовым описанием{selected.watermarkRequired ? " и watermark ReelPay" : ""}.</span>
           </label>
-          <button className="btn btn-primary up-submit" type="submit" disabled={!platform}><Send size={18} /> Отправить на проверку</button>
+          <button className="btn btn-primary up-submit" type="submit" disabled={!platform || !canPublish}><Send size={18} /> Отправить на проверку</button>
         </div>
 
         <aside className="up-summary">
@@ -170,7 +299,9 @@ export function UploadForm({ orders }: { orders: Order[] }) {
             <div><Clock3 size={15} /><b>{selected.daysLeft} дн.</b><em>до дедлайна</em></div>
           </div>
           <div className="up-summary-plats"><span>Площадки</span><div>{selected.platforms.map((item) => <i key={item}>{item}</i>)}</div></div>
-          <p className="up-summary-note"><ShieldCheck size={14} /> Выплата начисляется после проверки просмотров и кода заказа.</p>
+          <p className="up-summary-note"><ShieldCheck size={14} /> {selected.guarantee
+            ? `После проверки гарантировано минимум ${selected.guarantee} чистыми; просмотры могут увеличить выплату.`
+            : "Выплата начисляется после проверки просмотров и кода заказа."}</p>
         </aside>
       </div>
     </form>

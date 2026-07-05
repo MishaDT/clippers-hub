@@ -19,6 +19,7 @@ import { achievementByCode, achievementProgress, nextFeaturedUntil, RP_BOOST_COS
 import { loadAchievementStats } from "@/lib/achievement-stats";
 import { grossPayout, parseRubToCents } from "@/lib/money";
 import { createPaymentIntent } from "@/lib/payments";
+import { isPaymentProvider, isPaymentProviderAvailable } from "@/lib/payment-readiness";
 import { syncMockViews } from "@/lib/social-sync";
 import { notifyModerators } from "@/lib/video-checks";
 import { canUseRoleMode, getActiveRoleMode, ROLE_MODE_COOKIE, type RoleMode } from "@/lib/role-mode";
@@ -27,17 +28,19 @@ import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@
 import { scanContent } from "@/lib/content-policy";
 import { isSafeRussianReport, normalizeRussianReport, reportReasonLabel } from "@/lib/report-reasons";
 import { notificationGroup, notify } from "@/lib/notifications";
-import { awardReferralSignup } from "@/lib/referrals";
 import { rateLimit } from "@/lib/rate-limit";
 import { safeReturnTo } from "@/lib/navigation";
-import { CampaignReservationError, reserveCampaignSlot } from "@/lib/campaign-reservations";
+import { CampaignReservationError, releaseSubmissionReservation, reserveCampaignSlot } from "@/lib/campaign-reservations";
+import { initialDraftDecision, nextDraftRevision, validateDraftUrl } from "@/lib/draft-workflow";
+import { ratingParties } from "@/lib/rating-rules";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
   if (url.startsWith("/")) return url;
   try {
     const host = new URL(url).hostname;
-    if (host.endsWith("stripe.com") || host.endsWith("checkout.stripe.com") || host.endsWith("yookassa.ru") || host.endsWith("yoomoney.ru")) return url;
+    const trustedHosts = ["stripe.com", "yookassa.ru", "yoomoney.ru"];
+    if (trustedHosts.some((trusted) => host === trusted || host.endsWith(`.${trusted}`))) return url;
   } catch {}
   return "/wallet?deposit=blocked";
 }
@@ -59,6 +62,10 @@ function safeJson<T>(value: string, fallback: T): T {
 // production when a payment provider secret happens to be missing.
 function demoPaymentsEnabled() {
   return process.env.DEMO_PAYMENTS === "1" || process.env.DEMO_PAYMENTS === "true";
+}
+
+function requireVerifiedEmail(user: { emailVerifiedAt: Date | null }) {
+  if (!user.emailVerifiedAt) redirect("/verify-email");
 }
 
 export async function logoutAction() {
@@ -190,6 +197,8 @@ export async function switchRoleAction(formData: FormData) {
     maxAge: 60 * 60 * 24 * 365
   });
   await prisma.user.update({ where: { id: user.id }, data: { preferredRoleMode: mode } });
+  revalidatePath(`/profiles/${user.handle}`);
+  revalidatePath(`/clippers/${user.handle}`);
   revalidatePath(returnTo);
   redirect(returnTo);
 }
@@ -197,8 +206,10 @@ export async function switchRoleAction(formData: FormData) {
 export async function createCampaignAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
+  requireVerifiedEmail(user);
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/campaigns");
   if (formData.get("rightsConfirmed") !== "on") redirect("/campaigns/new?error=rights");
+  if (formData.get("briefConfirmed") !== "on") redirect("/campaigns/new?error=brief");
 
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
@@ -206,6 +217,11 @@ export async function createCampaignAction(formData: FormData) {
   const deadlineDays = Math.max(1, Number(formData.get("deadlineDays") || 7));
   const sourcePlatform = String(formData.get("sourcePlatform") || "TWITCH");
   const requestedVisibility = String(formData.get("visibility") || "PUBLIC");
+  const requestedReviewMode = String(formData.get("reviewMode") || "STANDARD");
+  const reviewMode = (["FAST", "STANDARD", "STRICT"].includes(requestedReviewMode)
+    ? requestedReviewMode
+    : "STANDARD") as "FAST" | "STANDARD" | "STRICT";
+  const maxRevisionRounds = Math.max(1, Math.min(3, Number(formData.get("maxRevisionRounds") || 2)));
   const visibility = user.role === "ADMIN" && requestedVisibility === "FEATURED" ? "FEATURED" : "PUBLIC";
   const cleanSourcePlatform = (["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK", "TWITCH"].includes(sourcePlatform) ? sourcePlatform : "TWITCH") as "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "VK" | "TWITCH";
   const sourceUrlCheck = validatePublicMediaUrl(String(formData.get("sourceUrl") || ""), cleanSourcePlatform);
@@ -231,7 +247,13 @@ export async function createCampaignAction(formData: FormData) {
 
   const totalBudgetCents = budget || 5000000;
   const maxPaidResults = Math.max(1, Math.min(20, Number(formData.get("deliverableCount") || 1)));
-  const minimumBudgetCents = grossPayout(Number(formData.get("viewThreshold") || 10000), cpm || 4500) * maxPaidResults;
+  const viewThreshold = Number(formData.get("viewThreshold") || 10000);
+  const targetPayoutCents = grossPayout(viewThreshold, cpm || 4500);
+  const minimumGuaranteeCents = Math.min(
+    targetPayoutCents,
+    parseRubToCents(formData.get("minimumGuarantee"))
+  );
+  const minimumBudgetCents = targetPayoutCents * maxPaidResults;
   if (totalBudgetCents < minimumBudgetCents) {
     redirect(`/campaigns/new?error=budget_min&need=${minimumBudgetCents}`);
   }
@@ -278,10 +300,18 @@ export async function createCampaignAction(formData: FormData) {
             cta: String(formData.get("cta") || "").trim().slice(0, 180),
             mustInclude: String(formData.get("mustInclude") || "").trim().slice(0, 400),
             exampleUrls: String(formData.get("exampleUrls") || "").split(/\r?\n/).map((item) => item.trim()).filter((item) => /^https?:\/\//i.test(item)).slice(0, 3),
-            rightsConfirmed: formData.get("rightsConfirmed") === "on"
+            rightsConfirmed: formData.get("rightsConfirmed") === "on",
+            briefConfirmed: true,
+            briefAcceptedAt: new Date().toISOString(),
+            briefVersion: 1
           }),
           cpmRateCents: cpm || 4500,
-          viewThreshold: Number(formData.get("viewThreshold") || 10000),
+          viewThreshold,
+          minimumGuaranteeCents,
+          reviewMode,
+          maxRevisionRounds,
+          briefVersion: 1,
+          draftRequired: true,
           totalBudgetCents,
           remainingBudgetCents: totalBudgetCents,
           reservedBudgetCents: 0,
@@ -388,6 +418,7 @@ export async function closeCampaignAction(formData: FormData) {
 export async function joinCampaignAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
+  requireVerifiedEmail(user);
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const campaignId = String(formData.get("campaignId"));
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -938,6 +969,249 @@ export async function reportContentAction(formData: FormData) {
   redirect(`${returnTo}?reported=1`);
 }
 
+export async function submitDraftAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  requireVerifiedEmail(user);
+  if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
+  if (!(await rateLimit(`draft-submit:${user.id}`, 8, 60 * 60 * 1000))) redirect("/upload?draft=too_many");
+
+  const submissionId = String(formData.get("submissionId") || "");
+  const draftUrl = validateDraftUrl(String(formData.get("draftUrl") || ""));
+  const workerNote = String(formData.get("workerNote") || "").trim().slice(0, 500);
+  if (!draftUrl) redirect("/upload?draft=bad_url");
+
+  const submission = await prisma.submission.findFirst({
+    where: { id: submissionId, workerId: user.id },
+    include: {
+      campaign: { select: { id: true, ownerId: true, title: true, reviewMode: true, maxRevisionRounds: true, draftRequired: true } },
+      chatThreads: { select: { id: true }, take: 1 }
+    }
+  });
+  if (!submission || submission.status !== "ACCEPTED") redirect("/upload?draft=closed");
+  const revision = nextDraftRevision(submission.draftStatus, submission.draftRevision, submission.campaign.maxRevisionRounds);
+  if (revision == null) redirect("/upload?draft=not_editable");
+
+  if (workerNote) {
+    const policy = await moderateText({
+      text: workerNote,
+      contentType: "SUBMISSION",
+      authorId: user.id,
+      context: "SUPPORT"
+    });
+    if (policy.action === "BLOCK") redirect("/upload?draft=moderation");
+  }
+
+  const decision = initialDraftDecision({ reviewMode: submission.campaign.reviewMode, trustScore: user.trustScore });
+  const now = new Date();
+  const result = await prisma.$transaction(async (db) => {
+    const claimed = await db.submission.updateMany({
+      where: {
+        id: submission.id,
+        workerId: user.id,
+        status: "ACCEPTED",
+        draftStatus: submission.draftStatus
+      },
+      data: {
+        draftUrl,
+        draftStatus: decision,
+        draftRevision: revision,
+        draftSubmittedAt: now,
+        draftReviewedAt: decision === "APPROVED" ? now : null,
+        draftReviewNote: decision === "APPROVED" ? "Автопроверка: быстрый режим и высокий рейтинг доверия." : null,
+        draftReviewedById: decision === "APPROVED" ? user.id : null,
+        publishApprovedAt: decision === "APPROVED" ? now : null
+      }
+    });
+    if (claimed.count !== 1) throw new Error("DRAFT_CHANGED");
+    const check = await db.videoCheck.create({
+      data: {
+        submissionId: submission.id,
+        checkType: "DRAFT",
+        status: decision === "APPROVED" ? "PASS" : "PENDING",
+        score: decision === "APPROVED" ? 100 : 0,
+        resultJson: stringify({
+          draftUrl,
+          workerNote,
+          revision,
+          reviewMode: submission.campaign.reviewMode,
+          autoApproved: decision === "APPROVED",
+          submittedAt: now.toISOString()
+        })
+      }
+    });
+    if (submission.chatThreads[0]) {
+      await db.chatMessage.create({
+        data: {
+          threadId: submission.chatThreads[0].id,
+          senderId: user.id,
+          type: "SYSTEM",
+          body: decision === "APPROVED"
+            ? `Черновик версии ${revision + 1} прошёл быструю проверку. Можно публиковать ролик.`
+            : `Черновик версии ${revision + 1} отправлен на проверку. До решения публиковать ролик не нужно.`
+        }
+      });
+    }
+    await db.auditLog.create({
+      data: {
+        userId: user.id,
+        action: decision === "APPROVED" ? "DRAFT_AUTO_APPROVED" : "DRAFT_SUBMITTED",
+        entity: "Submission",
+        entityId: submission.id,
+        metadata: stringify({ revision, reviewMode: submission.campaign.reviewMode, checkId: check.id })
+      }
+    });
+    return check;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  if (decision === "APPROVED") {
+    await notify({
+      userId: submission.campaign.ownerId,
+      groupKey: notificationGroup("draft-approved", submission.id),
+      title: "Черновик готов к публикации",
+      body: `${user.name} прошёл быструю проверку по заказу «${submission.campaign.title}».`,
+      kind: "SUBMISSION",
+      href: `/campaigns/${submission.campaign.id}`
+    });
+  } else if (submission.campaign.reviewMode === "STRICT") {
+    await notify({
+      userId: submission.campaign.ownerId,
+      groupKey: notificationGroup("draft-review", submission.id),
+      title: "Черновик ждёт вашего решения",
+      body: `${user.name} отправил черновик по заказу «${submission.campaign.title}».`,
+      priority: "HIGH",
+      kind: "SUBMISSION",
+      href: `/campaigns/${submission.campaign.id}`
+    });
+  } else {
+    await notifyModerators(prisma, {
+      title: "Новый черновик на проверку",
+      body: `Версия ${revision + 1} по заказу «${submission.campaign.title}» ждёт решения.`,
+      entityId: result.id,
+      metadata: { submissionId: submission.id, reviewMode: submission.campaign.reviewMode, revision }
+    });
+  }
+
+  await trackEvent({
+    userId: user.id,
+    type: "DRAFT_SUBMITTED",
+    path: "/upload",
+    metadata: { submissionId: submission.id, revision, reviewMode: submission.campaign.reviewMode, decision }
+  });
+  revalidatePath("/upload");
+  revalidatePath(`/campaigns/${submission.campaign.id}`);
+  redirect(decision === "APPROVED" ? "/upload?draft=approved" : "/upload?draft=pending");
+}
+
+export async function reviewDraftAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const submissionId = String(formData.get("submissionId") || "");
+  const decision = String(formData.get("decision") || "");
+  const note = String(formData.get("note") || "").trim().slice(0, 700);
+  const returnTo = safeInternalPath(String(formData.get("returnTo") || ""), "/admin/moderation");
+  if (!["approve", "changes", "reject"].includes(decision)) redirect(`${returnTo}?draft=bad_decision`);
+  if (decision !== "approve" && note.length < 5) redirect(`${returnTo}?draft=note_required`);
+
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    include: {
+      worker: { select: { id: true, name: true } },
+      campaign: { select: { id: true, title: true, ownerId: true, reviewMode: true, maxRevisionRounds: true } },
+      chatThreads: { select: { id: true }, take: 1 }
+    }
+  });
+  if (!submission || submission.draftStatus !== "PENDING" || !submission.draftUrl) redirect(`${returnTo}?draft=closed`);
+  const isAdmin = canAccessAdmin(user);
+  const strictOwner = submission.campaign.reviewMode === "STRICT" && submission.campaign.ownerId === user.id;
+  if (!isAdmin && !strictOwner) redirect("/profile");
+  if (decision === "changes" && submission.draftRevision >= submission.campaign.maxRevisionRounds) {
+    redirect(`${returnTo}?draft=revision_limit`);
+  }
+
+  const nextDraftStatus = decision === "approve"
+    ? "APPROVED" as const
+    : decision === "changes"
+      ? "CHANGES_REQUESTED" as const
+      : "REJECTED" as const;
+  const now = new Date();
+  await prisma.$transaction(async (db) => {
+    const claimed = await db.submission.updateMany({
+      where: { id: submission.id, draftStatus: "PENDING" },
+      data: {
+        draftStatus: nextDraftStatus,
+        draftReviewedAt: now,
+        draftReviewNote: note || "Черновик соответствует брифу.",
+        draftReviewedById: user.id,
+        publishApprovedAt: decision === "approve" ? now : null,
+        ...(decision === "reject" ? { status: "REJECTED" as const } : {})
+      }
+    });
+    if (claimed.count !== 1) throw new Error("DRAFT_CHANGED");
+    await db.videoCheck.create({
+      data: {
+        submissionId: submission.id,
+        checkType: "DRAFT_REVIEW",
+        status: decision === "approve" ? "PASS" : decision === "changes" ? "NEEDS_CHANGES" : "FAIL",
+        score: decision === "approve" ? 100 : decision === "changes" ? 50 : 0,
+        resultJson: stringify({
+          decision,
+          note,
+          reviewerId: user.id,
+          revision: submission.draftRevision,
+          reviewedAt: now.toISOString()
+        })
+      }
+    });
+    if (decision === "reject") await releaseSubmissionReservation(db, submission.id);
+    if (submission.chatThreads[0]) {
+      await db.chatMessage.create({
+        data: {
+          threadId: submission.chatThreads[0].id,
+          senderId: user.id,
+          type: "SYSTEM",
+          body: decision === "approve"
+            ? `Черновик версии ${submission.draftRevision + 1} принят. Можно публиковать.`
+            : decision === "changes"
+              ? `Нужны изменения в черновике: ${note}`
+              : `Черновик отклонён: ${note}`
+        }
+      });
+    }
+    await db.auditLog.create({
+      data: {
+        userId: user.id,
+        action: `DRAFT_${nextDraftStatus}`,
+        entity: "Submission",
+        entityId: submission.id,
+        metadata: stringify({ decision, note, revision: submission.draftRevision })
+      }
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  await notify({
+    userId: submission.worker.id,
+    groupKey: notificationGroup("draft-decision", submission.id),
+    title: decision === "approve" ? "Черновик принят" : decision === "changes" ? "Нужны изменения" : "Черновик отклонён",
+    body: decision === "approve"
+      ? `Можно публиковать ролик по заказу «${submission.campaign.title}».`
+      : note,
+    priority: decision === "approve" ? "NORMAL" : "HIGH",
+    kind: "SUBMISSION",
+    href: `/campaigns/${submission.campaign.id}`
+  });
+  await trackEvent({
+    userId: user.id,
+    type: `DRAFT_${nextDraftStatus}`,
+    path: returnTo,
+    metadata: { submissionId: submission.id, revision: submission.draftRevision }
+  });
+  revalidatePath("/upload");
+  revalidatePath("/admin/moderation");
+  revalidatePath(`/campaigns/${submission.campaign.id}`);
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}draft=updated`);
+}
+
 export async function submitClipAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
@@ -953,6 +1227,12 @@ export async function submitClipAction(formData: FormData) {
     prisma.submission.findFirst({ where: { postUrl, NOT: { id: submissionId } }, select: { id: true } }),
     prisma.submission.findMany({ where: { workerId: user.id }, orderBy: { createdAt: "desc" }, take: 20 })
   ]);
+  if (
+    submission.campaign.draftRequired
+    && (submission.draftStatus !== "APPROVED" || !submission.publishApprovedAt)
+  ) {
+    redirect("/upload?draft=approval_required");
+  }
 
   const campaignRules = safeJson<{ watermarkBonus?: boolean }>(submission.campaign.rulesJson, {});
   const allowedPlatforms = safeJson<string[]>(submission.campaign.allowedPlatformsJson, ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"]);
@@ -988,14 +1268,6 @@ export async function submitClipAction(formData: FormData) {
   });
 
   // Referral reward is granted here — on a real, non-rejected clip — rather than at signup,
-  // so fake accounts can't farm referral RP. awardReferralSignup is idempotent per invitee.
-  if (status !== "REJECTED" && user.referredBy) {
-    try {
-      await prisma.$transaction((tx) => awardReferralSignup(tx, { id: user.id, name: user.name, referredBy: user.referredBy }));
-    } catch {
-      // never block a submission on referral bookkeeping
-    }
-  }
 
   // Best-effort instant ownership check: on platforms that expose public
   // metadata (YouTube/VK) we confirm the tracking code is already in the
@@ -1121,16 +1393,20 @@ export async function toggleCampaignReactionAction(campaignId: string, kind: "LI
 
 export async function depositAction(formData: FormData) {
   const user = await requireUser();
+  requireVerifiedEmail(user);
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/wallet");
   const amountCents = parseRubToCents(formData.get("amount"));
   if (amountCents <= 0) redirect("/wallet?error=amount");
-  const provider = String(formData.get("provider") || "yookassa") as "yookassa" | "stripe";
+  const provider = String(formData.get("provider") || "");
+  if (!isPaymentProvider(provider) || !isPaymentProviderAvailable(provider)) {
+    redirect("/wallet?error=payments_unavailable");
+  }
   const intent = await createPaymentIntent({ amountCents, userId: user.id, provider, description: "ReelPay deposit" });
 
   // Fail-closed: a "demo" intent means no real provider processed a payment. Crediting
   // balance for it is only safe in an explicitly enabled test environment. In production
   // this refuses instead of minting unpaid money.
-  if (intent.mode === "demo" && !demoPaymentsEnabled()) {
+  if (!intent || (intent.mode === "demo" && !demoPaymentsEnabled())) {
     redirect("/wallet?error=payments_unavailable");
   }
 
@@ -1216,11 +1492,17 @@ export async function sendCollabInviteAction(formData: FormData) {
   if (!workerId || workerId === user.id || !campaignId || role.length < 2 || message.length < 3) {
     redirect(`/clippers/${handle}?error=invite`);
   }
+  if (!(await rateLimit(`client-collab:${user.id}`, 10, 86_400_000))) {
+    redirect(`/profiles/${handle}?error=limit`);
+  }
   const policy = await moderateText({ text: message, contentType: "COLLAB", authorId: user.id, context: "PUBLIC" });
   if (policy.action === "BLOCK" || policy.action === "REVIEW") redirect(`/clippers/${handle}?error=moderation`);
 
   const [worker, campaign] = await Promise.all([
-    prisma.user.findUnique({ where: { id: workerId }, select: { id: true } }),
+    prisma.user.findUnique({
+      where: { id: workerId },
+      select: { id: true, role: true, preferredRoleMode: true, collabAvailability: true }
+    }),
     prisma.campaign.findFirst({
       where: {
         id: campaignId,
@@ -1231,7 +1513,9 @@ export async function sendCollabInviteAction(formData: FormData) {
       select: { id: true, deadline: true }
     })
   ]);
-  if (!worker || !campaign) redirect(`/clippers/${handle}?error=campaign`);
+  const workerAccepts = worker && canWork(worker.role) && worker.collabAvailability !== "NONE"
+    && (worker.collabAvailability === "BOTH" || worker.preferredRoleMode !== "client");
+  if (!workerAccepts || !campaign) redirect(`/profiles/${handle}?error=campaign`);
 
   const existing = await prisma.collabInvite.findFirst({
     where: { clientId: user.id, workerId, campaignId, status: "PENDING" },
@@ -1242,6 +1526,7 @@ export async function sendCollabInviteAction(formData: FormData) {
       data: {
         clientId: user.id,
         workerId,
+        initiatorId: user.id,
         campaignId,
         role,
         deadline: campaign.deadline,
@@ -1261,16 +1546,72 @@ export async function sendCollabInviteAction(formData: FormData) {
   redirect(`/clippers/${handle}?invited=1`);
 }
 
+export async function sendWorkerPitchAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  requireVerifiedEmail(user);
+  if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
+  const clientId = String(formData.get("clientId") || "");
+  const handle = String(formData.get("handle") || "");
+  const role = String(formData.get("role") || "").trim().slice(0, 80);
+  const message = String(formData.get("message") || "").trim().slice(0, 600);
+  if (!clientId || clientId === user.id || role.length < 2 || message.length < 3) {
+    redirect(`/profiles/${handle}?error=invite`);
+  }
+  if (!(await rateLimit(`worker-pitch:${user.id}`, 10, 86_400_000))) {
+    redirect(`/profiles/${handle}?error=limit`);
+  }
+  const policy = await moderateText({ text: message, contentType: "COLLAB", authorId: user.id, context: "PUBLIC" });
+  if (policy.action !== "ALLOW") redirect(`/profiles/${handle}?error=moderation`);
+  const client = await prisma.user.findUnique({
+    where: { id: clientId },
+    select: { id: true, role: true, preferredRoleMode: true, collabAvailability: true }
+  });
+  const accepts = client && canManageClient(client.role) && client.collabAvailability !== "NONE"
+    && (client.collabAvailability === "BOTH" || client.preferredRoleMode === "client");
+  if (!accepts) redirect(`/profiles/${handle}?error=availability`);
+  const existing = await prisma.collabInvite.findFirst({
+    where: { clientId, workerId: user.id, initiatorId: user.id, status: "PENDING" },
+    select: { id: true }
+  });
+  if (!existing) {
+    const invite = await prisma.collabInvite.create({
+      data: {
+        clientId,
+        workerId: user.id,
+        initiatorId: user.id,
+        role,
+        message,
+        deadline: new Date(Date.now() + 14 * 86_400_000)
+      }
+    });
+    await notify({
+      userId: clientId,
+      groupKey: notificationGroup("collab-invite", invite.id),
+      title: "Предложение от исполнителя",
+      body: `${user.name} предлагает обсудить сотрудничество. Это ещё не оплаченный заказ.`,
+      kind: "COLLAB",
+      href: `/collabs?invite=${invite.id}`
+    });
+  }
+  revalidatePath(`/profiles/${handle}`);
+  redirect(`/profiles/${handle}?invited=1`);
+}
+
 export async function respondCollabInviteAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
-  if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const inviteId = String(formData.get("inviteId") || "");
   const accept = String(formData.get("decision") || "") === "accept";
 
   const invite = await prisma.collabInvite.findFirst({
-    where: { id: inviteId, workerId: user.id },
-    select: { id: true, clientId: true, workerId: true, status: true, chatThread: { select: { id: true } } }
+    where: {
+      id: inviteId,
+      status: { in: ["PENDING", "ACCEPTED"] },
+      initiatorId: { not: user.id },
+      OR: [{ workerId: user.id }, { clientId: user.id }]
+    },
+    select: { id: true, clientId: true, workerId: true, initiatorId: true, status: true, chatThread: { select: { id: true } } }
   });
   if (!invite) redirect("/collabs");
 
@@ -1282,7 +1623,7 @@ export async function respondCollabInviteAction(formData: FormData) {
   if (accept) {
     const thread = await prisma.$transaction(async (tx) => {
       const updated = await tx.collabInvite.updateMany({
-        where: { id: invite.id, workerId: user.id, status: "PENDING" },
+        where: { id: invite.id, initiatorId: { not: user.id }, status: "PENDING" },
         data: { status: "ACCEPTED", respondedAt: new Date() }
       });
       if (!updated.count) {
@@ -1304,7 +1645,7 @@ export async function respondCollabInviteAction(formData: FormData) {
         }
       });
       await notify({
-        userId: invite.clientId,
+        userId: invite.initiatorId,
         groupKey: notificationGroup("collab-response", invite.id),
         title: "Коллаб принят",
         body: `${user.name} принял приглашение. Обсуждение уже открыто.`,
@@ -1324,7 +1665,7 @@ export async function respondCollabInviteAction(formData: FormData) {
       data: { status: "DECLINED", respondedAt: new Date() }
     });
     await notify({
-      userId: invite.clientId,
+      userId: invite.initiatorId,
       groupKey: notificationGroup("collab-response", invite.id),
       title: "Коллаб отклонён",
       body: `${user.name} отклонил приглашение`,
@@ -1341,8 +1682,8 @@ export async function cancelCollabInviteAction(formData: FormData) {
   await assertAccountActive(user);
   const inviteId = String(formData.get("inviteId") || "");
   const invite = await prisma.collabInvite.findFirst({
-    where: { id: inviteId, clientId: user.id, status: "PENDING" },
-    select: { id: true, workerId: true }
+    where: { id: inviteId, initiatorId: user.id, status: "PENDING" },
+    select: { id: true, workerId: true, clientId: true, initiatorId: true }
   });
   const returnTo = safeInternalPath(String(formData.get("returnTo") || "/collabs"), "/collabs");
   if (!invite) redirect(returnTo);
@@ -1352,7 +1693,11 @@ export async function cancelCollabInviteAction(formData: FormData) {
       data: { status: "CANCELLED", cancelledAt: new Date(), respondedAt: new Date() }
     }),
     prisma.notification.updateMany({
-      where: { userId: invite.workerId, href: `/collabs?invite=${invite.id}`, archivedAt: null },
+      where: {
+        userId: invite.initiatorId === invite.workerId ? invite.clientId : invite.workerId,
+        href: `/collabs?invite=${invite.id}`,
+        archivedAt: null
+      },
       data: { archivedAt: new Date(), readAt: new Date() }
     })
   ]);
@@ -1402,6 +1747,43 @@ export async function advanceCollabStageAction(formData: FormData) {
   revalidatePath("/chats");
   revalidatePath("/collabs");
   return { ok: true };
+}
+
+export async function attachCollabCampaignAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const inviteId = String(formData.get("inviteId") || "");
+  const campaignId = String(formData.get("campaignId") || "");
+  const [invite, campaign] = await Promise.all([
+    prisma.collabInvite.findFirst({
+      where: { id: inviteId, clientId: user.id, status: "ACCEPTED", campaignId: null },
+      select: { id: true, chatThread: { select: { id: true } } }
+    }),
+    prisma.campaign.findFirst({
+      where: { id: campaignId, ownerId: user.id, status: { in: ["ACTIVE", "LOW_BUDGET"] }, deadline: { gt: new Date() } },
+      select: { id: true, title: true, deadline: true }
+    })
+  ]);
+  if (!invite || !campaign) redirect("/collabs?error=campaign");
+  await prisma.$transaction(async (tx) => {
+    await tx.collabInvite.update({
+      where: { id: invite.id },
+      data: { campaignId: campaign.id, deadline: campaign.deadline }
+    });
+    if (invite.chatThread) {
+      await tx.chatMessage.create({
+        data: {
+          threadId: invite.chatThread.id,
+          senderId: user.id,
+          type: "SYSTEM",
+          body: `К обсуждению прикреплена кампания «${campaign.title}».`
+        }
+      });
+    }
+  });
+  revalidatePath("/collabs");
+  revalidatePath("/chats");
+  redirect(invite.chatThread ? `/chats?thread=${invite.chatThread.id}&type=collabs` : "/collabs");
 }
 
 export async function endCollabAction(formData: FormData) {
@@ -1480,4 +1862,71 @@ export async function endorseClipperAction(formData: FormData) {
   });
   revalidatePath(`/clippers/${handle}`);
   redirect(`/clippers/${handle}?endorsed=1`);
+}
+
+export async function rateCompletedSubmissionAction(formData: FormData) {
+  const user = await requireUser();
+  await assertAccountActive(user);
+  const submissionId = String(formData.get("submissionId") || "");
+  const score = Number(formData.get("score"));
+  const comment = String(formData.get("comment") || "").trim().slice(0, 500) || null;
+  const returnTo = safeInternalPath(String(formData.get("returnTo") || ""), "/campaigns");
+
+  if (!submissionId || !Number.isInteger(score) || score < 1 || score > 5) {
+    redirect(`${returnTo}?rating=invalid`);
+  }
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    select: {
+      id: true,
+      status: true,
+      workerId: true,
+      worker: { select: { handle: true } },
+      campaign: { select: { ownerId: true, owner: { select: { handle: true } } } }
+    }
+  });
+  if (!submission) redirect(`${returnTo}?rating=unavailable`);
+  const parties = ratingParties({
+    authorId: user.id,
+    ownerId: submission.campaign.ownerId,
+    workerId: submission.workerId,
+    status: submission.status
+  });
+  if (!parties) redirect(`${returnTo}?rating=forbidden`);
+  const { subjectId, authorRole } = parties;
+  const subjectHandle = authorRole === "CLIENT" ? submission.worker.handle : submission.campaign.owner.handle;
+  if (comment) {
+    const policy = await moderateText({
+      text: comment,
+      contentType: "RATING",
+      authorId: user.id,
+      context: "PUBLIC",
+      payload: { submissionId, subjectId }
+    });
+    if (policy.action === "BLOCK" || policy.action === "REVIEW") redirect(`${returnTo}?rating=moderation`);
+  }
+
+  await prisma.userRating.upsert({
+    where: { submissionId_authorId: { submissionId, authorId: user.id } },
+    create: {
+      submissionId,
+      authorId: user.id,
+      subjectId,
+      authorRole,
+      score,
+      comment
+    },
+    update: { score, comment }
+  });
+  await notify({
+    userId: subjectId,
+    groupKey: notificationGroup("rating", `${submissionId}:${user.id}`),
+    title: "Новая оценка",
+    body: `${user.name} поставил вам ${score} из 5`,
+    kind: "RATING",
+    href: `/profiles/${subjectHandle}`
+  });
+  revalidatePath(returnTo);
+  revalidatePath(`/profiles/${subjectHandle}`);
+  redirect(`${returnTo}?rating=saved`);
 }

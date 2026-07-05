@@ -55,6 +55,14 @@ export default async function ProfileSettingsPage({
           {SPECIALTIES.map((item) => <label key={item}><input type="checkbox" name="specialties" value={item} defaultChecked={selected.includes(item)} /> {item}</label>)}
         </div></fieldset>
         <label>Социальные сети<textarea name="socialLinks" defaultValue={socialLinks.join("\n")} rows={5} placeholder="По одной HTTPS-ссылке на строку" /><small>YouTube, TikTok, Instagram, VK, Twitch или Telegram. Максимум 5.</small></label>
+        <label>Кто может предложить коллаб
+          <select name="collabAvailability" defaultValue={user.collabAvailability}>
+            <option value="ACTIVE_ROLE">Только противоположная активная роль</option>
+            <option value="BOTH">Заказчики и исполнители</option>
+            <option value="NONE">Никто</option>
+          </select>
+          <small>Выбранная роль видна в публичном профиле и определяет тип предложений.</small>
+        </label>
         <button className="btn btn-primary" type="submit">Сохранить профиль</button>
       </form>
 

@@ -4,6 +4,10 @@ import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { callbackUri, isConfigured, type ProviderId } from "@/lib/oauth";
+import { paymentProviderStatuses, stripeWebhookReady } from "@/lib/payment-readiness";
+import { emailDeliveryReady } from "@/lib/email-verification";
+import { socialCallbackUri, socialPlatformConfigured } from "@/lib/social-platforms";
+import { socialTokenEncryptionReady } from "@/lib/secret-box";
 import styles from "./settings.module.css";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +36,7 @@ function StatusRow({ label, ok, detail }: { label: string; ok: boolean; detail: 
 }
 
 export default async function AdminSettingsPage() {
+  const paymentProviders = paymentProviderStatuses();
   const [users, campaigns, events] = await Promise.all([
     prisma.user.count(),
     prisma.campaign.count(),
@@ -82,6 +87,7 @@ export default async function AdminSettingsPage() {
               <StatusRow label="SESSION_SECRET" ok={envOk("SESSION_SECRET")} detail="Подпись сессий пользователей" />
               <StatusRow label="ADMIN_EMAILS" ok={envOk("ADMIN_EMAILS")} detail="Email владельцев админки" />
               <StatusRow label="ANALYTICS_SALT" ok={envOk("ANALYTICS_SALT")} detail="Хеширование IP/User-Agent" />
+              <StatusRow label="Email-подтверждение" ok={emailDeliveryReady()} detail="RESEND_API_KEY и EMAIL_FROM для одноразовых ссылок" />
             </div>
           </Card>
         </div>
@@ -90,9 +96,15 @@ export default async function AdminSettingsPage() {
           <Card className="admin-panel">
             <div className="section-head compact"><h2>Платежи</h2></div>
             <div className="admin-list">
-              <StatusRow label="ЮKassa" ok={envOk("YOOKASSA_SHOP_ID") && envOk("YOOKASSA_SECRET_KEY")} detail="Для RU-платежей. Сейчас можно работать в demo-режиме." />
-              <StatusRow label="Stripe" ok={envOk("STRIPE_SECRET_KEY")} detail="Для глобальных платежей." />
-              <StatusRow label="Stripe Webhook" ok={envOk("STRIPE_WEBHOOK_SECRET")} detail="Подтверждение платежных событий." />
+              {paymentProviders.map((provider) => (
+                <StatusRow
+                  key={provider.id}
+                  label={provider.label}
+                  ok={provider.live}
+                  detail={provider.live ? "Боевой режим подключён." : `Не настроено: ${provider.missing.join(", ")}.`}
+                />
+              ))}
+              <StatusRow label="Stripe Webhook" ok={stripeWebhookReady()} detail="Подтверждение платежных событий." />
             </div>
           </Card>
 
@@ -101,8 +113,17 @@ export default async function AdminSettingsPage() {
             <div className="admin-list">
               <StatusRow label="YouTube Data API" ok={envOk("YOUTUBE_DATA_API_KEY")} detail="Реальная синхронизация Shorts/YouTube." />
               <StatusRow label="VK Service Token" ok={envOk("VK_SERVICE_TOKEN")} detail="Синхронизация VK Clips." />
-              <StatusRow label="TikTok OAuth" ok={envOk("TIKTOK_CLIENT_KEY") && envOk("TIKTOK_CLIENT_SECRET")} detail="Будущая интеграция TikTok." />
-              <StatusRow label="Instagram OAuth" ok={envOk("INSTAGRAM_CLIENT_ID") && envOk("INSTAGRAM_CLIENT_SECRET")} detail="Будущая интеграция Reels." />
+              <StatusRow label="Шифрование токенов" ok={socialTokenEncryptionReady()} detail="SOCIAL_TOKEN_ENCRYPTION_KEY, минимум 32 случайных символа." />
+              <StatusRow
+                label="TikTok OAuth"
+                ok={socialPlatformConfigured("TIKTOK")}
+                detail={`Автопроверка роликов и просмотров. Callback: ${socialCallbackUri(requestUrl, "TIKTOK")}`}
+              />
+              <StatusRow
+                label="Instagram OAuth"
+                ok={false}
+                detail={`Ожидает проверку приложения Meta. Callback: ${socialCallbackUri(requestUrl, "INSTAGRAM")}`}
+              />
             </div>
           </Card>
         </div>

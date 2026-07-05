@@ -33,7 +33,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { code: "STREAK_7", title: "Серия 7 дней", description: "7 дней подряд с публикациями", icon: "flame", reward: 40, role: "worker", target: 7, metric: "streakDays" },
   { code: "VIRAL_HIT", title: "Вирусный", description: "100 000 просмотров на одном клипе", icon: "flame", reward: 100, role: "worker", target: 100_000, metric: "bestClipViews" },
   { code: "MILLION_CLUB", title: "Клуб миллиона", description: "1 000 000 просмотров на клипе", icon: "trophy", reward: 300, role: "worker", target: 1_000_000, metric: "bestClipViews" },
-  { code: "CONNECTOR", title: "Амбассадор", description: "Пригласи 3 друзей на платформу", icon: "users", reward: 75, role: "any", target: 3, metric: "referrals" },
+  { code: "REFERRAL_FIRST", title: "Первый партнёр", description: "Приведи первого активного участника", icon: "users", reward: 50, role: "any", target: 1, metric: "referrals" },
+  { code: "REFERRAL_TEAM", title: "Своя команда", description: "Приведи 5 активных участников", icon: "users", reward: 150, role: "any", target: 5, metric: "referrals" },
+  { code: "REFERRAL_PRO", title: "Партнёр ReelPay", description: "Приведи 20 активных участников", icon: "users", reward: 500, role: "any", target: 20, metric: "referrals" },
+  { code: "REFERRAL_AMBASSADOR", title: "Амбассадор ReelPay", description: "Приведи 50 активных участников", icon: "trophy", reward: 1500, role: "any", target: 50, metric: "referrals" },
   { code: "FIRST_CAMPAIGN", title: "Первый заказ", description: "Опубликуй первую кампанию", icon: "megaphone", reward: 25, role: "client", target: 1, metric: "campaigns" },
   { code: "PRODUCER", title: "Продюсер", description: "Собери 25 роликов на свои заказы", icon: "film", reward: 150, role: "client", target: 25, metric: "clipsReceived" }
 ];

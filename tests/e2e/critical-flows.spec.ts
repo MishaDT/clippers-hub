@@ -65,6 +65,21 @@ test.describe("public experience", () => {
 });
 
 test.describe("worker flow", () => {
+  test("notification list is fetched only when the bell opens", async ({ page }) => {
+    let recentRequests = 0;
+    page.on("request", (request) => {
+      if (request.url().includes("/api/notifications/recent")) recentRequests += 1;
+    });
+
+    await login(page, "anya@clippers.local");
+    await expect(page).toHaveURL(/\/campaigns$/);
+    expect(recentRequests).toBe(0);
+
+    await page.getByRole("button", { name: /Уведомления/i }).click();
+    await expect.poll(() => recentRequests).toBe(1);
+    await expect(page.getByText(/Все уведомления/i)).toBeVisible();
+  });
+
   test("clipper can log in, join a campaign and submit a clip link", async ({ page, isMobile }) => {
     await login(page, "anya@clippers.local");
     await expect(page).toHaveURL(/\/campaigns$/);

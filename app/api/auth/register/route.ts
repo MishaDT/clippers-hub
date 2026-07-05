@@ -7,6 +7,8 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { normalizeEmail, sameOrigin, validatePassword } from "@/lib/security";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
+import { sendEmailVerification } from "@/lib/email-verification";
+import { referralCookieFromHeader, referralFingerprint } from "@/lib/referral-attribution";
 
 const schema = z.object({
   email: z.string().email(),
@@ -54,11 +56,16 @@ export async function POST(request: Request) {
   const handle = `${base}${Math.floor(Math.random() * 9000 + 1000)}`;
 
   // Referral: only accept a code that maps to a real referrer.
-  const refRaw = String(formData.get("ref") || "").trim().toUpperCase().slice(0, 12);
+  const explicitRef = String(formData.get("ref") || "").trim().toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 12);
+  const refRaw = explicitRef || referralCookieFromHeader(request.headers.get("cookie")) || "";
   let referredBy: string | undefined;
+  let referrerId: string | undefined;
   if (refRaw) {
-    const referrer = await prisma.user.findUnique({ where: { referralCode: refRaw }, select: { referralCode: true } });
-    if (referrer) referredBy = referrer.referralCode;
+    const referrer = await prisma.user.findUnique({ where: { referralCode: refRaw }, select: { id: true, referralCode: true } });
+    if (referrer) {
+      referredBy = referrer.referralCode;
+      referrerId = referrer.id;
+    }
   }
 
   try {
@@ -75,13 +82,37 @@ export async function POST(request: Request) {
           preferredRoleMode: intent
         }
       });
+      if (referrerId && referrerId !== created.id) {
+        const ipHash = referralFingerprint(clientIp(request));
+        const recentRegistrations = ipHash ? await tx.analyticsEvent.count({
+          where: { type: "REGISTER_SUCCESS", ipHash, createdAt: { gte: new Date(Date.now() - 86_400_000) } }
+        }) : 0;
+        await tx.referralRelation.create({
+          data: {
+            referrerId,
+            referredUserId: created.id,
+            codeSnapshot: referredBy!,
+            status: recentRegistrations >= 3 ? "FLAGGED" : "REGISTERED",
+            flaggedAt: recentRegistrations >= 3 ? new Date() : null,
+            flagReason: recentRegistrations >= 3 ? "Много регистраций с одного сетевого отпечатка" : null
+          }
+        });
+      }
       // Referral reward is deferred to a qualifying action (first real clip), not paid at
       // signup — see submitClipAction. This blocks fake-signup farming of referral RP.
       return created;
     });
     await createSession(user.id);
+    const verification = await sendEmailVerification({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      returnTo
+    });
     await trackEvent({ request, userId: user.id, type: "REGISTER_SUCCESS", path: "/register" });
-    const response = NextResponse.redirect(redirectUrl(returnTo, request), 303);
+    const verifyStatus = verification.sent ? "sent" : "unavailable";
+    const response = NextResponse.redirect(redirectUrl(`/verify-email?status=${verifyStatus}`, request), 303);
+    response.cookies.delete("rp_referral");
     if (intent) response.cookies.set(ROLE_MODE_COOKIE, intent, { sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 31536000 });
     return response;
   } catch {

@@ -378,3 +378,4 @@
     grid-template-columns: 1fr;
   }
 }
+.attach{grid-column:1/-1;display:flex;gap:8px;padding:10px;border:1px solid rgba(201,243,29,.18);border-radius:12px;background:rgba(201,243,29,.05)}.attach select{flex:1;min-width:0;min-height:42px;border:1px solid #343a2d;border-radius:9px;background:#10140d;color:#fff;padding:0 10px}@media(max-width:560px){.attach{display:grid}.attach button{width:100%;min-height:44px}}

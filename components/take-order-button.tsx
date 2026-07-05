@@ -8,11 +8,13 @@ import styles from "./take-order-button.module.css";
 export function TakeOrderButton({
   campaignId,
   payout,
+  guarantee,
   deadline,
   disabled
 }: {
   campaignId: string;
   payout: string;
+  guarantee: string | null;
   deadline: string;
   disabled: boolean;
 }) {
@@ -30,10 +32,13 @@ export function TakeOrderButton({
               <button type="button" onClick={() => setOpen(false)} aria-label="Закрыть"><X size={18} /></button>
             </header>
             <div className={styles.facts}>
-              <span><WalletCards size={18} /><div><small>Чистая выплата</small><b>{payout}</b></div></span>
+              <span><WalletCards size={18} /><div><small>Чистая выплата</small><b>до {payout}</b></div></span>
               <span><Clock3 size={18} /><div><small>Дедлайн</small><b>{deadline}</b></div></span>
             </div>
-            <p><ShieldCheck size={16} /> После подтверждения сумма закрепится за вами. Опубликуйте ролик по брифу и отправьте ссылку до дедлайна.</p>
+            <p><ShieldCheck size={16} /> {guarantee
+              ? <>После проверки ролика вы получите минимум {guarantee} чистыми. Если просмотры дадут больше — выплата вырастет до {payout}.</>
+              : <>Максимальная сумма {payout} закрепится за вами и будет выплачена после достижения цели и проверки.</>}
+            </p>
             <form action={joinCampaignAction}>
               <input type="hidden" name="campaignId" value={campaignId} />
               <button className="btn btn-primary" type="submit">Подтвердить и взять заказ</button>
