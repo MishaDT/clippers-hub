@@ -248,21 +248,35 @@
 
 @media (max-width: 340px) {
   .hero {
-    padding: 14px 12px;
+    gap: 10px;
+    padding: 12px 10px;
   }
 
   .person {
-    grid-template-columns: 70px minmax(0, 1fr);
+    grid-template-columns: 66px minmax(0, 1fr);
     gap: 10px;
   }
 
   .avatar {
-    width: 70px;
-    height: 70px;
+    width: 66px;
+    height: 66px;
+    flex-basis: 66px;
   }
 
   .nameLine h1 {
-    font-size: 24px;
+    font-size: 23px;
+  }
+
+  .stats {
+    gap: 5px;
+  }
+
+  .stats > span {
+    padding-inline: 7px;
+  }
+
+  .stats b {
+    font-size: 15px;
   }
 }
 

@@ -292,7 +292,8 @@ export function CampaignGuide({ variant = "general", initiallyCollapsed = false,
   const [orientationChosen, setOrientationChosen] = useState(false);
 
   useEffect(() => {
-    setCollapsed(initiallyCollapsed || localStorage.getItem(storageKey) === "1");
+    const compactScreen = window.matchMedia("(max-width: 760px)").matches;
+    setCollapsed(initiallyCollapsed || compactScreen || localStorage.getItem(storageKey) === "1");
   }, [initiallyCollapsed, storageKey]);
 
   useEffect(() => {
