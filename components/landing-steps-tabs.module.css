@@ -1,0 +1,93 @@
+.section {
+  display: grid;
+  gap: 20px;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.head h2 {
+  margin: 0;
+  font-size: clamp(22px, 3.4vw, 36px);
+  letter-spacing: -.03em;
+  color: #f6f8f3;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 13px;
+  background: #141714;
+}
+
+.tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #959c95;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tabs button[data-active="true"] {
+  background: #c9f31d;
+  color: #0b0d08;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.step {
+  display: grid;
+  gap: 8px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.num {
+  font-size: 26px;
+  font-weight: 900;
+  color: #c9f31d;
+  letter-spacing: -.02em;
+}
+
+.step h3 {
+  margin: 0;
+  font-size: 17px;
+  color: #f2f4ef;
+}
+
+.step p {
+  margin: 0;
+  color: #9da49d;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .head h2 {
+    font-size: 24px;
+  }
+}

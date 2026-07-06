@@ -399,7 +399,19 @@ export function CampaignForm({
                 value={minimumGuarantee}
                 onChange={(event) => setMinimumGuarantee(Math.max(0, Number(event.target.value)))}
               />
-              <small>Если цель не достигнута к сроку, выплата считается по фактическим просмотрам, но не ниже этой суммы.</small>
+              <span className="order-chips">
+                {[0, 100, 300].map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={minimumGuarantee === value ? "is-active" : ""}
+                    onClick={() => setMinimumGuarantee(Math.min(value, Math.round(estimate.payout / 100)))}
+                  >
+                    {value === 0 ? "Без гарантии" : `${value} ₽`}
+                  </button>
+                ))}
+              </span>
+              <small>Гарантия притягивает клипперов: даже при недоборе просмотров проверенный ролик получит не меньше этой суммы к сроку.</small>
             </label>
           </div>
 

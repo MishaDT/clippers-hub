@@ -314,6 +314,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
     payoutCents: campaignPayout(campaign, workerRank),
     minimumGuaranteeCents: minimumGuaranteedPayout(campaign.minimumGuaranteeCents, workerRank),
     remainingBudgetCents: campaign.remainingBudgetCents,
+    reviewMode: campaign.reviewMode,
     featured: campaign.visibility === "FEATURED" || Boolean(campaign.featuredUntil && timeOf(campaign.featuredUntil) > Date.now()),
     demo: campaign.isDemo,
     owner: { name: campaign.owner.name, handle: campaign.owner.handle, avatar: campaign.owner.avatar },

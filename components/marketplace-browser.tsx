@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowRight, CheckCircle2, CircleAlert, Clock3, Eye, Megaphone, Sparkles, TrendingUp, Users } from "lucide-react";
+import { ArrowRight, CheckCircle2, CircleAlert, Clock3, Eye, Megaphone, Sparkles, TrendingUp, Users, Zap } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { compactNumber, rub } from "@/lib/money";
 
@@ -17,6 +17,7 @@ export type MarketplaceCard = {
   payoutCents: number;
   minimumGuaranteeCents: number;
   remainingBudgetCents: number;
+  reviewMode?: string;
   featured: boolean;
   demo: boolean;
   owner: { name: string; handle: string; avatar: string | null };
@@ -144,6 +145,7 @@ export function MarketplaceBrowser({
                       </span>
                     ) : null}
                     {card.demo ? <span className="mk-demo">Демо</span> : null}
+                    {card.reviewMode === "FAST" ? <span className="mk-fast" title="Публикация сразу после проверки платформы"><Zap size={12} /> Быстрая публикация</span> : null}
                     {signal && SignalIcon ? (
                       <span className={`mk-signal mk-signal--${signal.cls}`} title={signal.title}><SignalIcon size={12} /> {signal.text}</span>
                     ) : null}
