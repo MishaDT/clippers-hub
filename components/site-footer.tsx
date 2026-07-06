@@ -2,6 +2,7 @@ import Link from "next/link";
 import styles from "./site-footer.module.css";
 
 const primaryLinks = [
+  ["/business", "Для бизнеса"],
   ["/about", "О сервисе"],
   ["/about#how-it-works", "Как работает"],
   ["/help", "Помощь"],

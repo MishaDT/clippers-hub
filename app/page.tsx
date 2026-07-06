@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { CampaignGuide } from "@/app/campaigns/campaign-guide";
 import { BudgetProtection } from "@/components/budget-protection";
 import { LandingCalculator } from "@/components/landing-calculator";
+import { LandingFaqChat } from "@/components/landing-faq-chat";
 
 export default async function HomePage() {
   if (await getCurrentUser()) redirect("/campaigns");
@@ -71,6 +72,8 @@ export default async function HomePage() {
         <BudgetProtection />
 
         <LandingCalculator />
+
+        <LandingFaqChat />
 
         {/* Roles */}
         <div className="lpa-roles-head">

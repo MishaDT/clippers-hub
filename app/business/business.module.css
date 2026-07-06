@@ -1,0 +1,162 @@
+.page {
+  display: grid;
+  gap: clamp(28px, 5vw, 52px);
+  padding: clamp(20px, 4vw, 40px) 0;
+}
+
+.hero {
+  display: grid;
+  gap: 14px;
+  max-width: 760px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(32px, 5.4vw, 60px);
+  line-height: 1;
+  letter-spacing: -.035em;
+  color: #f7f9f4;
+}
+
+.hero p {
+  margin: 0;
+  color: #9da49d;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.guarantees {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.guarantees article {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.guarantees span {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: #c9f31d;
+  background: rgba(201, 243, 29, .12);
+}
+
+.guarantees h2 {
+  margin: 4px 0 0;
+  font-size: 16px;
+  color: #f2f4ef;
+}
+
+.guarantees p {
+  margin: 0;
+  color: #9da49d;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.compare {
+  display: grid;
+  gap: 16px;
+}
+
+.compare h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 22px;
+  color: #f4f5ef;
+}
+
+.compareTable {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .06);
+}
+
+.compareRow {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr 1.4fr;
+  gap: 1px;
+  background: rgba(255, 255, 255, .06);
+}
+
+.compareRow > span {
+  padding: 14px 16px;
+  background: #0c0f0c;
+  font-size: 14px;
+  line-height: 1.45;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compareHead > span {
+  font-weight: 800;
+  color: #eef0eb;
+  background: #12160f;
+}
+
+.compareLabel {
+  color: #c8cdc7;
+  font-weight: 700;
+}
+
+.compareOther {
+  color: #8b918a;
+}
+
+.compareOther svg {
+  color: #d98b7a;
+  flex-shrink: 0;
+}
+
+.compareOurs {
+  color: #d7e6b8;
+}
+
+.compareOurs svg {
+  color: #c9f31d;
+  flex-shrink: 0;
+}
+
+.calc {
+  display: grid;
+}
+
+@media (max-width: 720px) {
+  .compareRow {
+    grid-template-columns: 1fr;
+  }
+
+  .compareHead {
+    display: none;
+  }
+
+  .compareLabel {
+    background: #12160f !important;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+}

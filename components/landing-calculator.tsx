@@ -8,7 +8,7 @@ import styles from "./landing-calculator.module.css";
 export function LandingCalculator() {
   const [count, setCount] = useState(3);
   const [views, setViews] = useState(10_000);
-  const [cpm, setCpm] = useState(50);
+  const [cpm, setCpm] = useState(25);
   const [deadline, setDeadline] = useState(7);
 
   const estimate = useMemo(() => {
@@ -41,7 +41,7 @@ export function LandingCalculator() {
         <div className={styles.fields}>
           <label><span>Публикаций</span><input type="number" min={1} max={20} value={count} onChange={(event) => setCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
           <label><span>Цель на ролик</span><select value={views} onChange={(event) => setViews(Number(event.target.value))}><option value={5000}>5 тыс.</option><option value={10000}>10 тыс.</option><option value={25000}>25 тыс.</option><option value={50000}>50 тыс.</option></select></label>
-          <label><span>₽ за 1000</span><input type="number" min={10} step={5} value={cpm} onChange={(event) => setCpm(Math.max(10, Number(event.target.value) || 10))} /></label>
+          <label><span>₽ за 1000 <em>рынок 10–35</em></span><input type="number" min={10} step={5} value={cpm} onChange={(event) => setCpm(Math.max(10, Number(event.target.value) || 10))} /></label>
           <label><span>Срок</span><select value={deadline} onChange={(event) => setDeadline(Number(event.target.value))}><option value={3}>3 дня</option><option value={7}>7 дней</option><option value={14}>14 дней</option><option value={30}>30 дней</option></select></label>
         </div>
         <div className={styles.result}>

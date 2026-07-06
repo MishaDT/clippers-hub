@@ -83,6 +83,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       visibility: true,
       status: true,
       isDemo: true,
+      totalBudgetCents: true,
       remainingBudgetCents: true,
       reservedBudgetCents: true,
       maxPaidResults: true,
@@ -392,6 +393,28 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                 <div><b>{daysLeft} дн</b><em>до дедлайна</em></div>
                 <div><b>{slotsLeft}</b><em>свободных мест</em></div>
               </div>
+
+              {campaign.totalBudgetCents > 0 ? (() => {
+                const total = campaign.totalBudgetCents;
+                const reserved = Math.min(campaign.reservedBudgetCents, total);
+                const free = Math.max(0, Math.min(campaign.remainingBudgetCents, total - reserved));
+                const paid = Math.max(0, total - reserved - free);
+                const pct = (value: number) => Math.round((value / total) * 100);
+                return (
+                  <div className="od-budget">
+                    <div className="od-budget-bar" role="img" aria-label={`Выплачено ${pct(paid)}%, в резерве ${pct(reserved)}%, свободно ${pct(free)}%`}>
+                      <span className="od-budget-paid" style={{ width: `${pct(paid)}%` }} />
+                      <span className="od-budget-reserved" style={{ width: `${pct(reserved)}%` }} />
+                    </div>
+                    <div className="od-budget-legend">
+                      <span><i className="is-paid" /> Выплачено {pct(paid)}%</span>
+                      <span><i className="is-reserved" /> В резерве {pct(reserved)}%</span>
+                      <span><i className="is-free" /> Свободно {pct(free)}%</span>
+                    </div>
+                    <small>Бюджет кампании {rub(total)}</small>
+                  </div>
+                );
+              })() : null}
 
               {!currentUser ? (
                 <Link className="btn btn-primary od-apply-btn" href="/login">Войти, чтобы откликнуться</Link>

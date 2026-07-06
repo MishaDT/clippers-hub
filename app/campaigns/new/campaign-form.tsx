@@ -58,7 +58,7 @@ export function CampaignForm({
   const [viewThreshold, setViewThreshold] = useState(initial?.viewThreshold || 10000);
   const [deliverableCount, setDeliverableCount] = useState(initial?.deliverableCount || 3);
   const [budget, setBudget] = useState(initial?.budget || 15000);
-  const [cpm, setCpm] = useState(initial?.cpm || 50);
+  const [cpm, setCpm] = useState(initial?.cpm || 25);
   const [minimumGuarantee, setMinimumGuarantee] = useState(initial?.minimumGuarantee ?? 100);
   const [deadlineDays, setDeadlineDays] = useState(initial?.deadlineDays || 7);
   const [niche, setNiche] = useState("Gaming");
@@ -82,7 +82,7 @@ export function CampaignForm({
       if (typeof draft.viewThreshold === "string") setViewThreshold(Number(draft.viewThreshold) || 10000);
       if (typeof draft.deliverableCount === "string") setDeliverableCount(Number(draft.deliverableCount) || 3);
       if (typeof draft.budget === "string") setBudget(Number(draft.budget) || 15000);
-      if (typeof draft.cpm === "string") setCpm(Number(draft.cpm) || 50);
+      if (typeof draft.cpm === "string") setCpm(Number(draft.cpm) || 25);
       if (typeof draft.minimumGuarantee === "string") setMinimumGuarantee(Math.max(0, Number(draft.minimumGuarantee) || 0));
       if (typeof draft.deadlineDays === "string") setDeadlineDays(Number(draft.deadlineDays) || 7);
       if (typeof draft.niche === "string") setNiche(draft.niche);
@@ -147,7 +147,7 @@ export function CampaignForm({
     const guarantee = Math.min(payout, Math.max(0, Math.round(minimumGuarantee * 100)));
     const grossViews = cpm > 0 ? Math.floor((budget / cpm) * 1000) : 0;
     const requiredBudget = Math.max(0, Math.round((payout * deliverableCount) / 100));
-    const quality = cpm >= 70 ? "Высокий интерес" : cpm >= 45 ? "Нормальная ставка" : "Ставка низкая";
+    const quality = cpm >= 35 ? "Выше рынка" : cpm >= 15 ? "Рыночная ставка" : "Ниже рынка";
     return { payout, guarantee, grossViews, requiredBudget, quality };
   }, [budget, cpm, deliverableCount, minimumGuarantee, viewThreshold]);
 
@@ -405,7 +405,7 @@ export function CampaignForm({
 
           <div className="order-hint" hidden={step !== 6}>
             <AlertCircle size={17} />
-            <span>Для старта лучше держать ставку от 45 ₽ за 1000 просмотров. Ниже клипперы будут выбирать заказ реже.</span>
+            <span>Рыночная ставка за нарезки — 10–35 ₽ за 1000 просмотров. Выше 35 ₽ заказ разбирают быстрее, ниже 15 ₽ откликов может не быть.</span>
           </div>
 
           <label className="order-field" data-wizard-field="7" hidden={step !== 7}>

@@ -109,6 +109,12 @@
   font-size: 10px;
 }
 
+.fields label em {
+  color: #c9f31d;
+  font-style: normal;
+  opacity: .8;
+}
+
 .fields input,
 .fields select {
   width: 100%;
