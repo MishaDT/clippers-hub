@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, BadgeCheck, Check, CircleAlert, Clock3, Megaphone, MessageCircle, ShieldCheck, Sparkles, Star, Target, UserRoundSearch, Users, WalletCards } from "lucide-react";
@@ -49,6 +50,31 @@ function videoCheckStatus(status?: string) {
     FAILED: "Не пройдено"
   };
   return labels[status || ""] || "Не запускалась";
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const campaign = await prisma.campaign.findUnique({
+    where: { id },
+    select: { title: true, description: true, cpmRateCents: true, visibility: true, isDemo: true, status: true }
+  });
+  if (!campaign) return { title: "Заказ не найден" };
+
+  const indexable =
+    !campaign.isDemo &&
+    (campaign.visibility === "PUBLIC" || campaign.visibility === "FEATURED") &&
+    campaign.status !== "DRAFT";
+  const cpm = Math.round(campaign.cpmRateCents / 100);
+  const title = `${campaign.title} — заказ для клипперов, ${cpm} ₽ за 1000 просмотров`;
+  const description = campaign.description.slice(0, 160);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/campaigns/${id}` },
+    robots: indexable ? undefined : { index: false, follow: false },
+    openGraph: { title, description, type: "article", url: `/campaigns/${id}` }
+  };
 }
 
 export default async function CampaignPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string; rating?: string }> }) {
@@ -361,9 +387,34 @@ export default async function CampaignPage({ params, searchParams }: { params: P
     { key: "payout", title: "Выплата", done: submission?.status === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(submission?.status || ""), detail: submission?.status === "PAID" ? "Деньги зачислены" : "После цели и проверки", metric: submission ? `Риск проверки ${submission.fraudScore}%` : undefined }
   ];
 
+  const seoIndexable =
+    !campaign.isDemo &&
+    (campaign.visibility === "PUBLIC" || campaign.visibility === "FEATURED") &&
+    campaign.status !== "DRAFT";
+  const jobPostingLd = seoIndexable
+    ? {
+        "@context": "https://schema.org",
+        "@type": "JobPosting",
+        title: campaign.title,
+        description: campaign.description,
+        datePosted: campaign.createdAt.toISOString(),
+        validThrough: campaign.deadline.toISOString(),
+        employmentType: "CONTRACTOR",
+        hiringOrganization: { "@type": "Organization", name: "ReelPay" },
+        baseSalary: {
+          "@type": "MonetaryAmount",
+          currency: "RUB",
+          value: { "@type": "QuantitativeValue", value: Math.round(campaign.cpmRateCents / 100), unitText: "за 1000 просмотров" }
+        }
+      }
+    : null;
+
   return (
     <AppShell>
       <section className="section od">
+        {jobPostingLd ? (
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd) }} />
+        ) : null}
         <Link className="od-back" href={returnTo}><ArrowLeft size={16} /> Назад</Link>
 
         <div className="od-grid">
