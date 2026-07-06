@@ -40,15 +40,7 @@
 }
 
 .more {
-  display: contents;
-}
-
-.more summary {
   display: none;
-}
-
-.more div {
-  display: contents;
 }
 
 .copy {

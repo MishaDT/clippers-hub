@@ -5,14 +5,28 @@ import { AppShell } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { CampaignGuide } from "@/app/campaigns/campaign-guide";
 import { BudgetProtection } from "@/components/budget-protection";
-import { LandingRoleExperience } from "@/components/landing-role-experience";
+import { LandingCalculator } from "@/components/landing-calculator";
 
 export default async function HomePage() {
   if (await getCurrentUser()) redirect("/campaigns");
   return (
     <AppShell>
       <section className="section lpa">
-        <LandingRoleExperience />
+        {/* Hero */}
+        <div className="lpa-hero">
+          <span className="lpa-badge"><span className="star">✦</span> Оплата за просмотры · вывод на карту</span>
+          <h1 className="lpa-title">Видео, которые <span>приносят деньги</span></h1>
+          <p className="lpa-sub">
+            Заказчики публикуют задания, клипперы режут рилсы из стримов и подкастов. Платим за просмотры.
+          </p>
+          <div className="lpa-cta">
+            <Link className="lpa-btn lpa-btn--primary" href="/register?intent=worker&returnTo=%2Fcampaigns">
+              Зарабатывать на клипах <ArrowRight size={18} />
+            </Link>
+            <Link className="lpa-btn lpa-btn--ghost" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">Заказать клипы</Link>
+          </div>
+          <a className="lpa-how" href="#how">Как это работает ↓</a>
+        </div>
 
         {/* Trust metrics */}
         <div className="lpa-metrics">
@@ -21,11 +35,13 @@ export default async function HomePage() {
           <div><b>320 <small>Демо</small></b><span>пример наполненной ленты</span></div>
         </div>
 
-        <CampaignGuide variant="general" />
-        <BudgetProtection />
+        {/* Video: how ReelPay works */}
+        <div id="how">
+          <CampaignGuide variant="general" />
+        </div>
 
         {/* Steps */}
-        <div className="lpa-steps" id="how">
+        <div className="lpa-steps">
           <article className="lpa-step">
             <div className="lpa-step-top">
               <span className="lpa-step-icon"><Megaphone size={22} /></span>
@@ -51,6 +67,10 @@ export default async function HomePage() {
             <p>Клип набирает просмотры — выплата падает в кошелёк.</p>
           </article>
         </div>
+
+        <BudgetProtection />
+
+        <LandingCalculator />
 
         {/* Roles */}
         <div className="lpa-roles-head">

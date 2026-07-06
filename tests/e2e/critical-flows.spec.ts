@@ -33,9 +33,9 @@ test.describe("public experience", () => {
   test("guest understands the product and can choose a role", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Превратите длинное видео в короткие ролики" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Нужны ролики/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Хочу зарабатывать/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Видео, которые приносят деньги/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Как мы защищаем бюджет заказчика/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Рассчитайте бюджет кампании/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /С чего начнёшь/i })).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Рџ");
     await expect(page.locator("body")).not.toContainText("вЂ");

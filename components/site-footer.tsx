@@ -23,10 +23,11 @@ export function SiteFooter() {
       <Link className={styles.brand} href="/">Reel<span>Pay</span></Link>
       <nav className={styles.links} aria-label="Основные ссылки">
         {primaryLinks.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}
+        {secondaryLinks.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}
         <details className={styles.more}>
           <summary>Ещё</summary>
           <div aria-label="Дополнительные ссылки">
-            {secondaryLinks.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}
+            {secondaryLinks.map(([href, label]) => <Link href={href} key={`more-${href}`}>{label}</Link>)}
           </div>
         </details>
       </nav>
