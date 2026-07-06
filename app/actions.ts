@@ -28,6 +28,7 @@ import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@
 import { scanContent } from "@/lib/content-policy";
 import { isSafeRussianReport, normalizeRussianReport, reportReasonLabel } from "@/lib/report-reasons";
 import { notificationGroup, notify } from "@/lib/notifications";
+import { formatCampaignPost, postToChannel } from "@/lib/telegram";
 import { rateLimit } from "@/lib/rate-limit";
 import { safeReturnTo } from "@/lib/navigation";
 import { CampaignReservationError, releaseSubmissionReservation, reserveCampaignSlot } from "@/lib/campaign-reservations";
@@ -375,6 +376,19 @@ export async function createCampaignAction(formData: FormData) {
       path: "/campaigns/new",
       metadata: { campaignId: campaign.id, priorCampaignCount }
     });
+  }
+  // Fire-and-forget announce to the Telegram channel (no-op unless the integration is enabled).
+  if (campaign.visibility === "PUBLIC" || campaign.visibility === "FEATURED") {
+    void postToChannel(
+      formatCampaignPost({
+        id: campaign.id,
+        title: campaign.title,
+        cpmRateCents: campaign.cpmRateCents,
+        totalBudgetCents: campaign.totalBudgetCents,
+        minimumGuaranteeCents: campaign.minimumGuaranteeCents,
+        deadline: campaign.deadline
+      })
+    );
   }
   redirect(`/campaigns/${campaign.id}`);
 }
