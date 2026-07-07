@@ -10880,6 +10880,7 @@ a.social-btn:hover {
 .od-chip--urgent { color: #ffd9a8; background: rgba(245, 158, 11, .14); border-color: rgba(245, 158, 11, .34); }
 .od-chip--easy { color: #d9ff5e; background: rgba(201, 243, 29, .1); border-color: rgba(201, 243, 29, .28); }
 .od-chip--demo { color: #c8cec5; background: rgba(255,255,255,.055); border-color: rgba(255,255,255,.14); }
+.od-chip--seed { color: #c9f31d; background: rgba(201, 243, 29, .12); border-color: rgba(201, 243, 29, .3); }
 .od-chip--diff-easy { color: #b9f3c1; border-color: rgba(34, 197, 94, .3); background: rgba(34, 197, 94, .1); }
 .od-chip--diff-mid { color: var(--soft); }
 .od-chip--diff-hard { color: #ffb4b4; border-color: rgba(239, 68, 68, .3); background: rgba(239, 68, 68, .1); }

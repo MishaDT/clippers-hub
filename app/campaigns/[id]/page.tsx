@@ -109,6 +109,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       visibility: true,
       status: true,
       isDemo: true,
+      isPlatformOrganized: true,
       isAdvertising: true,
       erid: true,
       advertiserName: true,
@@ -428,6 +429,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               <p>{campaign.description}</p>
               <div className="od-chips">
                 {campaign.isDemo ? <span className="od-chip od-chip--demo">Демо-кампания</span> : null}
+                {campaign.isPlatformOrganized ? <span className="od-chip od-chip--seed"><BadgeCheck size={13} /> Организовано ReelPay</span> : null}
                 {signal ? <span className={`od-chip od-chip--${signal.cls}`}><signal.Icon size={13} /> {signal.text}</span> : null}
                 <span className="od-chip"><Clock3 size={13} /> {daysLeft} дн</span>
                 <span className="od-chip"><Target size={13} /> цель {compactNumber(campaign.viewThreshold)}</span>

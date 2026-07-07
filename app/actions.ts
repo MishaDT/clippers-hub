@@ -276,6 +276,8 @@ export async function createCampaignAction(formData: FormData) {
   const adCampaign = formData.get("isAdvertising") === "on";
   const advertiserInn = String(formData.get("advertiserInn") || "").replace(/\D/g, "").slice(0, 12) || null;
   const advertiserName = String(formData.get("advertiserName") || "").trim().slice(0, 120) || null;
+  // Seed campaigns "Организовано ReelPay" can only be flagged by staff.
+  const platformOrganized = formData.get("platformOrganized") === "on" && canAccessAdmin(user);
 
   let campaign;
   try {
@@ -343,7 +345,8 @@ export async function createCampaignAction(formData: FormData) {
           metricsJson: stringify({ views: 0, roi: 0, fillRate: 0 }),
           isAdvertising: adCampaign,
           advertiserInn: adCampaign ? advertiserInn : null,
-          advertiserName: adCampaign ? advertiserName : null
+          advertiserName: adCampaign ? advertiserName : null,
+          isPlatformOrganized: platformOrganized
         }
       });
 
