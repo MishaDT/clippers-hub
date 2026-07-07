@@ -27,6 +27,10 @@ export const revalidate = 3600;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let dynamic: MetadataRoute.Sitemap = [];
 
+  // Skip the DB entirely when it isn't configured (e.g. build time without DATABASE_URL) —
+  // avoids a noisy prisma error and keeps the static sitemap fast.
+  if (!process.env.DATABASE_URL) return staticEntries;
+
   try {
     const [campaigns, clippers] = await Promise.all([
       prisma.campaign.findMany({
