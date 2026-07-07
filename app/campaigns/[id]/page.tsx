@@ -9,7 +9,7 @@ import { WorkspaceJourney } from "@/components/workspace-journey";
 import { TakeOrderButton } from "@/components/take-order-button";
 import { SubmissionDispute } from "@/components/submission-dispute";
 import { ClipReport } from "@/components/clip-report";
-import { closeCampaignAction, rateCompletedSubmissionAction, reviewDraftAction } from "@/app/actions";
+import { closeCampaignAction, createClipShareAction, rateCompletedSubmissionAction, reviewDraftAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/admin";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -194,6 +194,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           updatedAt: true,
           viewVelocityJson: true,
           lastSyncedAt: true,
+          shareToken: true,
           worker: { select: { name: true, handle: true } },
           disputes: {
             orderBy: { createdAt: "desc" },
@@ -232,6 +233,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           updatedAt: submission.updatedAt,
           viewVelocityJson: submission.viewVelocityJson,
           lastSyncedAt: submission.lastSyncedAt,
+          shareToken: submission.shareToken,
           worker: submission.worker,
           disputes: submission.disputes,
           videoChecks: submission.videoChecks.map((check) => ({
@@ -756,6 +758,15 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                     <footer>
                       <small>Обновлено {report.lastSyncedAt.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
                       {post && !report.postUrl.includes("post-link-waiting") ? <a href={post.url} target="_blank" rel="noreferrer">Открыть ролик <ArrowUpRight size={13} /></a> : null}
+                      {report.shareToken ? (
+                        <a href={`/report/${report.shareToken}`} target="_blank" rel="noreferrer">Публичный отчёт <ArrowUpRight size={13} /></a>
+                      ) : (
+                        <form action={createClipShareAction}>
+                          <input type="hidden" name="submissionId" value={report.id} />
+                          <input type="hidden" name="returnTo" value={`/campaigns/${campaign.id}`} />
+                          <button type="submit" className="od-share-btn">Поделиться отчётом</button>
+                        </form>
+                      )}
                     </footer>
                     <SubmissionDispute
                       submissionId={report.id}

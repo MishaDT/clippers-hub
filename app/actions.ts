@@ -405,6 +405,29 @@ export async function createCampaignAction(formData: FormData) {
   redirect(`/campaigns/${campaign.id}`);
 }
 
+// Mint (or reuse) a public share token for a clip report. Only the campaign owner or the
+// clipper who made the submission may create the link. The report itself is read-only and noindex.
+export async function createClipShareAction(formData: FormData) {
+  const user = await requireUser();
+  const submissionId = String(formData.get("submissionId") || "");
+  const returnTo = safeReturnTo(String(formData.get("returnTo") || ""), "/campaigns");
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    select: { id: true, workerId: true, shareToken: true, campaign: { select: { ownerId: true } } }
+  });
+  if (!submission) redirect(returnTo);
+  const allowed = submission.workerId === user.id || submission.campaign.ownerId === user.id || canAccessAdmin(user);
+  if (!allowed) redirect(returnTo);
+  if (!submission.shareToken) {
+    await prisma.submission.update({
+      where: { id: submissionId },
+      data: { shareToken: randomBytes(12).toString("hex") }
+    });
+  }
+  revalidatePath(returnTo);
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}shared=1`);
+}
+
 export async function closeCampaignAction(formData: FormData) {
   const user = await requireUser();
   const campaignId = String(formData.get("campaignId") || "");
