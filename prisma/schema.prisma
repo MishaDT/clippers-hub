@@ -11,82 +11,108 @@ datasource db {
 }
 
 model User {
-  id                String        @id @default(cuid())
-  email             String        @unique
-  emailVerifiedAt   DateTime?
-  passwordHash      String
-  name              String
-  handle            String        @unique
-  avatar            String?
-  bio               String?
-  specialtiesJson   String        @default("[]")
-  socialLinksJson   String        @default("[]")
-  handleChangedAt   DateTime?
-  accountStatus     AccountStatus @default(ACTIVE)
-  restrictionReason String?
-  restrictedUntil   DateTime?
-  role              Role          @default(WORKER)
-  balanceCents      Int           @default(0)
-  holdBalanceCents  Int           @default(0)
-  rpBalance         Int           @default(0)
-  rpPurchasedBalance Int          @default(0)
-  preferredRoleMode String?
-  collabAvailability CollabAvailability @default(ACTIVE_ROLE)
-  marketGuideSeenAt DateTime?
-  rank              Rank          @default(BRONZE)
-  trustScore        Int           @default(100)
-  streakDays        Int           @default(0)
-  lifetimeViews     Int           @default(0)
-  referredBy        String?
-  referralCode      String        @unique
-  kycStatus         KYCStatus     @default(NONE)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                      String             @id @default(cuid())
+  email                   String             @unique
+  emailVerifiedAt         DateTime?
+  passwordHash            String
+  name                    String
+  handle                  String             @unique
+  avatar                  String?
+  bio                     String?
+  specialtiesJson         String             @default("[]")
+  socialLinksJson         String             @default("[]")
+  handleChangedAt         DateTime?
+  accountStatus           AccountStatus      @default(ACTIVE)
+  restrictionReason       String?
+  restrictedUntil         DateTime?
+  role                    Role               @default(WORKER)
+  balanceCents            Int                @default(0)
+  holdBalanceCents        Int                @default(0)
+  rpBalance               Int                @default(0)
+  rpPurchasedBalance      Int                @default(0)
+  preferredRoleMode       String?
+  collabAvailability      CollabAvailability @default(ACTIVE_ROLE)
+  marketGuideSeenAt       DateTime?
+  rank                    Rank               @default(BRONZE)
+  trustScore              Int                @default(100)
+  streakDays              Int                @default(0)
+  lifetimeViews           Int                @default(0)
+  referredBy              String?
+  referralCode            String             @unique
+  kycStatus               KYCStatus          @default(NONE)
+  payoutInn               String?
+  payoutAccount           String?
+  payoutBik               String?
+  payoutFullName          String?
+  payoutPhone             String?
+  selfEmployedConfirmedAt DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
-  ownedCampaigns         Campaign[]        @relation("CampaignOwner")
-  submissions            Submission[]
-  transactions           Transaction[]
-  socialAccounts         SocialAccount[]
-  oauthAccounts          OAuthAccount[]
-  notifications          Notification[]
-  achievements           UserAchievement[]
-  disputes               DisputeCase[]
-  auditLogs              AuditLog[]
-  savedCampaigns         SavedCampaign[]
-  likedCampaigns         LikedCampaign[]
-  analyticsEvents        AnalyticsEvent[]
-  clientChats            ChatThread[]      @relation("ChatClient")
-  workerChats            ChatThread[]      @relation("ChatWorker")
-  sentChatMessages       ChatMessage[]     @relation("ChatSender")
-  chatReadStates         ChatReadState[]
-  supportThreads         SupportThread[]   @relation("SupportRequester")
-  assignedSupportThreads SupportThread[]   @relation("SupportAssignee")
-  sentSupportMessages    SupportMessage[]  @relation("SupportSender")
-  collabSent             CollabInvite[]    @relation("CollabClient")
-  collabReceived         CollabInvite[]    @relation("CollabWorker")
-  endorsementsGiven      Endorsement[]     @relation("EndorseClient")
-  endorsementsReceived   Endorsement[]     @relation("EndorseWorker")
-  handleAliases          UserHandleAlias[]
-  portfolioPins          PortfolioPin[]
-  moderationAuthored     ModerationCase[]  @relation("ModerationAuthor")
-  moderationReported     ModerationCase[]  @relation("ModerationReporter")
-  moderationReviewed     ModerationCase[]  @relation("ModerationReviewer")
-  messageAudits          ChatMessageEdit[] @relation("MessageEditor")
-  rpTransactions         RpTransaction[]
-  recurringRewardClaims  RecurringRewardClaim[]
-  storeRedemptions       StoreRedemption[]
-  emailVerificationTokens EmailVerificationToken[]
-  referralsSent           ReferralRelation[]   @relation("ReferralReferrer")
-  referralRelation        ReferralRelation?    @relation("ReferralReferred")
-  referralCommissions     ReferralCommission[] @relation("ReferralCommissionOwner")
-  referralCommissionSources ReferralCommission[] @relation("ReferralCommissionSource")
-  referralClicks          ReferralClick[]
-  collabInitiated         CollabInvite[]        @relation("CollabInitiator")
-  ratingsGiven            UserRating[]          @relation("RatingAuthor")
-  ratingsReceived         UserRating[]          @relation("RatingSubject")
+  ownedCampaigns            Campaign[]               @relation("CampaignOwner")
+  submissions               Submission[]
+  transactions              Transaction[]
+  socialAccounts            SocialAccount[]
+  oauthAccounts             OAuthAccount[]
+  notifications             Notification[]
+  achievements              UserAchievement[]
+  disputes                  DisputeCase[]
+  auditLogs                 AuditLog[]
+  savedCampaigns            SavedCampaign[]
+  likedCampaigns            LikedCampaign[]
+  analyticsEvents           AnalyticsEvent[]
+  clientChats               ChatThread[]             @relation("ChatClient")
+  workerChats               ChatThread[]             @relation("ChatWorker")
+  sentChatMessages          ChatMessage[]            @relation("ChatSender")
+  chatReadStates            ChatReadState[]
+  supportThreads            SupportThread[]          @relation("SupportRequester")
+  assignedSupportThreads    SupportThread[]          @relation("SupportAssignee")
+  sentSupportMessages       SupportMessage[]         @relation("SupportSender")
+  collabSent                CollabInvite[]           @relation("CollabClient")
+  collabReceived            CollabInvite[]           @relation("CollabWorker")
+  endorsementsGiven         Endorsement[]            @relation("EndorseClient")
+  endorsementsReceived      Endorsement[]            @relation("EndorseWorker")
+  handleAliases             UserHandleAlias[]
+  portfolioPins             PortfolioPin[]
+  moderationAuthored        ModerationCase[]         @relation("ModerationAuthor")
+  moderationReported        ModerationCase[]         @relation("ModerationReporter")
+  moderationReviewed        ModerationCase[]         @relation("ModerationReviewer")
+  messageAudits             ChatMessageEdit[]        @relation("MessageEditor")
+  rpTransactions            RpTransaction[]
+  recurringRewardClaims     RecurringRewardClaim[]
+  storeRedemptions          StoreRedemption[]
+  emailVerificationTokens   EmailVerificationToken[]
+  referralsSent             ReferralRelation[]       @relation("ReferralReferrer")
+  referralRelation          ReferralRelation?        @relation("ReferralReferred")
+  referralCommissions       ReferralCommission[]     @relation("ReferralCommissionOwner")
+  referralCommissionSources ReferralCommission[]     @relation("ReferralCommissionSource")
+  referralClicks            ReferralClick[]
+  collabInitiated           CollabInvite[]           @relation("CollabInitiator")
+  ratingsGiven              UserRating[]             @relation("RatingAuthor")
+  ratingsReceived           UserRating[]             @relation("RatingSubject")
+  invoiceRequests           InvoiceRequest[]
 
   @@index([role, createdAt])
   @@index([createdAt])
+}
+
+// Bank-transfer top-up requests for business (юрлицо) clients. Admin confirms receipt,
+// which credits the balance via the normal atomic DEPOSIT path (idempotent on provider+ref).
+model InvoiceRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  amountCents Int
+  inn         String
+  companyName String
+  status      String    @default("NEW")
+  adminId     String?
+  createdAt   DateTime  @default(now())
+  paidAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model EmailVerificationToken {
@@ -115,6 +141,8 @@ model SocialAccount {
   refreshTokenExpiresAt DateTime?
   scopesJson            String    @default("[]")
   verifiedAt            DateTime?
+  verificationMethod    String?
+  accountUrl            String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -140,44 +168,51 @@ model OAuthAccount {
 }
 
 model Campaign {
-  id                   String         @id @default(cuid())
-  ownerId              String
-  title                String
-  description          String
-  sourceUrl            String
-  sourcePlatform       Platform
-  allowedPlatformsJson String
-  rulesJson            String
-  cpmRateCents         Int
-  viewThreshold        Int
-  minimumGuaranteeCents Int           @default(0)
-  reviewMode            ReviewMode    @default(STANDARD)
-  maxRevisionRounds     Int           @default(2)
-  briefVersion          Int           @default(1)
-  draftRequired         Boolean       @default(true)
-  totalBudgetCents     Int
-  remainingBudgetCents Int
-  reservedBudgetCents  Int            @default(0)
-  maxPaidResults       Int            @default(1)
-  status               CampaignStatus @default(ACTIVE)
-  visibility           Visibility     @default(PUBLIC)
-  trackingPrefix       String         @unique
-  deadline             DateTime
-  language             String         @default("ru")
-  niche                String?
-  metricsJson          String         @default("{}")
-  briefJson            String         @default("{}")
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  moderationStatus     String         @default("APPROVED")
-  featuredUntil        DateTime?
-  isDemo               Boolean        @default(false)
+  id                     String         @id @default(cuid())
+  ownerId                String
+  title                  String
+  description            String
+  sourceUrl              String
+  sourcePlatform         Platform
+  allowedPlatformsJson   String
+  rulesJson              String
+  cpmRateCents           Int
+  viewThreshold          Int
+  minimumGuaranteeCents  Int            @default(0)
+  reviewMode             ReviewMode     @default(STANDARD)
+  maxRevisionRounds      Int            @default(2)
+  briefVersion           Int            @default(1)
+  draftRequired          Boolean        @default(true)
+  totalBudgetCents       Int
+  remainingBudgetCents   Int
+  reservedBudgetCents    Int            @default(0)
+  maxPaidResults         Int            @default(1)
+  status                 CampaignStatus @default(ACTIVE)
+  visibility             Visibility     @default(PUBLIC)
+  trackingPrefix         String         @unique
+  deadline               DateTime
+  language               String         @default("ru")
+  niche                  String?
+  metricsJson            String         @default("{}")
+  briefJson              String         @default("{}")
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  moderationStatus       String         @default("APPROVED")
+  featuredUntil          DateTime?
+  isDemo                 Boolean        @default(false)
+  badgeBonusCpmCents     Int            @default(0)
+  isPlatformOrganized    Boolean        @default(false)
+  requireVerifiedAccount Boolean        @default(false)
+  isAdvertising          Boolean        @default(true)
+  erid                   String?
+  advertiserInn          String?
+  advertiserName         String?
 
-  owner       User            @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  submissions Submission[]
-  savedBy     SavedCampaign[]
-  likedBy     LikedCampaign[]
-  chatThreads ChatThread[]
+  owner         User            @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  submissions   Submission[]
+  savedBy       SavedCampaign[]
+  likedBy       LikedCampaign[]
+  chatThreads   ChatThread[]
   collabInvites CollabInvite[]
 
   @@index([ownerId, createdAt])
@@ -210,35 +245,39 @@ model LikedCampaign {
 }
 
 model Submission {
-  id               String           @id @default(cuid())
-  campaignId       String
-  workerId         String
-  postUrl          String
-  platform         Platform
-  platformPostId   String
-  trackingCode     String           @unique
-  currentViews     Int              @default(0)
-  currentLikes     Int              @default(0)
-  currentComments  Int              @default(0)
-  peakViews        Int              @default(0)
-  status           SubmissionStatus @default(POSTED)
-  fraudScore       Int              @default(0)
-  reservedPayoutCents Int           @default(0)
+  id                    String            @id @default(cuid())
+  campaignId            String
+  workerId              String
+  postUrl               String
+  platform              Platform
+  platformPostId        String
+  trackingCode          String            @unique
+  currentViews          Int               @default(0)
+  currentLikes          Int               @default(0)
+  currentComments       Int               @default(0)
+  peakViews             Int               @default(0)
+  status                SubmissionStatus  @default(POSTED)
+  fraudScore            Int               @default(0)
+  reservedPayoutCents   Int               @default(0)
   reservationReleasedAt DateTime?
-  draftUrl          String?
-  draftStatus       DraftReviewStatus @default(NOT_SUBMITTED)
-  draftRevision     Int               @default(0)
-  draftSubmittedAt  DateTime?
-  draftReviewedAt   DateTime?
-  draftReviewNote   String?
-  draftReviewedById String?
-  publishApprovedAt DateTime?
-  viewVelocityJson String           @default("[]")
-  lastSyncedAt     DateTime         @default(now())
-  verifiedAt       DateTime?
-  paidAt           DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  draftUrl              String?
+  draftStatus           DraftReviewStatus @default(NOT_SUBMITTED)
+  draftRevision         Int               @default(0)
+  draftSubmittedAt      DateTime?
+  draftReviewedAt       DateTime?
+  draftReviewNote       String?
+  draftReviewedById     String?
+  publishApprovedAt     DateTime?
+  acceptedBriefVersion  Int?
+  badgeConfirmedAt      DateTime?
+  earlyRemovalAt        DateTime?
+  shareToken            String?           @unique
+  viewVelocityJson      String            @default("[]")
+  lastSyncedAt          DateTime          @default(now())
+  verifiedAt            DateTime?
+  paidAt                DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   worker        User           @relation(fields: [workerId], references: [id], onDelete: Cascade)
@@ -308,13 +347,13 @@ model ChatThread {
   clientClearedAt  DateTime?
   workerClearedAt  DateTime?
 
-  campaign   Campaign?       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  collabInvite CollabInvite? @relation(fields: [collabInviteId], references: [id], onDelete: Cascade)
-  submission Submission?     @relation(fields: [submissionId], references: [id], onDelete: SetNull)
-  client     User            @relation("ChatClient", fields: [clientId], references: [id], onDelete: Cascade)
-  worker     User            @relation("ChatWorker", fields: [workerId], references: [id], onDelete: Cascade)
-  messages   ChatMessage[]
-  readStates ChatReadState[]
+  campaign     Campaign?       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  collabInvite CollabInvite?   @relation(fields: [collabInviteId], references: [id], onDelete: Cascade)
+  submission   Submission?     @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  client       User            @relation("ChatClient", fields: [clientId], references: [id], onDelete: Cascade)
+  worker       User            @relation("ChatWorker", fields: [workerId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
+  readStates   ChatReadState[]
 
   @@unique([campaignId, workerId])
   @@index([kind, updatedAt])
@@ -482,14 +521,14 @@ model Transaction {
   providerData String            @default("{}")
   createdAt    DateTime          @default(now())
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  submission Submission? @relation(fields: [submissionId], references: [id])
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submission          Submission?          @relation(fields: [submissionId], references: [id])
   referralCommissions ReferralCommission[]
 
+  @@unique([provider, providerRef])
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([submissionId, type])
-  @@unique([provider, providerRef])
 }
 
 model ReferralProgramConfig {
@@ -527,7 +566,7 @@ model ReferralRelation {
 
   referrer     User                 @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
   referredUser User                 @relation("ReferralReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
-  commissions ReferralCommission[]
+  commissions  ReferralCommission[]
 
   @@index([referrerId, status, createdAt])
 }
@@ -573,20 +612,20 @@ model ReferralClick {
 }
 
 model Notification {
-  id             String    @id @default(cuid())
-  userId         String
-  groupKey       String?
-  title          String
-  body           String
-  channel        String
-  priority       String
-  kind           String    @default("GENERAL")
-  href           String?
-  occurrenceCount Int      @default(1)
-  readAt         DateTime?
-  archivedAt     DateTime?
-  lastOccurredAt DateTime  @default(now())
-  createdAt      DateTime  @default(now())
+  id              String    @id @default(cuid())
+  userId          String
+  groupKey        String?
+  title           String
+  body            String
+  channel         String
+  priority        String
+  kind            String    @default("GENERAL")
+  href            String?
+  occurrenceCount Int       @default(1)
+  readAt          DateTime?
+  archivedAt      DateTime?
+  lastOccurredAt  DateTime  @default(now())
+  createdAt       DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -658,12 +697,12 @@ model RpTransaction {
 }
 
 model RecurringRewardClaim {
-  id         String   @id @default(cuid())
-  userId     String
-  code       String
-  periodKey  String
-  rewardRp   Int
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  periodKey String
+  rewardRp  Int
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -672,30 +711,30 @@ model RecurringRewardClaim {
 }
 
 model StoreOffer {
-  id           String            @id @default(cuid())
-  kind         String            @default("RP_REWARD")
-  source       String?
-  externalId   String?           @unique
-  category     String?
-  provider     String?
-  title        String
-  description  String
-  url          String?
-  imageUrl     String?
-  qrImageUrl   String?
+  id            String            @id @default(cuid())
+  kind          String            @default("RP_REWARD")
+  source        String?
+  externalId    String?           @unique
+  category      String?
+  provider      String?
+  title         String
+  description   String
+  url           String?
+  imageUrl      String?
+  qrImageUrl    String?
   licenseNumber String?
-  disclaimer   String?
-  featuresJson String            @default("[]")
-  priceRp      Int               @default(0)
-  stock        Int?
-  active       Boolean           @default(true)
-  featured     Boolean           @default(false)
-  sortOrder    Int               @default(0)
-  metadataJson String            @default("{}")
-  importedAt   DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  redemptions  StoreRedemption[]
+  disclaimer    String?
+  featuresJson  String            @default("[]")
+  priceRp       Int               @default(0)
+  stock         Int?
+  active        Boolean           @default(true)
+  featured      Boolean           @default(false)
+  sortOrder     Int               @default(0)
+  metadataJson  String            @default("{}")
+  importedAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  redemptions   StoreRedemption[]
 
   @@index([active, sortOrder])
   @@index([kind, active])
@@ -703,16 +742,16 @@ model StoreOffer {
 }
 
 model StoreRedemption {
-  id              String     @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
   offerId         String
   costRp          Int
-  purchasedRpUsed Int        @default(0)
-  status          String     @default("NEW")
+  purchasedRpUsed Int       @default(0)
+  status          String    @default("NEW")
   contactEmail    String
   adminNote       String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   fulfilledAt     DateTime?
   refundedAt      DateTime?
 
@@ -736,17 +775,18 @@ model LeaderboardSnapshot {
 }
 
 model DisputeCase {
-  id           String    @id @default(cuid())
-  userId       String
-  submissionId String
-  reason       String
-  status       String    @default("OPEN")
-  resolution   String?
-  resolvedById String?
-  openKey      String?   @unique
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  resolvedAt   DateTime?
+  id            String    @id @default(cuid())
+  userId        String
+  submissionId  String
+  reason        String
+  status        String    @default("OPEN")
+  resolution    String?
+  resolvedById  String?
+  platformFault Boolean   @default(false)
+  openKey       String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  resolvedAt    DateTime?
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
@@ -803,10 +843,10 @@ model CollabInvite {
   cancelledAt DateTime?
   endedAt     DateTime?
 
-  client User @relation("CollabClient", fields: [clientId], references: [id], onDelete: Cascade)
-  worker User @relation("CollabWorker", fields: [workerId], references: [id], onDelete: Cascade)
-  initiator User @relation("CollabInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
-  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  client     User        @relation("CollabClient", fields: [clientId], references: [id], onDelete: Cascade)
+  worker     User        @relation("CollabWorker", fields: [workerId], references: [id], onDelete: Cascade)
+  initiator  User        @relation("CollabInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  campaign   Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   chatThread ChatThread?
 
   @@index([workerId, status])
