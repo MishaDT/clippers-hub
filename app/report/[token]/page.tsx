@@ -64,7 +64,7 @@ export default async function ClipReportPage({ params }: { params: Promise<{ tok
             <span><BadgeCheck size={14} /> {statusLabels[submission.status] || submission.status}</span>
             <span>цель {compactNumber(submission.campaign.viewThreshold)}</span>
           </div>
-          {submission.postUrl ? (
+          {/^https:\/\//i.test(submission.postUrl) ? (
             <a className={styles.post} href={submission.postUrl} target="_blank" rel="noreferrer">
               Открыть публикацию <ArrowUpRight size={14} />
             </a>

@@ -419,7 +419,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
     <AppShell>
       <section className="section od">
         {jobPostingLd ? (
-          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd) }} />
+          <script
+            type="application/ld+json"
+            // Escape "<" so a campaign title/description containing "</script>" can't break out of the tag.
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd).replace(/</g, "\\u003c") }}
+          />
         ) : null}
         <Link className="od-back" href={returnTo}><ArrowLeft size={16} /> Назад</Link>
 
