@@ -109,6 +109,9 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       visibility: true,
       status: true,
       isDemo: true,
+      isAdvertising: true,
+      erid: true,
+      advertiserName: true,
       totalBudgetCents: true,
       remainingBudgetCents: true,
       reservedBudgetCents: true,
@@ -430,6 +433,13 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                 <span className="od-chip"><Target size={13} /> цель {compactNumber(campaign.viewThreshold)}</span>
                 <span className="od-chip"><Users size={13} /> {slotsLeft} мест доступно</span>
               </div>
+              {campaign.isAdvertising ? (
+                <p className="od-ad-mark">
+                  {campaign.erid
+                    ? `Реклама.${campaign.advertiserName ? ` ${campaign.advertiserName}.` : ""} erid: ${campaign.erid}`
+                    : "Рекламная кампания — маркировка erid будет добавлена автоматически перед публикацией."}
+                </p>
+              ) : null}
             </div>
           </div>
 

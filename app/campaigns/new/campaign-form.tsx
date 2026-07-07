@@ -66,6 +66,7 @@ export function CampaignForm({
   const [bans, setBans] = useState("NSFW, политика, оскорбления, чужие логотипы крупным планом");
   const [platforms, setPlatforms] = useState<string[]>(["TIKTOK", "YOUTUBE", "INSTAGRAM"]);
   const [watermarkBonus, setWatermarkBonus] = useState(true);
+  const [isAdvertising, setIsAdvertising] = useState(true);
   const [draftSaved, setDraftSaved] = useState(false);
   const [step, setStep] = useState(1);
 
@@ -452,6 +453,24 @@ export function CampaignForm({
             </select>
             <small>Правки разрешены только в рамках опубликованного брифа.</small>
           </label>
+
+          <label className="order-check" data-wizard-field="7" hidden={step !== 7}>
+            <input type="checkbox" name="isAdvertising" checked={isAdvertising} onChange={(event) => setIsAdvertising(event.target.checked)} />
+            <span><ShieldCheck size={18} /> Это рекламная кампания (нужна маркировка ЕРИР). Снимите галочку, если продвигаете собственный контент.</span>
+          </label>
+          {isAdvertising ? (
+            <div className="order-grid-2" data-wizard-field="7" hidden={step !== 7}>
+              <label className="order-field">
+                <span>ИНН рекламодателя</span>
+                <input name="advertiserInn" inputMode="numeric" maxLength={12} placeholder="10 или 12 цифр" />
+                <small>Понадобится для регистрации креатива в ОРД и получения erid.</small>
+              </label>
+              <label className="order-field">
+                <span>Наименование рекламодателя</span>
+                <input name="advertiserName" maxLength={120} placeholder="ООО «Пример» или ИП Иванов" />
+              </label>
+            </div>
+          ) : null}
 
           <label className="order-check" data-wizard-field="7" hidden={step !== 7}>
             <input type="checkbox" name="rightsConfirmed" required />

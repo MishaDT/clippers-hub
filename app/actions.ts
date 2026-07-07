@@ -271,6 +271,12 @@ export async function createCampaignAction(formData: FormData) {
   }
   const priorCampaignCount = await prisma.campaign.count({ where: { ownerId: user.id } });
 
+  // Advertising campaigns must carry an ERID marking (Russian ad law). We capture the advertiser
+  // details now; the ORD registration that mints the erid runs once ORD keys are configured.
+  const adCampaign = formData.get("isAdvertising") === "on";
+  const advertiserInn = String(formData.get("advertiserInn") || "").replace(/\D/g, "").slice(0, 12) || null;
+  const advertiserName = String(formData.get("advertiserName") || "").trim().slice(0, 120) || null;
+
   let campaign;
   try {
     campaign = await prisma.$transaction(async (db) => {
@@ -334,7 +340,10 @@ export async function createCampaignAction(formData: FormData) {
           deadline: new Date(Date.now() + deadlineDays * 86400000),
           language: String(formData.get("language") || "ru"),
           niche: String(formData.get("niche") || "Gaming"),
-          metricsJson: stringify({ views: 0, roi: 0, fillRate: 0 })
+          metricsJson: stringify({ views: 0, roi: 0, fillRate: 0 }),
+          isAdvertising: adCampaign,
+          advertiserInn: adCampaign ? advertiserInn : null,
+          advertiserName: adCampaign ? advertiserName : null
         }
       });
 
