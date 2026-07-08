@@ -10875,6 +10875,12 @@ a.social-btn:hover {
 /* HEADLINE + CHIPS */
 .od-headline h1 { margin: 0 0 10px; font-size: clamp(25px, 4vw, 38px); line-height: 1.08; letter-spacing: -.02em; }
 .od-headline p { margin: 0 0 14px; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 640px; }
+.od-flash { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 14px; padding: 12px 15px; border: 1px solid rgba(201, 243, 29, .35); border-radius: 12px; background: rgba(201, 243, 29, .1); color: #dfe9c4; font-size: 13.5px; line-height: 1.45; }
+.verify-nudge { display: block; margin-bottom: 14px; padding: 11px 15px; border: 1px solid rgba(245, 181, 68, .4); border-radius: 12px; background: rgba(245, 181, 68, .1); color: #f0d8a8; font-size: 13.5px; font-weight: 650; }
+.verify-nudge:hover { background: rgba(245, 181, 68, .16); }
+.od-flash svg { flex-shrink: 0; color: var(--lpa-lime, #c9f31d); margin-top: 1px; }
+.wallet-hold-hint { display: block; margin-top: 6px; color: #9da49d; font-size: 11.5px; line-height: 1.4; }
+.wallet-invoice-hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .od-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .od-ad-mark { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.03); border: 1px solid var(--line); color: var(--muted); font-size: 11.5px; line-height: 1.4; }
 .od-share-btn { padding: 5px 10px; border: 1px solid rgba(201, 243, 29, .3); border-radius: 8px; background: rgba(201, 243, 29, .1); color: #c9f31d; font-size: 12px; font-weight: 700; cursor: pointer; }

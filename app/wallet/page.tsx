@@ -109,6 +109,9 @@ export default async function WalletPage({
             <span>Доступно</span>
             <strong>{rub(user.balanceCents)}</strong>
             <small>{mode === "client" ? `В кампаниях: ${rub(reserved)}` : `На проверке: ${rub(user.holdBalanceCents)}`}</small>
+            {mode !== "client" && user.holdBalanceCents > 0 ? (
+              <small className="wallet-hold-hint">Начисления проходят защитную проверку 48 часов, затем автоматически становятся доступны к выводу.</small>
+            ) : null}
           </Card>
           <Card className="wallet-balance-card wallet-rp-card">
             <Coins />
@@ -143,10 +146,14 @@ export default async function WalletPage({
                   <button className="btn btn-primary" type="submit"><ArrowDownToLine size={18} /> Перейти к оплате</button>
                 </form>
               ) : (
-                <div className="safe-note">
-                  <ShieldCheck size={18} />
-                  <span>Пополнение включится после безопасного подключения ЮKassa или Stripe администратором.</span>
-                </div>
+                <>
+                  <div className="safe-note">
+                    <ShieldCheck size={18} />
+                    <span>Оплата картой скоро включится. Уже сейчас можно пополнить по счёту — обычно зачисляем в течение рабочего дня.</span>
+                  </div>
+                  <Link className="btn btn-primary" href="/support?new=1">Запросить счёт на пополнение</Link>
+                  <p className="wallet-invoice-hint">Для юрлиц и ИП: напишите сумму, ИНН и название компании — пришлём счёт и закрывающие документы.</p>
+                </>
               )}
             </Card>
           ) : (

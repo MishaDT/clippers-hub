@@ -403,6 +403,11 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   return (
     <AppShell>
       <section className={`section market-screen ${styles.marketplace}`}>
+        {user && !user.emailVerifiedAt ? (
+          <a className="verify-nudge" href="/verify-email" role="status">
+            Подтвердите почту, чтобы брать заказы и получать выплаты — это займёт минуту →
+          </a>
+        ) : null}
         <MarketplaceBrowser
           cards={cards}
           medianRate={medianRate}

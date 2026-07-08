@@ -46,6 +46,7 @@ export async function AppShell({
           <nav className="public-nav" aria-label="Навигация">
             <Link href="/#how">Как это работает</Link>
             <Link href="/campaigns">Заказы</Link>
+            <Link href="/business">Для бизнеса</Link>
             <Link href="/leaderboard">Лидеры</Link>
           </nav>
         )}

@@ -77,7 +77,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function CampaignPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string; rating?: string }> }) {
+export default async function CampaignPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string; rating?: string; dispute?: string; shared?: string; published?: string }> }) {
   const { id } = await params;
   const query = await searchParams;
   const returnTo = safeReturnTo(query.returnTo, "/campaigns");
@@ -425,6 +425,15 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingLd).replace(/</g, "\\u003c") }}
           />
         ) : null}
+        {query.published === "1" ? (
+          <div className="od-flash" role="status"><BadgeCheck size={16} /> Кампания опубликована! Бюджет в резерве — клипперы уже видят задание в ленте. Первые отклики обычно приходят в течение суток.</div>
+        ) : null}
+        {query.dispute === "opened" ? (
+          <div className="od-flash" role="status"><ShieldCheck size={16} /> Спор открыт. Выплата по работе приостановлена, администратор рассмотрит обращение — решение придёт в уведомления.</div>
+        ) : null}
+        {query.shared === "1" ? (
+          <div className="od-flash" role="status"><BadgeCheck size={16} /> Публичная ссылка на отчёт создана — кнопка «Публичный отчёт» появилась в карточке ролика ниже.</div>
+        ) : null}
         <Link className="od-back" href={returnTo}><ArrowLeft size={16} /> Назад</Link>
 
         <div className="od-grid">
@@ -528,6 +537,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                         : "После взятия заказа максимальная выплата резервируется под вас."
                 }</li>
                 <li><Clock3 size={14} /> Статистика обновляется автоматически.</li>
+                <li><BadgeCheck size={14} /> {mode === "client" ? "Черновики проверяются обычно в течение 24 часов." : "Проверка черновика — обычно до 24 часов."}</li>
               </ul>
             </div>
           </aside>

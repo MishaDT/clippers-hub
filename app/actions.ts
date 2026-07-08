@@ -402,7 +402,7 @@ export async function createCampaignAction(formData: FormData) {
       })
     );
   }
-  redirect(`/campaigns/${campaign.id}`);
+  redirect(`/campaigns/${campaign.id}?published=1`);
 }
 
 // Mint (or reuse) a public share token for a clip report. Only the campaign owner or the
