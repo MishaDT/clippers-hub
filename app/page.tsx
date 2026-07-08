@@ -8,6 +8,7 @@ import { BudgetProtection } from "@/components/budget-protection";
 import { LandingCalculator } from "@/components/landing-calculator";
 import { LandingFaqChat } from "@/components/landing-faq-chat";
 import { LandingPhone } from "@/components/landing-phone";
+import { LandingStats } from "@/components/landing-stats";
 import { LandingStepsTabs } from "@/components/landing-steps-tabs";
 
 export default async function HomePage() {
@@ -37,12 +38,8 @@ export default async function HomePage() {
           <LandingPhone />
         </div>
 
-        {/* Trust metrics */}
-        <div className="lpa-metrics">
-          <div><b>₽4,2 млн <small>Демо</small></b><span>пример оборота платформы</span></div>
-          <div><b>1 800+ <small>Демо</small></b><span>пример активного сообщества</span></div>
-          <div><b>320 <small>Демо</small></b><span>пример наполненной ленты</span></div>
-        </div>
+        {/* Trust metrics: live numbers once real traction exists, honest demo until then */}
+        <LandingStats />
 
         {/* Video: how ReelPay works */}
         <CampaignGuide variant="general" />

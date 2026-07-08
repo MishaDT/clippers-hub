@@ -127,6 +127,8 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
               />
               <div className="reel-shade" />
 
+              <span className="reel-demo-badge">Демо-ролик · пример подачи</span>
+
               {!isPlaying ? (
                 <button className="reel-play" type="button" aria-label="Смотреть ролик" onClick={() => playOnly(campaign.id)}>
                   <Play size={26} fill="#fff" />
