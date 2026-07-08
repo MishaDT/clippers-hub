@@ -42,8 +42,16 @@
   cursor: pointer;
 }
 
+.tabs button:hover {
+  color: #cfd6cb;
+}
+
 .tabs button[data-active="true"] {
   background: #c9f31d;
+  color: #0b0d08;
+}
+
+.tabs button[data-active="true"]:hover {
   color: #0b0d08;
 }
 

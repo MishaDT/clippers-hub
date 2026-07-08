@@ -67,6 +67,10 @@
   display: none;
 }
 
+.question:hover {
+  background: rgba(201, 243, 29, .19);
+}
+
 .answer {
   display: flex;
   align-items: flex-start;

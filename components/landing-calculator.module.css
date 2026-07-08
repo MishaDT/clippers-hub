@@ -32,9 +32,9 @@
   max-width: 720px;
   margin: 0;
   color: #f8f9f5;
-  font-size: clamp(30px, 4.4vw, 52px);
-  line-height: 1.02;
-  letter-spacing: -.04em;
+  font-size: clamp(26px, 3.8vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -.03em;
 }
 
 .copy p {
@@ -92,7 +92,7 @@
 
 .calculator header span,
 .calculator > p {
-  color: #9aa197;
+  color: #9da49d;
   font-size: 11px;
 }
 
@@ -148,7 +148,7 @@
 }
 
 .result small {
-  color: #9aa197;
+  color: #9da49d;
   font-size: 10.5px;
 }
 

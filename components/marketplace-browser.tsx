@@ -146,7 +146,7 @@ export function MarketplaceBrowser({
                       </span>
                     ) : null}
                     {card.demo ? <span className="mk-demo">Демо</span> : null}
-                    {card.platformOrganized ? <span className="mk-fast" title="Кампанию запускает ReelPay"><BadgeCheck size={12} /> Организовано ReelPay</span> : null}
+                    {card.platformOrganized ? <span className="mk-seed" title="Кампанию запускает ReelPay"><BadgeCheck size={12} /> Организовано ReelPay</span> : null}
                     {card.reviewMode === "FAST" ? <span className="mk-fast" title="Публикация сразу после проверки платформы"><Zap size={12} /> Быстрая публикация</span> : null}
                     {signal && SignalIcon ? (
                       <span className={`mk-signal mk-signal--${signal.cls}`} title={signal.title}><SignalIcon size={12} /> {signal.text}</span>
