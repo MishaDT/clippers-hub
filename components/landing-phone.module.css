@@ -12,7 +12,7 @@
   padding: 10px;
   border-radius: 34px;
   background: linear-gradient(160deg, #1a1f18, #0a0d0a);
-  border: 1px solid rgba(201, 243, 29, .25);
+  border: 1px solid rgba(201, 243, 29, .18);
   box-shadow: 0 30px 70px rgba(0, 0, 0, .5);
 }
 
@@ -127,7 +127,7 @@
   color: #0b0d08;
   font-weight: 900;
   font-size: 14px;
-  box-shadow: 0 10px 26px rgba(201, 243, 29, .35);
+  box-shadow: 0 10px 26px rgba(201, 243, 29, .2);
   animation: pop .5s ease;
 }
 

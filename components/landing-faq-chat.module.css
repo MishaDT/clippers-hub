@@ -51,10 +51,16 @@
   width: fit-content;
   padding: 12px 16px;
   border-radius: 16px 16px 4px 16px;
-  background: #c9f31d;
-  color: #0b0d08;
+  border: 1px solid rgba(201, 243, 29, .35);
+  background: rgba(201, 243, 29, .13);
+  color: #e3ecc9;
   font-weight: 750;
   font-size: 14px;
+}
+
+.item[open] .question {
+  background: rgba(201, 243, 29, .22);
+  color: #eef4d8;
 }
 
 .question::-webkit-details-marker {
