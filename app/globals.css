@@ -10890,6 +10890,22 @@ a.social-btn:hover {
 @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
 
 .reel-demo-badge { position: absolute; top: 14px; left: 14px; z-index: 3; padding: 4px 10px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #d7dbd2; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+
+/* FIRST STEPS CHECKLIST */
+.fs-card { display: grid; gap: 12px; margin-bottom: 16px; padding: 16px 18px; border: 1px solid rgba(201, 243, 29, .25); border-radius: 16px; background: linear-gradient(180deg, rgba(201, 243, 29, .06), rgba(255, 255, 255, .015)); }
+.fs-head { display: grid; gap: 8px; }
+.fs-head b { font-size: 14px; color: #eef0ea; }
+.fs-bar { display: block; height: 6px; border-radius: 4px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.fs-bar i { display: block; height: 100%; border-radius: 4px; background: var(--lpa-lime, #c9f31d); transition: width .4s ease; }
+.fs-steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fs-steps li { display: flex; align-items: center; gap: 11px; padding: 9px 11px; border-radius: 11px; background: rgba(255, 255, 255, .03); }
+.fs-steps li[data-done="true"] { opacity: .62; }
+.fs-mark { flex-shrink: 0; display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; border: 1.5px solid rgba(201, 243, 29, .5); color: #0b0d08; }
+.fs-steps li[data-done="true"] .fs-mark { background: var(--lpa-lime, #c9f31d); border-color: var(--lpa-lime, #c9f31d); }
+.fs-steps b { display: block; font-size: 13.5px; color: #e8ebe4; }
+.fs-steps small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.fs-go { margin-left: auto; flex-shrink: 0; display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border-radius: 9px; background: rgba(201, 243, 29, .14); color: var(--lpa-lime, #c9f31d); }
+@media (max-width: 640px) { .fs-card { padding: 13px 14px; } }
 .od-flash svg { flex-shrink: 0; color: var(--lpa-lime, #c9f31d); margin-top: 1px; }
 .wallet-hold-hint { display: block; margin-top: 6px; color: #9da49d; font-size: 11.5px; line-height: 1.4; }
 .wallet-invoice-hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }

@@ -17,6 +17,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { compactNumber, expectedPayout, minimumGuaranteedPayout, rub } from "@/lib/money";
 import { parseJson } from "@/lib/json";
+import { FirstSteps } from "@/components/first-steps";
 import { campaignMatch } from "@/lib/campaign-matching";
 import styles from "./marketplace.module.css";
 import { MarketplaceBrowser, type MarketplaceCard } from "@/components/marketplace-browser";
@@ -407,6 +408,12 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           <a className="verify-nudge" href="/verify-email" role="status">
             Подтвердите почту, чтобы брать заказы и получать выплаты — это займёт минуту →
           </a>
+        ) : null}
+        {user && completedExperience.length === 0 ? (
+          <FirstSteps
+            profileDone={Boolean(user.bio) || parseJson<string[]>(user.specialtiesJson, []).length > 0}
+            orderTaken={Boolean(active)}
+          />
         ) : null}
         <MarketplaceBrowser
           cards={cards}
