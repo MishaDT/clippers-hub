@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test \"tests/*.test.mts\"",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:init": "node scripts/init-db.js",
