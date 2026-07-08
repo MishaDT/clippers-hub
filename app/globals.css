@@ -10166,6 +10166,13 @@ a.social-btn:hover {
 .lpa-btn--ghost:hover { border-color: rgba(255, 255, 255, .34); background: rgba(255, 255, 255, .04); }
 .lpa-how { display: inline-block; margin-top: 22px; font-size: 14px; font-weight: 600; color: #8b8f82; }
 .lpa-how:hover { color: #c8cdbd; }
+.lpa-hero-links { display: flex; gap: 10px 22px; align-items: center; flex-wrap: wrap; }
+.lpa-hero-links .lpa-how { margin-top: 22px; }
+.lpa-browse { display: inline-flex; align-items: center; gap: 6px; margin-top: 22px; font-size: 14px; font-weight: 750; color: var(--lpa-lime); }
+.lpa-browse:hover { filter: brightness(1.15); }
+@media (max-width: 860px) {
+  .lpa-hero-links { justify-content: center; }
+}
 
 /* HERO 2-COLUMN WITH PHONE */
 .lpa-hero-grid {

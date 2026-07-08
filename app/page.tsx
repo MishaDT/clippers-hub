@@ -29,7 +29,10 @@ export default async function HomePage() {
               </Link>
               <Link className="lpa-btn lpa-btn--ghost" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">Заказать клипы</Link>
             </div>
-            <a className="lpa-how" href="#how">Как это работает ↓</a>
+            <div className="lpa-hero-links">
+              <Link className="lpa-browse" href="/campaigns">Смотреть заказы без регистрации <ArrowRight size={14} /></Link>
+              <a className="lpa-how" href="#how">Как это работает ↓</a>
+            </div>
           </div>
           <LandingPhone />
         </div>

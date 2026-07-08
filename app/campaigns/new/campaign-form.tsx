@@ -388,6 +388,18 @@ export function CampaignForm({
             <label className="order-field">
               <span>Ставка за 1000 просмотров, ₽</span>
               <input name="cpm" type="number" min={10} step={5} value={cpm} onChange={(event) => setCpm(Number(event.target.value))} required />
+              <span className="order-chips">
+                {([[15, "эконом"], [25, "рыночная"], [35, "быстрый разбор"]] as const).map(([value, label]) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={cpm === value ? "is-active" : ""}
+                    onClick={() => setCpm(value)}
+                  >
+                    {value} ₽ · {label}
+                  </button>
+                ))}
+              </span>
             </label>
             <label className="order-field">
               <span>Минимальная гарантия за проверенный ролик, ₽</span>

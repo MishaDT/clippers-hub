@@ -82,6 +82,20 @@
   line-height: 1.5;
 }
 
+.browse {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  color: #c9f31d;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.browse:hover {
+  filter: brightness(1.15);
+}
+
 @media (max-width: 720px) {
   .grid {
     grid-template-columns: 1fr;

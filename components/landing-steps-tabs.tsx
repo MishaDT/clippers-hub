@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { BriefcaseBusiness, Scissors } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Scissors } from "lucide-react";
 import styles from "./landing-steps-tabs.module.css";
 
 const flows = {
@@ -44,6 +45,10 @@ export function LandingStepsTabs() {
           </article>
         ))}
       </div>
+
+      <Link className={styles.browse} href={role === "worker" ? "/campaigns" : "/business"}>
+        {role === "worker" ? "Открыть ленту заказов — регистрация не нужна" : "Подробнее для бизнеса"} <ArrowRight size={15} />
+      </Link>
     </section>
   );
 }
