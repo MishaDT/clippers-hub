@@ -1,0 +1,25 @@
+name: Keepalive
+
+# Vercel Hobby only allows daily crons, so the every-5-minutes Neon keepalive lives here.
+# GitHub cron granularity is 5 minutes; occasional delays are fine for a warmer.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keepalive endpoint
+        env:
+          PROD_URL: ${{ secrets.PROD_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$PROD_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "PROD_URL or CRON_SECRET not set — skipping."
+            exit 0
+          fi
+          curl -s -o /dev/null -w "keepalive HTTP %{http_code}\n" --max-time 25 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$PROD_URL/api/maintenance/keepalive" || true
