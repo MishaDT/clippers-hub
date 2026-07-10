@@ -81,6 +81,7 @@ export default async function ClipperPortfolioPage({
     where: { handle },
     select: {
       id: true, name: true, handle: true, avatar: true, bio: true, email: true,
+      isDemo: true,
       specialtiesJson: true, socialLinksJson: true, lifetimeViews: true,
       kycStatus: true, createdAt: true, preferredRoleMode: true,
       collabAvailability: true, role: true
@@ -95,16 +96,18 @@ export default async function ClipperPortfolioPage({
     notFound();
   }
   const publicRoleIsClient = user.preferredRoleMode === "client";
+  const realWorkScope = user.isDemo ? {} : { campaign: { isDemo: false } };
 
   const [pins, automaticSubs, stats, platformGroups, endorsements, viewer, ownedCampaigns, activeCampaigns, receivedStats, ratingStats, recentRatings] = await Promise.all([
     prisma.portfolioPin.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, ...(user.isDemo ? {} : { submission: { campaign: { isDemo: false } } }) },
       orderBy: { position: "asc" },
       select: { submission: { select: { id: true, currentViews: true, postUrl: true, platform: true } } }
     }),
     prisma.submission.findMany({
       where: {
         workerId: user.id,
+        ...realWorkScope,
         verifiedAt: { not: null },
         status: { in: ["VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"] }
       },
@@ -113,14 +116,14 @@ export default async function ClipperPortfolioPage({
       take: 12
     }),
     prisma.submission.aggregate({
-      where: { workerId: user.id },
+      where: { workerId: user.id, ...realWorkScope },
       _count: { _all: true },
       _sum: { currentViews: true },
       _max: { currentViews: true }
     }),
     prisma.submission.groupBy({
       by: ["platform"],
-      where: { workerId: user.id },
+      where: { workerId: user.id, ...realWorkScope },
       _count: { _all: true }
     }),
     prisma.endorsement.findMany({
@@ -130,10 +133,10 @@ export default async function ClipperPortfolioPage({
       take: 8
     }),
     getCurrentUser(),
-    prisma.campaign.count({ where: { ownerId: user.id } }),
-    prisma.campaign.count({ where: { ownerId: user.id, status: { in: ["ACTIVE", "LOW_BUDGET"] } } }),
+    prisma.campaign.count({ where: { ownerId: user.id, ...(user.isDemo ? {} : { isDemo: false }) } }),
+    prisma.campaign.count({ where: { ownerId: user.id, ...(user.isDemo ? {} : { isDemo: false }), status: { in: ["ACTIVE", "LOW_BUDGET"] } } }),
     prisma.submission.aggregate({
-      where: { campaign: { ownerId: user.id } },
+      where: { campaign: { ownerId: user.id, ...(user.isDemo ? {} : { isDemo: false }) } },
       _count: { _all: true },
       _sum: { currentViews: true }
     }),
@@ -256,7 +259,7 @@ export default async function ClipperPortfolioPage({
               <span className="cp-handle">@{user.handle}</span>
               <div className="cp-chips">
                 <span className="cp-chip cp-chip--ok">{targetIsClient ? "Заказчик" : "Исполнитель"}</span>
-                {user.email.endsWith("@clippers.local") ? <span className="cp-chip cp-chip--muted">Демо-профиль</span> : null}
+                {user.isDemo ? <span className="cp-chip cp-chip--muted">Демо-профиль</span> : null}
                 <LeagueBadge views={user.lifetimeViews} size="sm" />
                 {verified ? <span className="cp-chip cp-chip--ok"><BadgeCheck size={13} /> Проверен</span> : null}
                 {endorsements.length ? (

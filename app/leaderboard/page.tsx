@@ -17,6 +17,7 @@ import { compactNumber } from "@/lib/money";
 import { leagueForViews, leagueProgress, nextLeague } from "@/lib/leagues";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { parseJson } from "@/lib/json";
+import { realSubmissionWhere } from "@/lib/data-scope";
 
 export const metadata: Metadata = {
   title: "Доска лидеров",
@@ -65,7 +66,10 @@ const loadLeaders = unstable_cache(
     const since = new Date(Date.now() - SINCE_MS);
     const recentGroups = await prisma.submission.groupBy({
       by: ["workerId"],
-      where: period === "week" ? { createdAt: { gte: since } } : {},
+      where: {
+        ...realSubmissionWhere,
+        ...(period === "week" ? { createdAt: { gte: since } } : {})
+      },
       _sum: { currentViews: true },
       _count: { _all: true },
       orderBy: { _sum: { currentViews: "desc" } },
@@ -74,11 +78,21 @@ const loadLeaders = unstable_cache(
     const groups = recentGroups;
 
     const ids = groups.map((group) => group.workerId);
-    const users = await prisma.user.findMany({
-      where: ids.length ? { id: { in: ids } } : { id: "__none__" },
-      select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true, email: true }
-    });
+    const [users, lifetimeGroups] = await Promise.all([
+      prisma.user.findMany({
+        where: ids.length ? { id: { in: ids }, isDemo: false } : { id: "__none__" },
+        select: { id: true, name: true, handle: true, avatar: true, kycStatus: true, isDemo: true }
+      }),
+      ids.length
+        ? prisma.submission.groupBy({
+            by: ["workerId"],
+            where: { ...realSubmissionWhere, workerId: { in: ids } },
+            _sum: { currentViews: true }
+          })
+        : Promise.resolve([])
+    ]);
     const byId = new Map(users.map((user) => [user.id, user]));
+    const lifetimeById = new Map(lifetimeGroups.map((group) => [group.workerId, group._sum.currentViews || 0]));
 
     const rows = groups
       .map((group, index) => {
@@ -91,29 +105,30 @@ const loadLeaders = unstable_cache(
           handle,
           avatar: avatarFor(handle, user?.avatar ?? null),
           verified: user?.kycStatus === "VERIFIED",
-          lifetimeViews: user?.lifetimeViews ?? 0,
+          lifetimeViews: lifetimeById.get(group.workerId) ?? 0,
           views: group._sum.currentViews ?? 0,
           clips: group._count._all,
           cover: coverFor(handle || group.workerId),
-          demo: user?.email.endsWith("@clippers.local") || false
+          demo: user?.isDemo || false
         };
       });
     return rows.map((row, index) => ({ ...row, rank: index + 1 }));
   },
-  ["leaderboard-v7"],
+  ["leaderboard-v8-real-only"],
   { revalidate: 600, tags: ["leaderboard"] }
 );
 
-async function loadMyProgress(user: { id: string; name: string; lifetimeViews: number; referralCode: string }) {
+async function loadMyProgress(user: { id: string; name: string; referralCode: string }) {
   const since = new Date(Date.now() - SINCE_MS);
   const [allStats, weekStats, invited, referralRewards] = await Promise.all([
     prisma.submission.aggregate({
-      where: { workerId: user.id },
+      where: { ...realSubmissionWhere, workerId: user.id },
       _count: { _all: true },
+      _sum: { currentViews: true },
       _max: { currentViews: true }
     }),
     prisma.submission.aggregate({
-      where: { workerId: user.id, createdAt: { gte: since } },
+      where: { ...realSubmissionWhere, workerId: user.id, createdAt: { gte: since } },
       _sum: { currentViews: true }
     }),
     prisma.referralRelation.count({ where: { referrerId: user.id } }),
@@ -124,7 +139,7 @@ async function loadMyProgress(user: { id: string; name: string; lifetimeViews: n
   ]);
   return {
     name: user.name,
-    lifetimeViews: user.lifetimeViews,
+    lifetimeViews: allStats._sum.currentViews || 0,
     clips: allStats._count._all,
     maxViews: allStats._max.currentViews || 0,
     weekViews: weekStats._sum.currentViews || 0,

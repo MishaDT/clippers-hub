@@ -23,9 +23,10 @@ export default async function AdminFinancePage({
   const q = String(params.q || "").trim();
   const type = types.includes(String(params.type) as (typeof types)[number]) ? String(params.type) : "ALL";
   const status = statuses.includes(String(params.status) as (typeof statuses)[number]) ? String(params.status) : "ALL";
+  const dataset = ["real", "demo", "all"].includes(String(params.dataset)) ? String(params.dataset) : "real";
   const page = clampPage(params.page);
 
-  const where: Prisma.TransactionWhereInput = {};
+  const where: Prisma.TransactionWhereInput = dataset === "all" ? {} : { isDemo: dataset === "demo" };
   if (type !== "ALL") where.type = type as Prisma.EnumTransactionTypeFilter["equals"];
   if (status !== "ALL") where.status = status as Prisma.EnumTransactionStatusFilter["equals"];
   if (q) {
@@ -45,12 +46,12 @@ export default async function AdminFinancePage({
       skip: (page - 1) * pageSize,
       take: pageSize
     }),
-    prisma.transaction.count({ where: { type: "WITHDRAWAL", status: "PENDING" } }),
-    prisma.transaction.aggregate({ where: { status: "COMPLETED" }, _sum: { netCents: true, feeCents: true } })
+    prisma.transaction.count({ where: { type: "WITHDRAWAL", status: "PENDING", isDemo: false } }),
+    prisma.transaction.aggregate({ where: { status: "COMPLETED", ...(dataset === "all" ? {} : { isDemo: dataset === "demo" }) }, _sum: { netCents: true, feeCents: true } })
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const baseParams = { q, type: type === "ALL" ? "" : type, status: status === "ALL" ? "" : status };
+  const baseParams = { q, type: type === "ALL" ? "" : type, status: status === "ALL" ? "" : status, dataset };
 
   return (
     <AdminShell>
@@ -72,6 +73,7 @@ export default async function AdminFinancePage({
             <label><Search size={18} /><input name="q" defaultValue={q} placeholder="Email, имя, провайдер" /></label>
             <select name="type" defaultValue={type}>{types.map((item) => <option value={item} key={item}>{item === "ALL" ? "Все типы" : item}</option>)}</select>
             <select name="status" defaultValue={status}>{statuses.map((item) => <option value={item} key={item}>{item === "ALL" ? "Все статусы" : statusLabel(item)}</option>)}</select>
+            <select name="dataset" defaultValue={dataset}><option value="real">Только реальные</option><option value="demo">Только демо</option><option value="all">Все данные</option></select>
             <button className="btn btn-primary" type="submit">Найти</button>
           </form>
         </Card>
@@ -81,7 +83,7 @@ export default async function AdminFinancePage({
             <div className="admin-table-head"><span>Операция</span><span>Пользователь</span><span>Сумма</span><span>Статус</span><span>Действие</span></div>
             {transactions.map((tx) => (
               <div className="admin-table-row" key={tx.id}>
-                <div><strong>{tx.type}</strong><span>{fullDate(tx.createdAt)} · {tx.provider || "internal"}</span></div>
+                <div><strong>{tx.type} {tx.isDemo ? <Tag tone="soft">Демо</Tag> : null}</strong><span>{fullDate(tx.createdAt)} · {tx.provider || "internal"}</span></div>
                 <div><strong><Link href={`/admin/users/${tx.user.id}`}>{tx.user.name}</Link></strong><span>{tx.user.email}</span></div>
                 <div><strong>{rub(tx.netCents)}</strong><span>gross {rub(tx.amountCents)} · fee {rub(tx.feeCents)}</span></div>
                 <div><Tag tone={tx.status === "COMPLETED" ? "good" : tx.status === "PENDING" ? "warn" : "soft"}>{statusLabel(tx.status)}</Tag></div>

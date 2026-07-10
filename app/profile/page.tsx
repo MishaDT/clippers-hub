@@ -49,10 +49,11 @@ const campaignLabels: Record<string, string> = {
   COMPLETED: "Завершена"
 };
 
-async function loadWorker(userId: string) {
+async function loadWorker(userId: string, isDemo: boolean) {
+  const workScope = isDemo ? {} : { campaign: { isDemo: false } };
   const [submissions, earnings, payouts, views, activeCount] = await Promise.all([
     prisma.submission.findMany({
-      where: { workerId: userId },
+      where: { workerId: userId, ...workScope },
       select: {
         id: true,
         currentViews: true,
@@ -63,21 +64,21 @@ async function loadWorker(userId: string) {
       take: 5
     }),
     prisma.transaction.aggregate({
-      where: { userId, type: "EARNING", status: "COMPLETED" },
+      where: { userId, isDemo, type: "EARNING", status: "COMPLETED" },
       _sum: { netCents: true }
     }),
     prisma.transaction.findMany({
-      where: { userId, type: { in: ["EARNING", "WITHDRAWAL"] } },
+      where: { userId, isDemo, type: { in: ["EARNING", "WITHDRAWAL"] } },
       select: { id: true, type: true, netCents: true, status: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 5
     }),
     prisma.submission.aggregate({
-      where: { workerId: userId },
+      where: { workerId: userId, ...workScope },
       _sum: { currentViews: true }
     }),
     prisma.submission.count({
-      where: { workerId: userId, status: { in: [...ACTIVE_SUBMISSION_STATUSES] } }
+      where: { workerId: userId, ...workScope, status: { in: [...ACTIVE_SUBMISSION_STATUSES] } }
     })
   ]);
 
@@ -90,9 +91,9 @@ async function loadWorker(userId: string) {
   };
 }
 
-async function loadClient(userId: string) {
-  const campaignWhere = { ownerId: userId };
-  const submissionWhere = { campaign: { ownerId: userId } };
+async function loadClient(userId: string, isDemo: boolean) {
+  const campaignWhere = { ownerId: userId, ...(isDemo ? {} : { isDemo: false }) };
+  const submissionWhere = { campaign: { ownerId: userId, ...(isDemo ? {} : { isDemo: false }) } };
   const [activeCampaigns, completedCampaigns, budgets, views, clipCount, topClips] = await Promise.all([
     prisma.campaign.findMany({
       where: { ...campaignWhere, status: { in: ["ACTIVE", "LOW_BUDGET", "PAUSED"] } },
@@ -180,7 +181,7 @@ export default async function ProfilePage() {
   const canSwitchMode = user.role === "BOTH" || user.role === "ADMIN";
   const periodKey = moscowWeekKey();
   const [data, achievementStats, unlocked, weeklyClaims] = await Promise.all([
-    mode === "worker" ? loadWorker(user.id) : loadClient(user.id),
+    mode === "worker" ? loadWorker(user.id, user.isDemo) : loadClient(user.id, user.isDemo),
     loadAchievementStats(user),
     prisma.userAchievement.findMany({
       where: { userId: user.id },
@@ -221,7 +222,7 @@ export default async function ProfilePage() {
               <div className={styles.nameLine}>
                 <h1>{user.name}</h1>
                 <Tag>{mode === "client" ? "Заказчик" : "Клипмейкер"}</Tag>
-                {user.email.endsWith("@clippers.local") ? <Tag tone="soft">Демо-профиль</Tag> : null}
+                {user.isDemo ? <Tag tone="soft">Демо-профиль</Tag> : null}
               </div>
               <p className={styles.handle}>@{user.handle}</p>
               <div className={styles.stats}>

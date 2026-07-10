@@ -10,19 +10,22 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 // (display) and the claim action (server-side validation).
 export async function loadAchievementStats(user: {
   id: string;
+  isDemo: boolean;
   streakDays: number;
   referralCode: string;
 }): Promise<AchievementStats> {
   const since = new Date(Date.now() - WEEK_MS);
+  const workScope = user.isDemo ? {} : { campaign: { isDemo: false } };
+  const campaignScope = user.isDemo ? {} : { isDemo: false };
   const [approvedClips, totalClips, weekViews, best, referrals, campaigns, clipsReceived, completedOrders] = await Promise.all([
-    prisma.submission.count({ where: { workerId: user.id, status: { in: [...APPROVED] } } }),
-    prisma.submission.count({ where: { workerId: user.id } }),
-    prisma.submission.aggregate({ where: { workerId: user.id, createdAt: { gte: since } }, _sum: { currentViews: true } }),
-    prisma.submission.aggregate({ where: { workerId: user.id }, _max: { currentViews: true } }),
+    prisma.submission.count({ where: { workerId: user.id, ...workScope, status: { in: [...APPROVED] } } }),
+    prisma.submission.count({ where: { workerId: user.id, ...workScope } }),
+    prisma.submission.aggregate({ where: { workerId: user.id, ...workScope, createdAt: { gte: since } }, _sum: { currentViews: true } }),
+    prisma.submission.aggregate({ where: { workerId: user.id, ...workScope }, _max: { currentViews: true } }),
     prisma.referralRelation.count({ where: { referrerId: user.id, status: "ACTIVE" } }),
-    prisma.campaign.count({ where: { ownerId: user.id } }),
-    prisma.submission.count({ where: { campaign: { ownerId: user.id } } }),
-    prisma.submission.count({ where: { workerId: user.id, status: "PAID", updatedAt: { gte: since } } })
+    prisma.campaign.count({ where: { ownerId: user.id, ...campaignScope } }),
+    prisma.submission.count({ where: { campaign: { ownerId: user.id, ...campaignScope } } }),
+    prisma.submission.count({ where: { workerId: user.id, ...workScope, status: "PAID", updatedAt: { gte: since } } })
   ]);
 
   return {

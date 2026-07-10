@@ -79,7 +79,7 @@ export async function moderateReferralRelationAction(formData: FormData) {
     });
     const held = await tx.referralCommission.findMany({
       where: { relationId: id, status: "HELD" },
-      select: { id: true, amountCents: true, transactionId: true, referredUserId: true, side: true, rateBps: true }
+      select: { id: true, amountCents: true, transactionId: true, referredUserId: true, side: true, rateBps: true, transaction: { select: { isDemo: true } } }
     });
     if (decision === "activate" && held.length) {
       const total = held.reduce((sum, item) => sum + item.amountCents, 0);
@@ -97,6 +97,7 @@ export async function moderateReferralRelationAction(formData: FormData) {
             netCents: item.amountCents,
             type: "REFERRAL_BONUS",
             status: "COMPLETED",
+            isDemo: item.transaction.isDemo,
             providerData: stringify({ sourceTransactionId: item.transactionId, referredUserId: item.referredUserId, side: item.side, rateBps: item.rateBps, manuallyReleased: true })
           }
         });

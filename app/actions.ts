@@ -343,6 +343,7 @@ export async function createCampaignAction(formData: FormData) {
           language: String(formData.get("language") || "ru"),
           niche: String(formData.get("niche") || "Gaming"),
           metricsJson: stringify({ views: 0, roi: 0, fillRate: 0 }),
+          isDemo: user.isDemo,
           isAdvertising: adCampaign,
           advertiserInn: adCampaign ? advertiserInn : null,
           advertiserName: adCampaign ? advertiserName : null,
@@ -359,6 +360,7 @@ export async function createCampaignAction(formData: FormData) {
           netCents: -totalBudgetCents,
           type: "ADJUSTMENT",
           status: "COMPLETED",
+          isDemo: user.isDemo,
           providerData: stringify({ escrowForCampaign: created.id })
         }
       });
@@ -435,7 +437,7 @@ export async function closeCampaignAction(formData: FormData) {
     await prisma.$transaction(async (db) => {
       const campaign = await db.campaign.findUnique({
         where: { id: campaignId },
-        select: { ownerId: true, status: true, remainingBudgetCents: true }
+        select: { ownerId: true, status: true, remainingBudgetCents: true, isDemo: true }
       });
       if (!campaign || campaign.ownerId !== user.id) throw new Error("FORBIDDEN");
       if (campaign.status === "COMPLETED") return;
@@ -458,6 +460,7 @@ export async function closeCampaignAction(formData: FormData) {
             netCents: refund,
             type: "ADJUSTMENT",
             status: "COMPLETED",
+            isDemo: campaign.isDemo,
             providerData: stringify({ escrowRefundForCampaign: campaignId })
           }
         });
@@ -1478,6 +1481,7 @@ export async function depositAction(formData: FormData) {
       netCents: amountCents,
       type: "DEPOSIT",
       status: intent.mode === "demo" ? "COMPLETED" : "PENDING",
+      isDemo: user.isDemo || intent.mode === "demo",
       provider,
       providerRef: intent.id,
       providerData: stringify(intent)
@@ -1521,6 +1525,7 @@ export async function withdrawAction(formData: FormData) {
         netCents: Math.max(0, amountCents - fee),
         type: "WITHDRAWAL",
         status: "PENDING",
+        isDemo: user.isDemo,
         providerData: stringify({ fixedFeeCents: 5000, percentFee: 0.01 })
       }
     });

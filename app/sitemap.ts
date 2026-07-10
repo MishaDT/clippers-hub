@@ -46,9 +46,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       prisma.user.findMany({
         where: {
           accountStatus: "ACTIVE",
+          isDemo: false,
           role: { in: ["WORKER", "BOTH"] },
-          lifetimeViews: { gt: 0 },
-          NOT: { email: { endsWith: "@clippers.local" } }
+          lifetimeViews: { gt: 0 }
         },
         select: { handle: true, updatedAt: true },
         orderBy: { lifetimeViews: "desc" },

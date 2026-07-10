@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { rub } from "@/lib/money";
+import { realTransactionWhere, realUserWhere } from "@/lib/data-scope";
 
 // Live social proof for the landing. Rule: while the platform is small we keep showing the
 // honestly-labeled «Демо» examples; once there is real traction (thresholds below), the block
@@ -10,22 +11,30 @@ const THRESHOLD_PAID_CENTS = 50_000 * 100;
 
 const loadLandingStats = unstable_cache(
   async () => {
-    const realUser = { email: { not: { endsWith: "@clippers.local" } } };
     const [activeCampaigns, paid, clippers] = await Promise.all([
       prisma.campaign.count({
         where: { isDemo: false, status: { in: ["ACTIVE", "LOW_BUDGET"] }, visibility: { in: ["PUBLIC", "FEATURED"] } }
       }),
       prisma.transaction.aggregate({
-        where: { type: "EARNING", status: "COMPLETED", user: realUser },
+        where: { ...realTransactionWhere, type: "EARNING", status: "COMPLETED" },
         _sum: { netCents: true }
       }),
       prisma.user.count({
-        where: { ...realUser, role: { in: ["WORKER", "BOTH"] }, lifetimeViews: { gt: 0 } }
+        where: {
+          ...realUserWhere,
+          role: { in: ["WORKER", "BOTH"] },
+          submissions: {
+            some: {
+              campaign: { isDemo: false },
+              status: { in: ["VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"] }
+            }
+          }
+        }
       })
     ]);
     return { activeCampaigns, paidCents: paid._sum.netCents || 0, clippers };
   },
-  ["landing-stats"],
+  ["landing-stats-v2"],
   { revalidate: 300 }
 );
 

@@ -122,6 +122,7 @@ export async function releaseSubmissionReservation(
         netCents: submission.reservedPayoutCents,
         type: "ADJUSTMENT",
         status: "COMPLETED",
+        isDemo: submission.campaign.isDemo,
         providerData: JSON.stringify({
           escrowRefundForRejectedSubmission: submission.id,
           campaignId: submission.campaignId

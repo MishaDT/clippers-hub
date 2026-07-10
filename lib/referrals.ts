@@ -79,6 +79,11 @@ export async function releaseReferralCommissions(
   }
 ) {
   if (input.platformFeeCents <= 0) return [];
+  const sourceTransaction = await db.transaction.findUnique({
+    where: { id: input.transactionId },
+    select: { isDemo: true }
+  });
+  if (!sourceTransaction || sourceTransaction.isDemo) return [];
   const config = await db.referralProgramConfig.findUnique({ where: { id: "default" } });
   if (config && !config.enabled) return [];
   const activationRewardRp = Math.max(0, config?.activationRewardRp ?? 25);

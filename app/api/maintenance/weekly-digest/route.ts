@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatWeeklyDigest, postToChannel, telegramEnabled } from "@/lib/telegram";
+import { realTransactionWhere } from "@/lib/data-scope";
 
 export const maxDuration = 30;
 
@@ -14,12 +15,12 @@ function authorized(request: Request) {
 async function run() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  // Only real (non-demo) earnings count. Demo accounts use @clippers.local emails.
+  // Only explicitly real earnings count. Never infer data origin from an email address.
   const paidWhere = {
+    ...realTransactionWhere,
     type: "EARNING" as const,
     status: "COMPLETED" as const,
-    createdAt: { gte: since },
-    user: { NOT: { email: { endsWith: "@clippers.local" } } }
+    createdAt: { gte: since }
   };
 
   const [paidAgg, grouped, newCampaigns] = await Promise.all([

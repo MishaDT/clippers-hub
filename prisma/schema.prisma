@@ -23,6 +23,7 @@ model User {
   socialLinksJson         String             @default("[]")
   handleChangedAt         DateTime?
   accountStatus           AccountStatus      @default(ACTIVE)
+  isDemo                  Boolean            @default(false)
   restrictionReason       String?
   restrictedUntil         DateTime?
   role                    Role               @default(WORKER)
@@ -93,6 +94,7 @@ model User {
   invoiceRequests           InvoiceRequest[]
 
   @@index([role, createdAt])
+  @@index([isDemo, role, createdAt])
   @@index([createdAt])
 }
 
@@ -516,6 +518,7 @@ model Transaction {
   netCents     Int
   type         TransactionType
   status       TransactionStatus @default(COMPLETED)
+  isDemo       Boolean           @default(false)
   provider     String?
   providerRef  String?
   providerData String            @default("{}")
@@ -528,6 +531,7 @@ model Transaction {
   @@unique([provider, providerRef])
   @@index([userId, createdAt])
   @@index([status, createdAt])
+  @@index([isDemo, status, type, createdAt])
   @@index([submissionId, type])
 }
 

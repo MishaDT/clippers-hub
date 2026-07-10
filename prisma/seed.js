@@ -89,6 +89,7 @@ async function main() {
         handle,
         role,
         rank,
+        isDemo: true,
         trustScore,
         balanceCents: role === "WORKER" || role === "BOTH" ? 600000 + Math.floor(Math.random() * 2400000) : 12000000 + Math.floor(Math.random() * 26000000),
         holdBalanceCents: Math.floor(Math.random() * 1800000),
@@ -213,6 +214,7 @@ async function main() {
       netCents: campaign.totalBudgetCents,
       type: "DEPOSIT",
       status: "COMPLETED",
+      isDemo: true,
       provider: "yookassa",
       providerData: json({ mode: "seed", reservedForCampaign: campaign.id }),
       createdAt: campaign.createdAt
@@ -232,6 +234,7 @@ async function main() {
       netCents: Math.floor(gross * (1 - commission)),
       type: "EARNING",
       status: submission.status === "PAID" ? "COMPLETED" : "PENDING",
+      isDemo: true,
       providerData: json({ rank: worker.rank, commissionRate: commission }),
       createdAt: submission.createdAt
     });

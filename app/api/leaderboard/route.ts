@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { realSubmissionWhere } from "@/lib/data-scope";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -9,7 +10,10 @@ export async function GET(request: Request) {
   const since = new Date(Date.now() - 7 * 86400000);
   const groups = await prisma.submission.groupBy({
     by: ["workerId"],
-    where: period === "week" ? { updatedAt: { gte: since } } : {},
+    where: {
+      ...realSubmissionWhere,
+      ...(period === "week" ? { updatedAt: { gte: since } } : {})
+    },
     _sum: { currentViews: true },
     _count: { _all: true },
     orderBy: { _sum: { currentViews: "desc" } },
@@ -18,7 +22,7 @@ export async function GET(request: Request) {
   });
   const page = groups.slice(0, limit);
   const users = await prisma.user.findMany({
-    where: { id: { in: page.map((row) => row.workerId) } },
+    where: { id: { in: page.map((row) => row.workerId) }, isDemo: false },
     select: { id: true, name: true, handle: true, avatar: true, lifetimeViews: true, kycStatus: true }
   });
   const byId = new Map(users.map((user) => [user.id, user]));

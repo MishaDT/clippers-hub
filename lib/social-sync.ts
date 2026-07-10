@@ -446,6 +446,7 @@ export async function syncViews() {
             netCents: net,
             type: "EARNING",
             status: "PENDING",
+            isDemo: submission.campaign.isDemo,
             providerData: stringify({
               settlementHours: 48,
               fraudScore,
@@ -504,6 +505,7 @@ export async function syncViews() {
               netCents: reservationSplit.refundOwnerCents,
               type: "ADJUSTMENT",
               status: "COMPLETED",
+              isDemo: submission.campaign.isDemo,
               providerData: stringify({
                 escrowRefundAfterGuarantee: submission.id,
                 campaignId: submission.campaignId

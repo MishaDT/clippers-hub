@@ -60,7 +60,7 @@ function splitViews(total, count) {
 
 async function main() {
   const campaigns = await prisma.campaign.findMany({
-    where: { status: { in: ["ACTIVE", "LOW_BUDGET", "COMPLETED"] } },
+    where: { isDemo: true, status: { in: ["ACTIVE", "LOW_BUDGET", "COMPLETED"] } },
     select: { id: true, cpmRateCents: true },
     orderBy: { createdAt: "asc" },
     take: 18
@@ -149,6 +149,7 @@ async function main() {
         feeCents: Math.round(gross * 0.07),
         netCents: Math.round(gross * 0.93),
         status: index < founder.clips - 2 ? "COMPLETED" : "PENDING",
+        isDemo: true,
         provider: "platform",
         providerData: JSON.stringify({ source: "founder-showcase", rank: "LEGENDARY" }),
         createdAt

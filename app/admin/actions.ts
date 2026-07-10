@@ -82,6 +82,8 @@ export async function adminAdjustBalanceAction(formData: FormData) {
   const direction = clean(formData.get("direction"), "plus");
   const reason = clean(formData.get("reason"), "admin adjustment").slice(0, 180);
   if (!userId || amountCents <= 0) redirect(`/admin/users/${userId || ""}?error=amount`);
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { isDemo: true } });
+  if (!target) redirect("/admin/users?error=missing_user");
 
   const signed = direction === "minus" ? -amountCents : amountCents;
   await prisma.$transaction([
@@ -94,6 +96,7 @@ export async function adminAdjustBalanceAction(formData: FormData) {
         netCents: signed,
         type: "ADJUSTMENT",
         status: "COMPLETED",
+        isDemo: target.isDemo,
         provider: "admin",
         providerData: stringify({ reason, adminId: admin.id })
       }

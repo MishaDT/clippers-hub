@@ -7,6 +7,7 @@ import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { compactNumber, rub } from "@/lib/money";
 import { eventLabel, providerLabel, shortDate } from "@/lib/admin-format";
+import { realAnalyticsWhere, realTransactionWhere, realUserWhere } from "@/lib/data-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,6 @@ const loadAdminStats = unstable_cache(async () => {
   const today = startOfDay();
   const week = daysAgo(7);
   const day = daysAgo(1);
-  const realUser = { email: { not: { endsWith: "@clippers.local" } } };
-
   const [
     totalUsers,
     usersToday,
@@ -59,42 +58,44 @@ const loadAdminStats = unstable_cache(async () => {
     chartCollabs,
     chartPurchases
   ] = await Promise.all([
-    prisma.user.count({ where: realUser }),
-    prisma.user.count({ where: { ...realUser, createdAt: { gte: today } } }),
-    prisma.user.count({ where: { ...realUser, createdAt: { gte: week } } }),
+    prisma.user.count({ where: realUserWhere }),
+    prisma.user.count({ where: { ...realUserWhere, createdAt: { gte: today } } }),
+    prisma.user.count({ where: { ...realUserWhere, createdAt: { gte: week } } }),
     prisma.campaign.count({ where: { isDemo: false } }),
     prisma.campaign.count({ where: { isDemo: false, status: { in: ["ACTIVE", "LOW_BUDGET"] } } }),
     prisma.submission.count({ where: { campaign: { isDemo: false } } }),
     prisma.submission.count({ where: { campaign: { isDemo: false }, fraudScore: { gte: 60 } } }),
-    prisma.transaction.aggregate({ where: { status: "PENDING", user: realUser }, _sum: { netCents: true }, _count: true }),
-    prisma.oAuthAccount.count({ where: { provider: "google" } }),
-    prisma.oAuthAccount.findMany({ distinct: ["userId"], select: { userId: true } }),
-    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: day } } }),
-    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: week } } }),
+    prisma.transaction.aggregate({ where: { ...realTransactionWhere, status: "PENDING" }, _sum: { netCents: true }, _count: true }),
+    prisma.oAuthAccount.count({ where: { provider: "google", user: realUserWhere } }),
+    prisma.oAuthAccount.findMany({ where: { user: realUserWhere }, distinct: ["userId"], select: { userId: true } }),
+    prisma.analyticsEvent.count({ where: { ...realAnalyticsWhere, type: "PAGE_VIEW", createdAt: { gte: day } } }),
+    prisma.analyticsEvent.count({ where: { ...realAnalyticsWhere, type: "PAGE_VIEW", createdAt: { gte: week } } }),
     prisma.analyticsEvent.findMany({
-      where: { userId: { not: null }, createdAt: { gte: day } },
+      where: { ...realAnalyticsWhere, userId: { not: null }, createdAt: { gte: day } },
       distinct: ["userId"],
       select: { userId: true }
     }),
     prisma.analyticsEvent.findMany({
-      where: { type: "PAGE_VIEW", ipHash: { not: null }, createdAt: { gte: day } },
+      where: { ...realAnalyticsWhere, type: "PAGE_VIEW", ipHash: { not: null }, createdAt: { gte: day } },
       distinct: ["ipHash"],
       select: { ipHash: true }
     }),
     prisma.analyticsEvent.groupBy({
       by: ["path"],
-      where: { type: "PAGE_VIEW", path: { not: null }, createdAt: { gte: week } },
+      where: { ...realAnalyticsWhere, type: "PAGE_VIEW", path: { not: null }, createdAt: { gte: week } },
       _count: { path: true },
       orderBy: { _count: { path: "desc" } },
       take: 6
     }),
     prisma.analyticsEvent.findMany({
+      where: realAnalyticsWhere,
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { user: { select: { email: true } } }
     }),
     prisma.analyticsEvent.findMany({
       where: {
+        ...realAnalyticsWhere,
         type: {
           in: ["PAGE_VIEW", "STORE_OFFER_CLICK", "CAMPAIGN_PUBLISHED", "ORDER_TAKEN", "FIRST_VERIFIED_RESULT"]
         },
@@ -102,12 +103,12 @@ const loadAdminStats = unstable_cache(async () => {
       },
       select: { type: true, createdAt: true, ipHash: true, userId: true }
     }),
-    prisma.user.findMany({ where: { ...realUser, createdAt: { gte: week } }, select: { createdAt: true } }),
+    prisma.user.findMany({ where: { ...realUserWhere, createdAt: { gte: week } }, select: { createdAt: true } }),
     prisma.collabInvite.findMany({
-      where: { createdAt: { gte: week }, client: realUser, worker: realUser },
+      where: { createdAt: { gte: week }, client: realUserWhere, worker: realUserWhere },
       select: { createdAt: true }
     }),
-    prisma.storeRedemption.findMany({ where: { createdAt: { gte: week }, user: realUser }, select: { createdAt: true } })
+    prisma.storeRedemption.findMany({ where: { createdAt: { gte: week }, user: realUserWhere }, select: { createdAt: true } })
   ]);
 
   const days = chartDays();
@@ -161,7 +162,7 @@ const loadAdminStats = unstable_cache(async () => {
     collabsWeek: chartCollabs.length,
     purchasesWeek: chartPurchases.length
   };
-}, ["admin-dashboard-v2"], { revalidate: 30, tags: ["admin-dashboard"] });
+}, ["admin-dashboard-v3"], { revalidate: 30, tags: ["admin-dashboard"] });
 
 export default async function AdminPage() {
   const stats = await loadAdminStats();
