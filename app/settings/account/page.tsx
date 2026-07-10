@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft, Link2, Mail, ShieldCheck, Trash2, Video } from "lucide-react";
+import { ArrowLeft, Landmark, Link2, Mail, ShieldCheck, Trash2, Video } from "lucide-react";
 import { deleteAccountAction } from "@/app/actions";
 import { AppShell, Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { isConfigured, type ProviderId } from "@/lib/oauth";
 import { prisma } from "@/lib/prisma";
 import { socialPlatformConfigured } from "@/lib/social-platforms";
-import { unlinkAccountProviderAction, unlinkSocialPlatformAction } from "./actions";
+import { unlinkAccountProviderAction, unlinkSocialPlatformAction, updatePayoutDetailsAction } from "./actions";
 import { AvatarUpload } from "./avatar-upload";
 import styles from "./settings.module.css";
 
@@ -65,10 +65,40 @@ export default async function AccountSettingsPage({
         {params.social && !["connected", "disconnected"].includes(String(params.social)) ? (
           <p className={styles.error}>Подключение не завершено. Проверьте доступ приложения и попробуйте ещё раз.</p>
         ) : null}
+        {params.payout === "saved" ? <p className={styles.success}>Реквизиты для выплат сохранены.</p> : null}
+        {params.payout === "invalid" ? <p className={styles.error}>Проверьте ФИО, ИНН, счёт, БИК, телефон и подтверждение статуса самозанятого.</p> : null}
+        {params.payout === "required" ? <p className={styles.error}>Перед выводом заполните и подтвердите реквизиты.</p> : null}
 
         <Card className={styles.card}>
           <AvatarUpload avatar={user.avatar} name={user.name} handle={user.handle} />
         </Card>
+
+        <div id="payout-details">
+        <Card className={styles.card}>
+          <div className={styles.cardTitle}>
+            <Landmark size={20} />
+            <div>
+              <h2>Реквизиты для выплат</h2>
+              <p>Нужны для безопасного вывода и подтверждающих документов.</p>
+            </div>
+          </div>
+          <form className={styles.payoutForm} action={updatePayoutDetailsAction}>
+            <label className="field">ФИО полностью<input name="payoutFullName" defaultValue={user.payoutFullName || ""} autoComplete="name" required /></label>
+            <div className={styles.payoutGrid}>
+              <label className="field">ИНН самозанятого<input name="payoutInn" inputMode="numeric" defaultValue={user.payoutInn || ""} minLength={12} maxLength={12} required /></label>
+              <label className="field">Телефон<input name="payoutPhone" inputMode="tel" defaultValue={user.payoutPhone || ""} autoComplete="tel" required /></label>
+              <label className="field">Расчётный счёт<input name="payoutAccount" inputMode="numeric" defaultValue={user.payoutAccount || ""} minLength={20} maxLength={20} required /></label>
+              <label className="field">БИК<input name="payoutBik" inputMode="numeric" defaultValue={user.payoutBik || ""} minLength={9} maxLength={9} required /></label>
+            </div>
+            <label className={styles.confirmation}>
+              <input type="checkbox" name="selfEmployedConfirmed" defaultChecked={Boolean(user.selfEmployedConfirmedAt)} required />
+              <span>Подтверждаю, что применяю НПД и передам корректный чек после выплаты.</span>
+            </label>
+            <button className="btn btn-primary" type="submit"><Landmark size={16} /> Сохранить реквизиты</button>
+          </form>
+          <p className={styles.note}>ReelPay не показывает реквизиты другим пользователям. До подключения автоматического провайдера заявки обрабатываются администратором и записываются в журнал.</p>
+        </Card>
+        </div>
 
         <Card className={styles.card}>
           <div className={styles.cardTitle}>

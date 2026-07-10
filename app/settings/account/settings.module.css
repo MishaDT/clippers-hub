@@ -194,6 +194,34 @@
   align-items: end;
 }
 
+.payoutForm {
+  display: grid;
+  gap: 14px;
+}
+
+.payoutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.confirmation {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  color: var(--soft);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.confirmation input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+}
+
 @media (max-width: 640px) {
   .page {
     gap: 12px;
@@ -208,6 +236,10 @@
   }
 
   .deleteForm {
+    grid-template-columns: 1fr;
+  }
+
+  .payoutGrid {
     grid-template-columns: 1fr;
   }
 

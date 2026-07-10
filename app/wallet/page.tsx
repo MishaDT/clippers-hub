@@ -7,6 +7,7 @@ import { rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { availablePaymentProviders } from "@/lib/payment-readiness";
+import { hasCompletePayoutDetails } from "@/lib/payout-details";
 
 const transactionLabels: Record<string, string> = {
   DEPOSIT: "Пополнение",
@@ -34,7 +35,8 @@ export default async function WalletPage({
   const visibleTypes = mode === "client"
     ? ["DEPOSIT", "ADJUSTMENT"] as const
     : ["EARNING", "WITHDRAWAL", "REFERRAL_BONUS", "STREAK_BONUS"] as const;
-  const transactionWhere = { userId: user.id, type: { in: [...visibleTypes] } };
+  const transactionWhere = { userId: user.id, isDemo: user.isDemo, type: { in: [...visibleTypes] } };
+  const payoutReady = hasCompletePayoutDetails(user);
 
   const [transactions, totalTransactions, totalAggregate, campaignBudget, campaignExpenses, rpTransactions] = await Promise.all([
     prisma.transaction.findMany({
@@ -46,18 +48,18 @@ export default async function WalletPage({
     }),
     prisma.transaction.count({ where: transactionWhere }),
     prisma.transaction.aggregate({
-      where: { userId: user.id, type: mode === "client" ? "DEPOSIT" : "EARNING" },
+      where: { userId: user.id, isDemo: user.isDemo, type: mode === "client" ? "DEPOSIT" : "EARNING" },
       _sum: { netCents: true }
     }),
     mode === "client"
       ? prisma.campaign.aggregate({
-          where: { ownerId: user.id },
+          where: { ownerId: user.id, isDemo: user.isDemo },
           _sum: { totalBudgetCents: true, remainingBudgetCents: true, reservedBudgetCents: true }
         })
       : Promise.resolve(null),
     mode === "client"
       ? prisma.campaign.findMany({
-          where: { ownerId: user.id },
+          where: { ownerId: user.id, isDemo: user.isDemo },
           select: { id: true, title: true, totalBudgetCents: true, remainingBudgetCents: true, reservedBudgetCents: true },
           orderBy: { updatedAt: "desc" },
           take: 5
@@ -96,6 +98,12 @@ export default async function WalletPage({
           <Card className="upload-status warn">
             <strong>Пополнение пока недоступно</strong>
             <span>Ни один платёжный способ ещё не подключён. Деньги не списывались.</span>
+          </Card>
+        ) : null}
+        {params.error === "payout_details" ? (
+          <Card className="upload-status warn">
+            <strong>Сначала заполните реквизиты</strong>
+            <span>Без подтверждённых реквизитов заявка на выплату не создаётся.</span>
           </Card>
         ) : null}
         <div className="wallet-hero">
@@ -159,10 +167,17 @@ export default async function WalletPage({
           ) : (
             <Card className="wallet-action-card">
               <div className="wallet-action-head"><ArrowUpRight /><h2>Вывести средства</h2></div>
-              <form className="form" action={withdrawAction}>
-                <label className="field">Сумма, ₽<input name="amount" type="number" min="500" step="100" defaultValue="5000" /></label>
-                <button className="btn btn-primary" type="submit"><ArrowUpRight size={18} /> Отправить заявку</button>
-              </form>
+              {payoutReady ? (
+                <form className="form" action={withdrawAction}>
+                  <label className="field">Сумма, ₽<input name="amount" type="number" min="500" step="100" defaultValue="5000" /></label>
+                  <button className="btn btn-primary" type="submit"><ArrowUpRight size={18} /> Отправить заявку</button>
+                </form>
+              ) : (
+                <div className="form">
+                  <p className="muted">Укажите ФИО, ИНН, счёт и БИК. Эти данные не показываются другим пользователям.</p>
+                  <Link className="btn btn-primary" href="/settings/account#payout-details">Заполнить реквизиты</Link>
+                </div>
+              )}
               <p className="safe-note"><ShieldCheck size={18} /> Комиссия: 50 ₽ + 1%. Заявка проходит проверку перед выплатой.</p>
             </Card>
           )}

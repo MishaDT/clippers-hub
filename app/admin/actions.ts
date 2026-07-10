@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
-import { stringify } from "@/lib/json";
+import { parseJson, stringify } from "@/lib/json";
 import { CampaignReservationError, releaseSubmissionReservation, restoreSubmissionReservation } from "@/lib/campaign-reservations";
 import { adminTransactionTransition } from "@/lib/transaction-rules";
 import { parseRubToCents } from "@/lib/money";
@@ -114,6 +114,21 @@ export async function adminUpdateTransactionAction(formData: FormData) {
   const transactionId = clean(formData.get("transactionId"));
   const statusInput = clean(formData.get("status"));
   const status = txStatuses.includes(statusInput as (typeof txStatuses)[number]) ? statusInput : "PENDING";
+  const externalReference = clean(formData.get("externalReference")).slice(0, 120);
+  const receiptInput = clean(formData.get("receiptUrl")).slice(0, 500);
+  let receiptUrl = "";
+  if (receiptInput) {
+    try {
+      const parsed = new URL(receiptInput);
+      if (parsed.protocol !== "https:") redirect("/admin/finance?error=receipt_url");
+      receiptUrl = parsed.toString();
+    } catch {
+      redirect("/admin/finance?error=receipt_url");
+    }
+  }
+  if (status === "COMPLETED" && externalReference.length < 3) {
+    redirect("/admin/finance?error=transfer_reference");
+  }
   const tx = await prisma.$transaction(async (db) => {
     const current = await db.transaction.findUniqueOrThrow({ where: { id: transactionId } });
     const transition = adminTransactionTransition({
@@ -122,9 +137,18 @@ export async function adminUpdateTransactionAction(formData: FormData) {
       nextStatus: status
     });
     if (!transition) return null;
+    const existingData = parseJson<Record<string, unknown>>(current.providerData, {});
     const claimed = await db.transaction.updateMany({
       where: { id: transactionId, status: "PENDING", type: "WITHDRAWAL" },
-      data: { status: transition.nextStatus }
+      data: {
+        status: transition.nextStatus,
+        providerData: stringify({
+          ...existingData,
+          processedAt: new Date().toISOString(),
+          processedBy: admin.id,
+          ...(status === "COMPLETED" ? { externalReference, receiptUrl: receiptUrl || undefined } : {})
+        })
+      }
     });
     if (!claimed.count) return null;
     if (transition.refundBalance) {
@@ -137,7 +161,12 @@ export async function adminUpdateTransactionAction(formData: FormData) {
     return updated;
   });
   if (!tx) redirect("/admin/finance?error=invalid_transition");
-  await logAdmin(admin.id, "ADMIN_TRANSACTION_UPDATE", "Transaction", transactionId, { status, userId: tx.userId });
+  await logAdmin(admin.id, "ADMIN_TRANSACTION_UPDATE", "Transaction", transactionId, {
+    status,
+    userId: tx.userId,
+    externalReference: status === "COMPLETED" ? externalReference : undefined,
+    hasReceipt: Boolean(receiptUrl)
+  });
   revalidatePath("/admin/finance");
   revalidatePath("/admin/referrals");
   revalidatePath("/referrals");

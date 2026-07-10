@@ -54,7 +54,22 @@ class UnconfiguredPayoutProvider implements PayoutProvider {
 
 export function payoutProviderConfigured(): boolean {
   const name = process.env.PAYOUT_PROVIDER;
-  return name === "mock" || (Boolean(name) && Boolean(process.env.PAYOUT_API_KEY));
+  // No production payout adapter is implemented yet. Never report a provider as
+  // ready merely because arbitrary environment variables exist.
+  return process.env.NODE_ENV !== "production" && name === "mock";
+}
+
+export function payoutReadiness() {
+  const provider = process.env.PAYOUT_PROVIDER || "manual";
+  const automated = payoutProviderConfigured();
+  return {
+    provider,
+    automated,
+    manualReviewRequired: !automated,
+    message: automated
+      ? "Тестовый адаптер доступен только вне production."
+      : "Автоматический провайдер не подключён: разрешены только ручные выплаты с номером перевода и журналом действий."
+  };
 }
 
 export function getPayoutProvider(): PayoutProvider | null {

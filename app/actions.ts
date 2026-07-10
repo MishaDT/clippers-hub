@@ -31,6 +31,7 @@ import { notificationGroup, notify } from "@/lib/notifications";
 import { formatCampaignPost, postToChannel } from "@/lib/telegram";
 import { rateLimit } from "@/lib/rate-limit";
 import { safeReturnTo } from "@/lib/navigation";
+import { hasCompletePayoutDetails } from "@/lib/payout-details";
 import { CampaignReservationError, releaseSubmissionReservation, reserveCampaignSlot } from "@/lib/campaign-reservations";
 import { initialDraftDecision, nextDraftRevision, validateDraftUrl } from "@/lib/draft-workflow";
 import { ratingParties } from "@/lib/rating-rules";
@@ -1499,6 +1500,8 @@ export async function withdrawAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user); // frozen/banned/restricted accounts may not move money out
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/wallet");
+  requireVerifiedEmail(user);
+  if (!hasCompletePayoutDetails(user)) redirect("/settings/account?payout=required");
   const amountCents = parseRubToCents(formData.get("amount"));
   if (amountCents <= 0) redirect("/wallet?error=amount");
   const fee = 5000 + Math.round(amountCents * 0.01);
@@ -1526,7 +1529,15 @@ export async function withdrawAction(formData: FormData) {
         type: "WITHDRAWAL",
         status: "PENDING",
         isDemo: user.isDemo,
-        providerData: stringify({ fixedFeeCents: 5000, percentFee: 0.01 })
+        provider: "manual",
+        providerRef: `manual_${randomBytes(16).toString("hex")}`,
+        providerData: stringify({
+          fixedFeeCents: 5000,
+          percentFee: 0.01,
+          requestedAt: new Date().toISOString(),
+          innLast4: user.payoutInn?.slice(-4),
+          accountLast4: user.payoutAccount?.slice(-4)
+        })
       }
     });
   });

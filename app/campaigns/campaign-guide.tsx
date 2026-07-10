@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
@@ -267,8 +268,8 @@ function PromoVisual({ scene }: { scene: number }) {
     <div className="rpv rpv-final">
       <div className="rpv-final-mark"><Sparkles size={24} /><b>ReelPay</b></div>
       <div className="rpv-final-actions">
-        <a href="/campaigns/new"><BriefcaseBusiness size={17} /> Создать заказ</a>
-        <a href="/campaigns"><Scissors size={17} /> Найти заказ</a>
+        <Link href="/campaigns/new"><BriefcaseBusiness size={17} /> Создать заказ</Link>
+        <Link href="/campaigns"><Scissors size={17} /> Найти заказ</Link>
       </div>
       <span><ShieldCheck size={15} /> Оплата после подтверждения результата</span>
     </div>

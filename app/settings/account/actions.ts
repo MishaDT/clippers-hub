@@ -6,7 +6,46 @@ import { requireUser } from "@/lib/auth";
 import { MAX_AVATAR_BYTES, processAvatarImage } from "@/lib/avatar-image";
 import { prisma } from "@/lib/prisma";
 import { stringify } from "@/lib/json";
+import { normalizePayoutDetails } from "@/lib/payout-details";
 import { revokeTikTokConnection } from "@/lib/social-platforms";
+
+export async function updatePayoutDetailsAction(formData: FormData) {
+  const user = await requireUser();
+  const details = normalizePayoutDetails({
+    payoutFullName: formData.get("payoutFullName"),
+    payoutInn: formData.get("payoutInn"),
+    payoutAccount: formData.get("payoutAccount"),
+    payoutBik: formData.get("payoutBik"),
+    payoutPhone: formData.get("payoutPhone")
+  });
+  const confirmed = formData.get("selfEmployedConfirmed") === "on";
+
+  if (!details || !confirmed) {
+    redirect("/settings/account?payout=invalid");
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        ...details,
+        selfEmployedConfirmedAt: user.selfEmployedConfirmedAt || new Date()
+      }
+    }),
+    prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "PAYOUT_DETAILS_UPDATED",
+        entity: "User",
+        entityId: user.id,
+        metadata: stringify({ innLast4: details.payoutInn.slice(-4), accountLast4: details.payoutAccount.slice(-4) })
+      }
+    })
+  ]);
+  revalidatePath("/settings/account");
+  revalidatePath("/wallet");
+  redirect("/settings/account?payout=saved");
+}
 
 function refreshAvatarPages(handle: string) {
   revalidateTag("campaigns");

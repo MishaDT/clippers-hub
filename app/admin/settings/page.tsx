@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Database, KeyRound, Settings, WalletCards, XCircle } from "lucide-react";
+import { CheckCircle2, Database, KeyRound, Settings, XCircle } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +8,7 @@ import { paymentProviderStatuses, stripeWebhookReady } from "@/lib/payment-readi
 import { emailDeliveryReady } from "@/lib/email-verification";
 import { socialCallbackUri, socialPlatformConfigured } from "@/lib/social-platforms";
 import { socialTokenEncryptionReady } from "@/lib/secret-box";
+import { payoutReadiness } from "@/lib/payouts/provider";
 import styles from "./settings.module.css";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ function StatusRow({ label, ok, detail }: { label: string; ok: boolean; detail: 
 
 export default async function AdminSettingsPage() {
   const paymentProviders = paymentProviderStatuses();
+  const payouts = payoutReadiness();
   const [users, campaigns, events] = await Promise.all([
     prisma.user.count(),
     prisma.campaign.count(),
@@ -105,6 +107,7 @@ export default async function AdminSettingsPage() {
                 />
               ))}
               <StatusRow label="Stripe Webhook" ok={stripeWebhookReady()} detail="Подтверждение платежных событий." />
+              <StatusRow label="Автоматические выплаты" ok={payouts.automated} detail={payouts.message} />
             </div>
           </Card>
 

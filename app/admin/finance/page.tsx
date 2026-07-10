@@ -61,6 +61,8 @@ export default async function AdminFinancePage({
           title="Транзакции"
           description="Плотная таблица платежей, выплат, депозитов и ручных корректировок."
         />
+        {params.error === "transfer_reference" ? <p className="admin-alert error">Для выполненной выплаты укажите номер банковского перевода.</p> : null}
+        {params.error === "receipt_url" ? <p className="admin-alert error">Ссылка на чек должна быть корректной HTTPS-ссылкой.</p> : null}
 
         <div className="admin-grid compact admin-kpi-strip">
           <Card className="admin-metric"><WalletCards /><span>Найдено</span><strong>{total}</strong><small>операций</small></Card>
@@ -92,6 +94,8 @@ export default async function AdminFinancePage({
                     <form className="admin-row-form" action={adminUpdateTransactionAction}>
                       <input type="hidden" name="transactionId" value={tx.id} />
                       <select name="status" defaultValue="COMPLETED"><option value="COMPLETED">Выполнено</option><option value="FAILED">Ошибка — вернуть деньги</option><option value="REVERSED">Отменено — вернуть деньги</option></select>
+                      <input name="externalReference" placeholder="№ перевода" aria-label="Номер банковского перевода" />
+                      <input name="receiptUrl" type="url" placeholder="HTTPS-ссылка на чек" aria-label="Ссылка на чек" />
                       <button type="submit">OK</button>
                     </form>
                   ) : <span className="muted">Автоматически</span>}
@@ -112,6 +116,8 @@ export default async function AdminFinancePage({
                     <form className="admin-row-form" action={adminUpdateTransactionAction}>
                       <input type="hidden" name="transactionId" value={tx.id} />
                       <select name="status" defaultValue="COMPLETED"><option value="COMPLETED">Выполнено</option><option value="FAILED">Ошибка — вернуть деньги</option><option value="REVERSED">Отменено — вернуть деньги</option></select>
+                      <input name="externalReference" placeholder="№ перевода" aria-label="Номер банковского перевода" />
+                      <input name="receiptUrl" type="url" placeholder="HTTPS-ссылка на чек" aria-label="Ссылка на чек" />
                       <button type="submit">Сохранить</button>
                     </form>
                   ) : <p className="muted">Статус изменяется системой.</p>}
