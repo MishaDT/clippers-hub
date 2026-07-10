@@ -59,6 +59,8 @@ model User {
   achievements              UserAchievement[]
   disputes                  DisputeCase[]
   auditLogs                 AuditLog[]
+  businessLeads             BusinessLead[]           @relation("LeadUser")
+  assignedBusinessLeads     BusinessLead[]           @relation("LeadAssignee")
   savedCampaigns            SavedCampaign[]
   likedCampaigns            LikedCampaign[]
   analyticsEvents           AnalyticsEvent[]
@@ -535,6 +537,32 @@ model Transaction {
   @@index([submissionId, type])
 }
 
+model BusinessLead {
+  id              String             @id @default(cuid())
+  userId          String?
+  assignedAdminId String?
+  name            String
+  contact         String
+  contentUrl      String?
+  budgetCents     Int                @default(0)
+  goal            String
+  source          String             @default("landing")
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  status          BusinessLeadStatus @default(NEW)
+  notes           String             @default("")
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  user          User? @relation("LeadUser", fields: [userId], references: [id], onDelete: SetNull)
+  assignedAdmin User? @relation("LeadAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([assignedAdminId, status])
+  @@index([source, createdAt])
+}
+
 model ReferralProgramConfig {
   id                 String   @id @default("default")
   enabled            Boolean  @default(true)
@@ -991,4 +1019,14 @@ enum TransactionStatus {
   COMPLETED
   FAILED
   REVERSED
+}
+
+enum BusinessLeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DRAFT
+  FUNDED
+  WON
+  LOST
 }

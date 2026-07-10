@@ -10,6 +10,7 @@ import { LandingFaqChat } from "@/components/landing-faq-chat";
 import { LandingPhone } from "@/components/landing-phone";
 import { LandingStats } from "@/components/landing-stats";
 import { LandingStepsTabs } from "@/components/landing-steps-tabs";
+import { PilotLeadForm } from "@/components/pilot-lead-form";
 
 export default async function HomePage() {
   if (await getCurrentUser()) redirect("/campaigns");
@@ -19,19 +20,19 @@ export default async function HomePage() {
         {/* Hero */}
         <div className="lpa-hero-grid">
           <div className="lpa-hero lpa-hero--left">
-            <span className="lpa-badge"><span className="star">✦</span> Оплата за просмотры · вывод на карту</span>
-            <h1 className="lpa-title">Видео, которые <span>приносят деньги</span></h1>
+            <span className="lpa-badge"><span className="star">✦</span> Оплата только за подтверждённый результат</span>
+            <h1 className="lpa-title">Превратите длинное видео <span>в короткие ролики</span></h1>
             <p className="lpa-sub">
-              Заказчики публикуют задания, клипперы режут рилсы из стримов и подкастов. Платим за просмотры.
+              Задайте формат, цель по просмотрам и максимальный бюджет. ReelPay соберёт публикации, проверит результат и сохранит неиспользованный остаток.
             </p>
             <div className="lpa-cta">
-              <Link className="lpa-btn lpa-btn--primary" href="/register?intent=worker&returnTo=%2Fcampaigns">
-                Зарабатывать на клипах <ArrowRight size={18} />
-              </Link>
-              <Link className="lpa-btn lpa-btn--ghost" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">Заказать клипы</Link>
+              <a className="lpa-btn lpa-btn--primary" href="#pilot">
+                Запустить пилот <ArrowRight size={18} />
+              </a>
+              <a className="lpa-btn lpa-btn--ghost" href="#budget-calculator">Рассчитать бюджет</a>
             </div>
             <div className="lpa-hero-links">
-              <Link className="lpa-browse" href="/campaigns">Смотреть заказы без регистрации <ArrowRight size={14} /></Link>
+              <Link className="lpa-browse" href="/campaigns">Я клиппер — смотреть заказы <ArrowRight size={14} /></Link>
               <a className="lpa-how" href="#how">Как это работает ↓</a>
             </div>
           </div>
@@ -50,6 +51,8 @@ export default async function HomePage() {
         <BudgetProtection />
 
         <LandingCalculator />
+
+        <PilotLeadForm />
 
         <LandingFaqChat />
 

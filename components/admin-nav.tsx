@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ChevronDown, ClipboardList, DatabaseZap, Headphones, Menu, MessageSquareText, Network, Scale, ShieldAlert, ShoppingBag, SlidersHorizontal, UsersRound, WalletCards } from "lucide-react";
+import { BarChart3, ChevronDown, ClipboardList, ContactRound, DatabaseZap, Headphones, Menu, MessageSquareText, Network, Scale, ShieldAlert, ShoppingBag, SlidersHorizontal, UsersRound, WalletCards } from "lucide-react";
 import { clsx } from "clsx";
 import { formatBadgeCount } from "@/components/app-nav";
 import styles from "@/components/app-nav.module.css";
@@ -10,6 +10,7 @@ import styles from "@/components/app-nav.module.css";
 const items = [
   { href: "/admin", label: "Обзор", hint: "Главные цифры", icon: BarChart3 },
   { href: "/admin/users", label: "Пользователи", hint: "Поиск и роли", icon: UsersRound },
+  { href: "/admin/leads", label: "Заявки", hint: "Пилоты и продажи", icon: ContactRound },
   { href: "/admin/activity", label: "События", hint: "Посещения и входы", icon: ClipboardList },
   { href: "/admin/content", label: "Контент", hint: "Заказы и работы", icon: DatabaseZap },
   { href: "/admin/finance", label: "Финансы", hint: "Платежи и выводы", icon: WalletCards },
