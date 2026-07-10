@@ -212,12 +212,13 @@ model Campaign {
   advertiserInn          String?
   advertiserName         String?
 
-  owner         User            @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner         User                   @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   submissions   Submission[]
   savedBy       SavedCampaign[]
   likedBy       LikedCampaign[]
   chatThreads   ChatThread[]
   collabInvites CollabInvite[]
+  trackingLinks CampaignTrackingLink[]
 
   @@index([ownerId, createdAt])
   @@index([status, createdAt])
@@ -276,6 +277,8 @@ model Submission {
   badgeConfirmedAt      DateTime?
   earlyRemovalAt        DateTime?
   shareToken            String?           @unique
+  shareTokenExpiresAt   DateTime?
+  shareTokenRevokedAt   DateTime?
   viewVelocityJson      String            @default("[]")
   lastSyncedAt          DateTime          @default(now())
   verifiedAt            DateTime?
@@ -298,6 +301,34 @@ model Submission {
   @@index([campaignId, currentViews])
   @@index([status, fraudScore])
   @@index([draftStatus, draftSubmittedAt])
+}
+
+model CampaignTrackingLink {
+  id         String   @id @default(cuid())
+  campaignId String
+  code       String   @unique
+  targetUrl  String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  campaign Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  clicks   CampaignClick[]
+
+  @@index([campaignId, createdAt])
+}
+
+model CampaignClick {
+  id             String   @id @default(cuid())
+  trackingLinkId String
+  ipHash         String?
+  userAgentHash  String?
+  refererHost    String?
+  createdAt      DateTime @default(now())
+
+  trackingLink CampaignTrackingLink @relation(fields: [trackingLinkId], references: [id], onDelete: Cascade)
+
+  @@index([trackingLinkId, createdAt])
+  @@index([ipHash, createdAt])
 }
 
 model UserRating {

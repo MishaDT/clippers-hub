@@ -46,26 +46,26 @@ export function CampaignForm({
   initial,
   preferInitial = false
 }: {
-  initial?: { deliverableCount?: number; viewThreshold?: number; budget?: number; cpm?: number; minimumGuarantee?: number; deadlineDays?: number };
+  initial?: { title?: string; description?: string; sourceUrl?: string; sourcePlatform?: string; niche?: string; platforms?: string[]; requiredTags?: string; bans?: string; watermarkBonus?: boolean; deliverableCount?: number; viewThreshold?: number; budget?: number; cpm?: number; minimumGuarantee?: number; deadlineDays?: number };
   preferInitial?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const draftTrackedRef = useRef(false);
-  const [title, setTitle] = useState("Нарезать стрим на сильные моменты");
-  const [description, setDescription] = useState("Найти 3-5 смешных или эмоциональных моментов, сделать вертикальные ролики 9:16, добавить крупные субтитры и цепляющий первый кадр.");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [sourcePlatform, setSourcePlatform] = useState("TWITCH");
+  const [title, setTitle] = useState(initial?.title || "Нарезать стрим на сильные моменты");
+  const [description, setDescription] = useState(initial?.description || "Найти 3-5 смешных или эмоциональных моментов, сделать вертикальные ролики 9:16, добавить крупные субтитры и цепляющий первый кадр.");
+  const [sourceUrl, setSourceUrl] = useState(initial?.sourceUrl || "");
+  const [sourcePlatform, setSourcePlatform] = useState(initial?.sourcePlatform || "TWITCH");
   const [viewThreshold, setViewThreshold] = useState(initial?.viewThreshold || 10000);
   const [deliverableCount, setDeliverableCount] = useState(initial?.deliverableCount || 3);
   const [budget, setBudget] = useState(initial?.budget || 15000);
   const [cpm, setCpm] = useState(initial?.cpm || 25);
   const [minimumGuarantee, setMinimumGuarantee] = useState(initial?.minimumGuarantee ?? 100);
   const [deadlineDays, setDeadlineDays] = useState(initial?.deadlineDays || 7);
-  const [niche, setNiche] = useState("Gaming");
-  const [requiredTags, setRequiredTags] = useState("#reelpay, #clips");
-  const [bans, setBans] = useState("NSFW, политика, оскорбления, чужие логотипы крупным планом");
-  const [platforms, setPlatforms] = useState<string[]>(["TIKTOK", "YOUTUBE", "INSTAGRAM"]);
-  const [watermarkBonus, setWatermarkBonus] = useState(true);
+  const [niche, setNiche] = useState(initial?.niche || "Gaming");
+  const [requiredTags, setRequiredTags] = useState(initial?.requiredTags || "#reelpay, #clips");
+  const [bans, setBans] = useState(initial?.bans || "NSFW, политика, оскорбления, чужие логотипы крупным планом");
+  const [platforms, setPlatforms] = useState<string[]>(initial?.platforms?.length ? initial.platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM"]);
+  const [watermarkBonus, setWatermarkBonus] = useState(initial?.watermarkBonus ?? true);
   const [isAdvertising, setIsAdvertising] = useState(true);
   const [draftSaved, setDraftSaved] = useState(false);
   const [step, setStep] = useState(1);

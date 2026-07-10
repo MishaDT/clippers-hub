@@ -34,6 +34,7 @@ import { safeReturnTo } from "@/lib/navigation";
 import { hasCompletePayoutDetails } from "@/lib/payout-details";
 import { CampaignReservationError, releaseSubmissionReservation, reserveCampaignSlot } from "@/lib/campaign-reservations";
 import { initialDraftDecision, nextDraftRevision, validateDraftUrl } from "@/lib/draft-workflow";
+import { normalizeTrackingTarget } from "@/lib/tracking-links";
 import { ratingParties } from "@/lib/rating-rules";
 
 function safeCheckoutUrl(url: string | undefined) {
@@ -416,19 +417,59 @@ export async function createClipShareAction(formData: FormData) {
   const returnTo = safeReturnTo(String(formData.get("returnTo") || ""), "/campaigns");
   const submission = await prisma.submission.findUnique({
     where: { id: submissionId },
-    select: { id: true, workerId: true, shareToken: true, campaign: { select: { ownerId: true } } }
+    select: { id: true, workerId: true, shareToken: true, shareTokenExpiresAt: true, shareTokenRevokedAt: true, campaign: { select: { ownerId: true } } }
   });
   if (!submission) redirect(returnTo);
   const allowed = submission.workerId === user.id || submission.campaign.ownerId === user.id || canAccessAdmin(user);
   if (!allowed) redirect(returnTo);
-  if (!submission.shareToken) {
+  if (!submission.shareToken || submission.shareTokenRevokedAt || !submission.shareTokenExpiresAt || submission.shareTokenExpiresAt <= new Date()) {
     await prisma.submission.update({
       where: { id: submissionId },
-      data: { shareToken: randomBytes(12).toString("hex") }
+      data: {
+        shareToken: randomBytes(12).toString("hex"),
+        shareTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        shareTokenRevokedAt: null
+      }
     });
   }
   revalidatePath(returnTo);
   redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}shared=1`);
+}
+
+export async function revokeClipShareAction(formData: FormData) {
+  const user = await requireUser();
+  const submissionId = String(formData.get("submissionId") || "");
+  const returnTo = safeReturnTo(String(formData.get("returnTo") || ""), "/campaigns");
+  const submission = await prisma.submission.findUnique({ where: { id: submissionId }, select: { workerId: true, campaign: { select: { ownerId: true } } } });
+  if (!submission || (submission.workerId !== user.id && submission.campaign.ownerId !== user.id && !canAccessAdmin(user))) redirect(returnTo);
+  await prisma.submission.update({ where: { id: submissionId }, data: { shareTokenRevokedAt: new Date() } });
+  revalidatePath(returnTo);
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}shared=revoked`);
+}
+
+export async function createCampaignTrackingLinkAction(formData: FormData) {
+  const user = await requireUser();
+  const campaignId = String(formData.get("campaignId") || "");
+  const returnTo = safeReturnTo(String(formData.get("returnTo") || ""), `/campaigns/${campaignId}`);
+  const targetUrl = normalizeTrackingTarget(formData.get("targetUrl"));
+  if (!targetUrl) redirect(`${returnTo}?tracking=invalid`);
+  if (!(await rateLimit(`tracking-link:${user.id}`, 10, 60 * 60 * 1000))) redirect(`${returnTo}?tracking=limit`);
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { ownerId: true } });
+  if (!campaign || (campaign.ownerId !== user.id && !canAccessAdmin(user))) redirect(returnTo);
+  await prisma.campaignTrackingLink.create({ data: { campaignId, targetUrl, code: randomBytes(8).toString("base64url") } });
+  revalidatePath(returnTo);
+  redirect(`${returnTo}?tracking=created`);
+}
+
+export async function disableCampaignTrackingLinkAction(formData: FormData) {
+  const user = await requireUser();
+  const linkId = String(formData.get("linkId") || "");
+  const returnTo = safeReturnTo(String(formData.get("returnTo") || ""), "/campaigns");
+  const link = await prisma.campaignTrackingLink.findUnique({ where: { id: linkId }, select: { campaign: { select: { ownerId: true } } } });
+  if (!link || (link.campaign.ownerId !== user.id && !canAccessAdmin(user))) redirect(returnTo);
+  await prisma.campaignTrackingLink.update({ where: { id: linkId }, data: { active: false } });
+  revalidatePath(returnTo);
+  redirect(`${returnTo}?tracking=disabled`);
 }
 
 export async function closeCampaignAction(formData: FormData) {

@@ -28,8 +28,8 @@ function fmt(date: Date | null) {
 
 export default async function ClipReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const submission = await prisma.submission.findUnique({
-    where: { shareToken: token },
+  const submission = await prisma.submission.findFirst({
+    where: { shareToken: token, shareTokenRevokedAt: null, shareTokenExpiresAt: { gt: new Date() } },
     select: {
       status: true,
       fraudScore: true,
@@ -40,6 +40,8 @@ export default async function ClipReportPage({ params }: { params: Promise<{ tok
       createdAt: true,
       verifiedAt: true,
       paidAt: true,
+      lastSyncedAt: true,
+      shareTokenExpiresAt: true,
       campaign: { select: { title: true, viewThreshold: true } },
       videoChecks: { select: { checkType: true, status: true } },
       disputes: { where: { status: "OPEN" }, select: { id: true } }
@@ -96,7 +98,10 @@ export default async function ClipReportPage({ params }: { params: Promise<{ tok
           </ol>
         </section>
 
-        <p className={styles.note}>Отчёт сформирован платформой ReelPay по данным официальных API площадок и внутренних проверок.</p>
+        <p className={styles.note}>
+          Источник статистики: {submission.platform === "YOUTUBE" || submission.platform === "VK" ? "официальный API площадки" : "подключённый аккаунт или ручная проверка ReelPay"}.
+          Обновлено {fmt(submission.lastSyncedAt)}. Ссылка действует до {fmt(submission.shareTokenExpiresAt)}.
+        </p>
       </main>
     </AppShell>
   );

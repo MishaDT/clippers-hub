@@ -9,7 +9,7 @@ import { WorkspaceJourney } from "@/components/workspace-journey";
 import { TakeOrderButton } from "@/components/take-order-button";
 import { SubmissionDispute } from "@/components/submission-dispute";
 import { ClipReport } from "@/components/clip-report";
-import { closeCampaignAction, createClipShareAction, rateCompletedSubmissionAction, reviewDraftAction } from "@/app/actions";
+import { closeCampaignAction, createCampaignTrackingLinkAction, createClipShareAction, disableCampaignTrackingLinkAction, rateCompletedSubmissionAction, revokeClipShareAction, reviewDraftAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/admin";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -119,6 +119,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       maxPaidResults: true,
       trackingPrefix: true,
       owner: { select: { id: true, name: true, handle: true, avatar: true } },
+      trackingLinks: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, code: true, targetUrl: true, active: true, createdAt: true, _count: { select: { clicks: true } } }
+      },
       _count: {
         select: {
           submissions: {
@@ -195,6 +200,8 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           viewVelocityJson: true,
           lastSyncedAt: true,
           shareToken: true,
+          shareTokenExpiresAt: true,
+          shareTokenRevokedAt: true,
           worker: { select: { name: true, handle: true } },
           disputes: {
             orderBy: { createdAt: "desc" },
@@ -234,6 +241,8 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           viewVelocityJson: submission.viewVelocityJson,
           lastSyncedAt: submission.lastSyncedAt,
           shareToken: submission.shareToken,
+          shareTokenExpiresAt: submission.shareTokenExpiresAt,
+          shareTokenRevokedAt: submission.shareTokenRevokedAt,
           worker: submission.worker,
           disputes: submission.disputes,
           videoChecks: submission.videoChecks.map((check) => ({
@@ -602,6 +611,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               <span><Sparkles size={15} /> Диагностика без ИИ</span>
               <h2 id="campaign-diagnostics-title">Что происходит с заказом</h2>
             </div>
+            <Link className="btn btn-primary" href={`/campaigns/new?repeatFrom=${campaign.id}`}>Повторить кампанию</Link>
             <div className={styles.diagnosticGrid}>
               {campaignDiagnostics.map((item) => (
                 <article className={styles.diagnosticCard} data-tone={item.tone} key={`${item.title}-${item.text}`}>
@@ -612,6 +622,39 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                   {item.href && item.action ? <Link href={item.href}>{item.action} <ArrowUpRight size={14} /></Link> : null}
                 </article>
               ))}
+            </div>
+          </section>
+        ) : null}
+
+        {isOwner ? (
+          <section className={styles.tracking} aria-labelledby="campaign-tracking-title">
+            <div>
+              <span className="eyebrow">Переходы без слежки</span>
+              <h2 id="campaign-tracking-title">Короткая ссылка кампании</h2>
+              <p>ReelPay считает переходы, но не хранит сырой IP. Укажите страницу, куда должен попасть зритель.</p>
+            </div>
+            <form action={createCampaignTrackingLinkAction}>
+              <input type="hidden" name="campaignId" value={campaign.id} />
+              <input type="hidden" name="returnTo" value={`/campaigns/${campaign.id}`} />
+              <input name="targetUrl" type="url" placeholder="https://ваш-сайт.ru/предложение" required />
+              <button type="submit">Создать ссылку</button>
+            </form>
+            <div className={styles.trackingLinks}>
+              {campaign.trackingLinks.map((link) => (
+                <article key={link.id} data-active={link.active}>
+                  <div><b>/track/{link.code}</b><small>{link.targetUrl}</small></div>
+                  <span>{link._count.clicks} переходов</span>
+                  {link.active ? <a href={`/track/${link.code}`} target="_blank" rel="noreferrer">Проверить <ArrowUpRight size={13} /></a> : <em>Отключена</em>}
+                  {link.active ? (
+                    <form action={disableCampaignTrackingLinkAction}>
+                      <input type="hidden" name="linkId" value={link.id} />
+                      <input type="hidden" name="returnTo" value={`/campaigns/${campaign.id}`} />
+                      <button type="submit">Отключить</button>
+                    </form>
+                  ) : null}
+                </article>
+              ))}
+              {!campaign.trackingLinks.length ? <p className="muted">Ссылок пока нет.</p> : null}
             </div>
           </section>
         ) : null}
@@ -772,8 +815,15 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                     <footer>
                       <small>Обновлено {report.lastSyncedAt.toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
                       {post && !report.postUrl.includes("post-link-waiting") ? <a href={post.url} target="_blank" rel="noreferrer">Открыть ролик <ArrowUpRight size={13} /></a> : null}
-                      {report.shareToken ? (
-                        <a href={`/report/${report.shareToken}`} target="_blank" rel="noreferrer">Публичный отчёт <ArrowUpRight size={13} /></a>
+                      {report.shareToken && !report.shareTokenRevokedAt && report.shareTokenExpiresAt && report.shareTokenExpiresAt > new Date() ? (
+                        <>
+                          <a href={`/report/${report.shareToken}`} target="_blank" rel="noreferrer">Публичный отчёт <ArrowUpRight size={13} /></a>
+                          <form action={revokeClipShareAction}>
+                            <input type="hidden" name="submissionId" value={report.id} />
+                            <input type="hidden" name="returnTo" value={`/campaigns/${campaign.id}`} />
+                            <button type="submit" className="od-share-btn">Отозвать</button>
+                          </form>
+                        </>
                       ) : (
                         <form action={createClipShareAction}>
                           <input type="hidden" name="submissionId" value={report.id} />
