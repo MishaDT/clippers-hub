@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { Suspense } from "react";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
-import { Mascot } from "@/components/mascot";
 import { CookieConsent } from "@/components/cookie-consent";
 
 const siteUrl =
@@ -51,7 +49,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Suspense fallback={null}>
           <AnalyticsTracker />
         </Suspense>
-        <Mascot />
         <CookieConsent />
       </body>
     </html>

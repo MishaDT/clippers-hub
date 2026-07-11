@@ -1,90 +1,124 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, BriefcaseBusiness, Check, Scissors } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  ChartNoAxesCombined,
+  Check,
+  CircleDollarSign,
+  FileVideo2,
+  RotateCcw,
+  ShieldCheck
+} from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
-import { CampaignGuide } from "@/app/campaigns/campaign-guide";
-import { BudgetProtection } from "@/components/budget-protection";
 import { LandingCalculator } from "@/components/landing-calculator";
 import { LandingFaqChat } from "@/components/landing-faq-chat";
-import { LandingPhone } from "@/components/landing-phone";
-import { LandingStats } from "@/components/landing-stats";
-import { LandingStepsTabs } from "@/components/landing-steps-tabs";
 import { PilotLeadForm } from "@/components/pilot-lead-form";
+import styles from "./landing.module.css";
+
+const steps = [
+  {
+    icon: FileVideo2,
+    number: "01",
+    title: "Добавьте исходное видео",
+    text: "Ссылка, короткий бриф, число публикаций и площадки."
+  },
+  {
+    icon: BadgeCheck,
+    number: "02",
+    title: "Согласуйте ролики",
+    text: "Проверьте черновики до публикации и запросите правки."
+  },
+  {
+    icon: ChartNoAxesCombined,
+    number: "03",
+    title: "Платите за результат",
+    text: "ReelPay проверит публикации и подтверждённые просмотры."
+  }
+];
 
 export default async function HomePage() {
   if (await getCurrentUser()) redirect("/campaigns");
+
   return (
     <AppShell>
-      <section className="section lpa">
-        {/* Hero */}
-        <div className="lpa-hero-grid">
-          <div className="lpa-hero lpa-hero--left">
-            <span className="lpa-badge"><span className="star">✦</span> Оплата только за подтверждённый результат</span>
-            <h1 className="lpa-title">Превратите длинное видео <span>в короткие ролики</span></h1>
-            <p className="lpa-sub">
-              Задайте формат, цель по просмотрам и максимальный бюджет. ReelPay соберёт публикации, проверит результат и сохранит неиспользованный остаток.
-            </p>
-            <div className="lpa-cta">
-              <a className="lpa-btn lpa-btn--primary" href="#pilot">
-                Запустить пилот <ArrowRight size={18} />
-              </a>
-              <a className="lpa-btn lpa-btn--ghost" href="#budget-calculator">Рассчитать бюджет</a>
+      <div className={styles.page}>
+        <section className={styles.hero} aria-labelledby="landing-title">
+          <div className={styles.heroCopy}>
+            <span className={styles.eyebrow}><ShieldCheck size={15} /> Для авторов, экспертов и брендов</span>
+            <h1 id="landing-title">Короткие ролики из вашего контента — <span>с оплатой за результат</span></h1>
+            <p>Добавьте исходное видео, задайте цель и бюджет. Клипперы подготовят публикации, ReelPay проверит просмотры и вернёт неиспользованный остаток.</p>
+            <div className={styles.actions}>
+              <a className={styles.primary} href="#budget-calculator">Рассчитать бюджет <ArrowRight size={18} /></a>
+              <a className={styles.secondary} href="#protection">Как защищён бюджет</a>
             </div>
-            <div className="lpa-hero-links">
-              <Link className="lpa-browse" href="/campaigns">Я клиппер — смотреть заказы <ArrowRight size={14} /></Link>
-              <a className="lpa-how" href="#how">Как это работает ↓</a>
-            </div>
+            <Link className={styles.workerLink} href="/campaigns">Я клиппер — найти заказ <ArrowRight size={15} /></Link>
           </div>
-          <LandingPhone />
-        </div>
 
-        {/* Trust metrics: live numbers once real traction exists, honest demo until then */}
-        <LandingStats />
+          <div className={styles.preview} aria-label="Как проходит кампания ReelPay">
+            <div className={styles.previewHead}>
+              <div><span>Пилотная кампания</span><strong>3 коротких ролика</strong></div>
+              <b>В работе</b>
+            </div>
+            <div className={styles.flow}>
+              <div data-state="done"><Check size={16} /><span>Бриф</span></div>
+              <i />
+              <div data-state="active"><FileVideo2 size={16} /><span>Ролики</span></div>
+              <i />
+              <div><BadgeCheck size={16} /><span>Проверка</span></div>
+            </div>
+            <div className={styles.previewResult}>
+              <span><small>Бюджет в резерве</small><strong>15 000 ₽</strong></span>
+              <span><small>Цель</small><strong>30 тыс.</strong></span>
+            </div>
+            <p><ShieldCheck size={16} /> Исполнитель получает выплату только после проверки результата.</p>
+          </div>
+        </section>
 
-        {/* Video: how ReelPay works */}
-        <CampaignGuide variant="general" />
+        <section className={styles.trust} aria-label="Главные гарантии ReelPay">
+          <div><CircleDollarSign size={19} /><span><b>Бюджет в резерве</b><small>до подтверждения результата</small></span></div>
+          <div><BadgeCheck size={19} /><span><b>Просмотры проверяются</b><small>повторы и накрутка не оплачиваются</small></span></div>
+          <div><RotateCcw size={19} /><span><b>Остаток возвращается</b><small>на ваш баланс без заявки</small></span></div>
+        </section>
 
-        {/* Steps with role tabs */}
-        <LandingStepsTabs />
+        <section className={`${styles.how} ${styles.deferred}`} id="how" aria-labelledby="how-title">
+          <header>
+            <span>Три понятных шага</span>
+            <h2 id="how-title">От исходника до проверенного результата</h2>
+            <p>Вся работа, согласование и статистика остаются в одной кампании.</p>
+          </header>
+          <div className={styles.steps}>
+            {steps.map(({ icon: Icon, number, title, text }) => (
+              <article key={number}>
+                <span><Icon size={20} /></span>
+                <small>{number}</small>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-        <BudgetProtection />
+        <div className={styles.deferred}><LandingCalculator /></div>
 
-        <LandingCalculator />
+        <section className={`${styles.protection} ${styles.deferred}`} id="protection" aria-labelledby="protection-title">
+          <div>
+            <span><ShieldCheck size={15} /> Безопасная сделка</span>
+            <h2 id="protection-title">Деньги не уходят исполнителю одним кликом</h2>
+            <p>Каждая выплата проходит через резерв, проверку публикации и защитное окно.</p>
+          </div>
+          <ul>
+            <li><Check size={17} /><span><b>Проверяем владельца и ссылку</b><small>Чужие и повторные публикации блокируются.</small></span></li>
+            <li><Check size={17} /><span><b>Сохраняем историю статистики</b><small>По каждому ролику видны проверки и решение.</small></span></li>
+            <li><Check size={17} /><span><b>Разбираем спор по данным</b><small>Решение можно обжаловать через поддержку.</small></span></li>
+          </ul>
+          <Link href="/safety/budget">Подробнее о защите бюджета <ArrowRight size={16} /></Link>
+        </section>
 
-        <PilotLeadForm />
-
-        <LandingFaqChat />
-
-        {/* Roles — double track */}
-        <div className="lpa-roles-head">
-          <h2>С чего начнёшь?</h2>
-          <p>Выбери роль — это бесплатно и займёт минуту.</p>
-        </div>
-        <div className="lpa-roles">
-          <Link className="lpa-role" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">
-            <span className="lpa-role-eyebrow"><BriefcaseBusiness size={15} /> Заказчикам</span>
-            <strong>Десятки нарезок из вашего контента</strong>
-            <ul>
-              <li><Check size={15} /> Платите только за подтверждённые просмотры</li>
-              <li><Check size={15} /> Бюджет в эскроу, остаток возвращается</li>
-              <li><Check size={15} /> Отчёт и аналитика по каждому клипу</li>
-            </ul>
-            <em>Создать задание</em>
-          </Link>
-          <Link className="lpa-role lpa-role--primary" href="/register?intent=worker&returnTo=%2Fcampaigns">
-            <span className="lpa-role-badge">Популярно</span>
-            <span className="lpa-role-eyebrow"><Scissors size={15} /> Клипперам</span>
-            <strong>Зарабатывай на нарезках</strong>
-            <ul>
-              <li><Check size={15} /> Выплаты на карту, вывод без минималки</li>
-              <li><Check size={15} /> Деньги уже в резерве до старта работы</li>
-              <li><Check size={15} /> Ставка и гарантия видны сразу</li>
-            </ul>
-            <em>Стать клиппером <ArrowRight size={16} /></em>
-          </Link>
-        </div>
-      </section>
+        <div className={styles.deferred}><PilotLeadForm /></div>
+        <div className={styles.deferred}><LandingFaqChat /></div>
+      </div>
     </AppShell>
   );
 }

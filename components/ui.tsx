@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { clsx } from "clsx";
-import { BriefcaseBusiness, Search, ShieldCheck, Zap } from "lucide-react";
+import { BriefcaseBusiness, LogOut, Search, ShieldCheck, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,6 +12,8 @@ import { getUnreadSummary } from "@/lib/unread";
 import { NotificationBell } from "@/components/notification-bell";
 import { ReadStateTracker } from "@/components/read-state-tracker";
 import { RoleModeSwitcher } from "@/components/role-mode-switcher";
+import { Mascot } from "@/components/mascot";
+import styles from "./app-shell.module.css";
 
 export async function AppShell({
   children,
@@ -34,7 +36,7 @@ export async function AppShell({
 
   return (
     <>
-      <header className="topbar">
+      <header className={clsx("topbar", styles.header)}>
         <Link className="brand" href="/">
           <span className="brand-word">Reel<span>Pay</span></span>
         </Link>
@@ -48,10 +50,10 @@ export async function AppShell({
             <Link href="/leaderboard">Лидеры</Link>
           </nav>
         )}
-        <div className="top-actions">
+        <div className={clsx("top-actions", styles.actions)}>
           {user ? (
             <>
-              {isAdmin ? <Link className="role-pill admin-link" href="/admin"><ShieldCheck size={16} /> <span>Admin</span>{unread.adminAlerts ? <b className="admin-alert-badge" title={`${unread.adminAlerts} важных событий`}>{unread.adminAlerts > 99 ? "99+" : unread.adminAlerts}</b> : null}</Link> : null}
+              {isAdmin ? <Link className={clsx("role-pill admin-link", styles.admin)} href="/admin" aria-label="Открыть админку"><ShieldCheck size={16} /> <span>Admin</span>{unread.adminAlerts ? <b className={clsx("admin-alert-badge", styles.adminBadge)} title={`${unread.adminAlerts} важных событий`}>{unread.adminAlerts > 99 ? "99+" : unread.adminAlerts}</b> : null}</Link> : null}
               <NotificationBell unread={unread.notifications} />
               {user.role === "BOTH" || user.role === "ADMIN" ? (
                 <Suspense fallback={<Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>}>
@@ -60,8 +62,8 @@ export async function AppShell({
               ) : (
                 <Link className="role-pill" href="/profile"><Zap size={16} /> <span>{roleLabel}</span></Link>
               )}
-              <form action={logoutAction}>
-                <button className="btn btn-small btn-ghost" type="submit">Выйти</button>
+              <form action={logoutAction} className={styles.logoutForm}>
+                <button className={clsx("btn btn-small btn-ghost", styles.logout)} type="submit" aria-label="Выйти из аккаунта"><LogOut size={16} /><span>Выйти</span></button>
               </form>
             </>
           ) : (
@@ -78,6 +80,7 @@ export async function AppShell({
       </main>
       {user ? <Suspense fallback={null}><ReadStateTracker /></Suspense> : null}
       {user && !hideBottomNav ? <BottomNav mode={mode} unreadChats={unread.chatBadge} /> : null}
+      {user ? <Mascot /> : null}
     </>
   );
 }

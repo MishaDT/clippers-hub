@@ -29,6 +29,18 @@ test("campaign filters stay simple and responsive", async ({ page }) => {
   await expect(page.locator("body")).toHaveJSProperty("scrollWidth", await page.locator("body").evaluate((node) => node.clientWidth));
 });
 
+test("admin mobile header stays compact with notification counters", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await login(page, "admin@clippers.local");
+  await page.goto("/profile");
+
+  const header = page.locator("header").first();
+  await expect(page.getByRole("link", { name: "Открыть админку" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Выйти из аккаунта" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  await expect.poll(() => header.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+});
+
 test("support request reaches admin and the reply reaches the user", async ({ page, context }) => {
   const subject = `E2E поддержка ${Date.now()}`;
 
