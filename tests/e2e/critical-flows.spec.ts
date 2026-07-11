@@ -93,6 +93,17 @@ test.describe("public experience", () => {
 });
 
 test.describe("worker flow", () => {
+  test("public information pages preserve the authenticated session", async ({ page }) => {
+    await login(page, "anya@clippers.local");
+    await page.goto("/business");
+    await expect(page.getByRole("button", { name: "Выйти" })).toBeVisible();
+    await page.goto("/safety");
+    await expect(page.getByRole("button", { name: "Выйти" })).toBeVisible();
+    await page.goto("/business");
+    await page.getByRole("button", { name: /Создать кампанию/ }).click();
+    await expect(page).toHaveURL(/\/campaigns\/new/);
+  });
+
   test("notification list is fetched only when the bell opens", async ({ page }) => {
     let recentRequests = 0;
     page.on("request", (request) => {

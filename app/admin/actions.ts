@@ -11,11 +11,27 @@ import { CampaignReservationError, releaseSubmissionReservation, restoreSubmissi
 import { adminTransactionTransition } from "@/lib/transaction-rules";
 import { parseRubToCents } from "@/lib/money";
 import { notificationGroup, notify } from "@/lib/notifications";
+import { appendOwnershipEvidence } from "@/lib/ownership-evidence";
+import { syncViews } from "@/lib/social-sync";
 
 const roles = ["ADMIN", "CLIENT", "WORKER", "BOTH"] as const;
 const ranks = ["BRONZE", "SILVER", "GOLD", "DIAMOND", "LEGENDARY"] as const;
 const kycStatuses = ["NONE", "PENDING", "VERIFIED"] as const;
 const txStatuses = ["PENDING", "COMPLETED", "FAILED", "REVERSED"] as const;
+
+export async function adminRecheckIntegrationsAction() {
+  const admin = await requireAdmin();
+  const result = await syncViews();
+  await logAdmin(admin.id, "ADMIN_INTEGRATIONS_RECHECK", "SocialAccount", "all", {
+    synced: result.synced,
+    apiSynced: result.apiSynced,
+    skipped: result.skipped,
+    released: result.released,
+    revocationsCompleted: result.revocationsCompleted
+  });
+  revalidatePath("/admin/integrations");
+  redirect("/admin/integrations?rechecked=1");
+}
 
 function clean(value: FormDataEntryValue | null, fallback = "") {
   return String(value ?? fallback).trim();
@@ -427,9 +443,22 @@ export async function adminUpdateVideoCheckAction(formData: FormData) {
       where: { id: check.submissionId },
       data: {
         fraudScore: status === "PASSED" ? Math.min(check.submission.fraudScore, 25) : Math.max(check.submission.fraudScore, score),
-        status: status === "FAILED" ? "REJECTED" : check.submission.status === "REJECTED" && status === "PASSED" ? "VERIFIED" : check.submission.status
+        status: status === "FAILED" ? "REJECTED" : check.submission.status === "REJECTED" && status === "PASSED" ? "VERIFIED" : check.submission.status,
+        visualProofConfirmedAt: check.checkType === "WATERMARK" && status === "PASSED" ? new Date() : check.submission.visualProofConfirmedAt
       }
       });
+      if (check.checkType === "OWNERSHIP" || check.checkType === "WATERMARK") {
+        await appendOwnershipEvidence(db, {
+          submissionId: check.submissionId,
+          socialAccountId: check.submission.socialAccountId,
+          method: check.checkType === "WATERMARK" ? "SIGNED_VISUAL_QR" : "MANUAL_REVIEW",
+          status,
+          platformPostId: check.submission.platformPostId,
+          source: "ADMIN_REVIEW",
+          moderatorId: admin.id,
+          details: { note, checkId }
+        });
+      }
       await db.auditLog.create({
       data: {
         userId: admin.id,

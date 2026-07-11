@@ -5,9 +5,10 @@ import { stringify } from "@/lib/json";
 import { viewProviders, type ViewPlatform } from "@/lib/view-providers";
 import { checkOwnership, platformIsVerifiable, type OwnershipResult } from "@/lib/antifraud";
 import { trackEvent } from "@/lib/analytics";
-import { fetchTikTokSnapshotForUser } from "@/lib/social-platforms";
+import { fetchTikTokSnapshotForUser, processPendingSocialRevocations } from "@/lib/social-platforms";
 import { releaseReferralCommissions } from "@/lib/referrals";
 import { evaluateViewRisk, VIEW_RISK_REVIEW_THRESHOLD } from "@/lib/view-validation";
+import { appendOwnershipEvidence } from "@/lib/ownership-evidence";
 
 function canUseProvider(platform: string): platform is ViewPlatform {
   return platform === "YOUTUBE" || platform === "VK" || platform === "TIKTOK" || platform === "INSTAGRAM";
@@ -18,7 +19,7 @@ function allowDemoSync() {
 }
 
 // One OWNERSHIP VideoCheck row per submission, upserted to reflect the latest result.
-async function recordOwnershipCheck(submissionId: string, status: "PASS" | "FAIL", proof: OwnershipResult) {
+async function recordOwnershipCheck(submissionId: string, status: "PASS" | "FAIL", proof: OwnershipResult, socialAccountId?: string | null) {
   const data = {
     checkType: "OWNERSHIP",
     status,
@@ -39,6 +40,15 @@ async function recordOwnershipCheck(submissionId: string, status: "PASS" | "FAIL
   } else {
     await prisma.videoCheck.create({ data: { submissionId, ...data } });
   }
+  await appendOwnershipEvidence(prisma, {
+    submissionId,
+    socialAccountId,
+    method: socialAccountId ? "CONNECTED_ACCOUNT" : "TRACKING_CODE",
+    status,
+    platformPostId: proof.evidence?.postId ? String(proof.evidence.postId) : null,
+    source: "SYNC_API",
+    details: { reason: proof.reason, evidence: proof.evidence }
+  });
 }
 
 async function settlePendingEarnings() {
@@ -55,20 +65,21 @@ async function settlePendingEarnings() {
         }
       }
     },
-    include: { submission: true },
+    include: { submission: { include: { campaign: true } } },
     take: 100
   });
 
   let released = 0;
   for (const tx of pending) {
     if (!tx.submission || tx.submission.fraudScore >= 70 || tx.submission.status === "REJECTED") continue;
+    if (tx.submission.campaign.strictVerification && !tx.submission.visualProofConfirmedAt) continue;
     // Final ownership gate before money actually leaves hold: never release if the
     // latest tracking-code check on this clip failed.
     const blockingCheck = await prisma.videoCheck.findFirst({
       where: {
         submissionId: tx.submission.id,
         OR: [
-          { checkType: "OWNERSHIP", status: "FAIL" },
+          { checkType: "OWNERSHIP", status: { in: ["FAIL", "FAILED"] } },
           { checkType: "METRICS_RISK", status: { in: ["NEEDS_REVIEW", "FAILED"] } }
         ]
       },
@@ -123,8 +134,9 @@ async function settlePendingEarnings() {
 }
 
 export async function syncViews() {
+  const revocationsCompleted = await processPendingSocialRevocations();
   const submissions = await prisma.submission.findMany({
-    include: { campaign: true, worker: true },
+    include: { campaign: true, worker: true, socialAccount: true },
     where: { status: { in: ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING"] } },
     orderBy: { createdAt: "asc" },
     take: 200
@@ -147,7 +159,7 @@ export async function syncViews() {
     if (canUseProvider(submission.platform)) {
       try {
         const snapshot = submission.platform === "TIKTOK"
-          ? await fetchTikTokSnapshotForUser(submission.workerId, submission.postUrl)
+          ? await fetchTikTokSnapshotForUser(submission.workerId, submission.postUrl, submission.socialAccountId)
           : await viewProviders[submission.platform].fetchSnapshot(submission.postUrl);
         providerMode = "api";
         observedViews = snapshot.views;
@@ -155,21 +167,23 @@ export async function syncViews() {
         likes = Math.max(submission.currentLikes, snapshot.likes || 0);
         comments = Math.max(submission.currentComments, snapshot.comments || 0);
         velocity = Math.max(0, views - submission.currentViews);
-        if (submission.platform === "TIKTOK") {
-          const video = snapshot.raw as { title?: string; video_description?: string } | undefined;
-          const description = `${video?.title || ""} ${video?.video_description || ""}`;
-          const normalizedDescription = description.toLowerCase().replace(/\s+/g, "");
-          const normalizedCode = submission.trackingCode.toLowerCase().replace(/\s+/g, "");
-          const matched = normalizedCode.length >= 4 && normalizedDescription.includes(normalizedCode);
+        if (submission.platform === "TIKTOK" && submission.socialAccountId) {
           connectedOwnership = {
             platform: "TIKTOK",
             verifiable: true,
+            matched: true,
+            reason: "connected_account_match",
+            evidence: { postId: snapshot.postId, accountId: submission.socialAccountId }
+          };
+        } else if (submission.platform === "YOUTUBE" && submission.socialAccount) {
+          const video = snapshot.raw as { snippet?: { channelId?: string } } | undefined;
+          const matched = video?.snippet?.channelId === submission.socialAccount.externalId;
+          connectedOwnership = {
+            platform: "YOUTUBE",
+            verifiable: true,
             matched,
-            reason: matched ? "code_found" : "code_missing",
-            evidence: {
-              title: String(video?.title || "").slice(0, 140),
-              snippet: String(video?.video_description || "").slice(0, 240)
-            }
+            reason: matched ? "connected_account_match" : "connected_account_mismatch",
+            evidence: { postId: snapshot.postId, channelId: video?.snippet?.channelId }
           };
         }
         apiSynced += 1;
@@ -230,7 +244,8 @@ export async function syncViews() {
         await recordOwnershipCheck(
           submission.id,
           connectedOwnership.matched ? "PASS" : "FAIL",
-          connectedOwnership
+          connectedOwnership,
+          submission.socialAccountId
         );
       } else if (platformIsVerifiable(submission.platform)) {
         const proof = await checkOwnership({
@@ -241,17 +256,17 @@ export async function syncViews() {
         if (proof.matched) {
           ownershipOk = true;
           ownershipNote = "code_found";
-          await recordOwnershipCheck(submission.id, "PASS", proof);
+          await recordOwnershipCheck(submission.id, "PASS", proof, submission.socialAccountId);
         } else if (proof.reason.startsWith("fetch_failed")) {
           ownershipNote = proof.reason; // transient (quota/private/deleted) — hold, no penalty
         } else {
           ownershipNote = "code_missing"; // genuinely absent — flag, block earning, allow recovery
-          await recordOwnershipCheck(submission.id, "FAIL", proof);
+          await recordOwnershipCheck(submission.id, "FAIL", proof, submission.socialAccountId);
         }
       } else {
         // TikTok / Instagram have no public metadata — require a manual moderator pass.
         const manual = await prisma.videoCheck.findFirst({
-          where: { submissionId: submission.id, checkType: "OWNERSHIP", status: "PASS" },
+          where: { submissionId: submission.id, checkType: "OWNERSHIP", status: { in: ["PASS", "PASSED"] } },
           select: { id: true }
         });
         ownershipOk = Boolean(manual);
@@ -520,7 +535,7 @@ export async function syncViews() {
   }
 
   const released = await settlePendingEarnings();
-  return { synced: updates.length, apiSynced, demoSynced, skipped, released, submissions: updates };
+  return { synced: updates.length, apiSynced, demoSynced, skipped, released, revocationsCompleted, submissions: updates };
 }
 
 export const syncMockViews = syncViews;

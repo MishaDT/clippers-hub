@@ -10,7 +10,8 @@ const AUTH_ERRORS: Record<string, string> = {
   oauth_denied: "Вход отменён.",
   oauth_state: "Сессия входа устарела. Попробуйте ещё раз.",
   oauth_no_email: "Соцсеть не передала подтверждённый email. Войдите по email или другим способом.",
-  oauth_failed: "Не удалось войти через соцсеть. Попробуйте ещё раз."
+  oauth_failed: "Не удалось войти через соцсеть. Попробуйте ещё раз.",
+  session_expired: "Сессия завершена или была отозвана. Войдите снова."
 };
 
 export function authErrorText(code?: string | string[]) {

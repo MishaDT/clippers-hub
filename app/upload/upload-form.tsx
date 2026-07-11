@@ -19,6 +19,9 @@ type Order = {
   daysLeft: number;
   platforms: string[];
   watermarkRequired: boolean;
+  strictVerification: boolean;
+  visualProofConfirmed: boolean;
+  socialAccounts: Array<{ id: string; platform: string; handle: string }>;
   requiredTags: string[];
   draftRequired: boolean;
   draftStatus: "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "CHANGES_REQUESTED" | "REJECTED";
@@ -49,6 +52,7 @@ function inspectUrl(value: string) {
 export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabled: boolean }) {
   const [selectedId, setSelectedId] = useState(orders[0]?.id || "");
   const [postUrl, setPostUrl] = useState("");
+  const [socialAccountId, setSocialAccountId] = useState("");
   const [draftUrl, setDraftUrl] = useState(orders[0]?.draftUrl || "");
   const [workerNote, setWorkerNote] = useState("");
   const [open, setOpen] = useState(false);
@@ -59,7 +63,8 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
   const selectRef = useRef<HTMLDivElement>(null);
   const selected = orders.find((order) => order.id === selectedId) || orders[0];
   const platform = inspectUrl(postUrl);
-  const canPublish = !selected?.draftRequired || selected.draftStatus === "APPROVED";
+  const canPublish = (!selected?.draftRequired || selected.draftStatus === "APPROVED")
+    && (!selected?.strictVerification || selected.visualProofConfirmed);
   const canSubmitDraft = Boolean(
     selected?.draftRequired
     && ["NOT_SUBMITTED", "CHANGES_REQUESTED"].includes(selected.draftStatus)
@@ -86,6 +91,7 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
     setWorkerNote("");
     setUploadError("");
     setPostUrl("");
+    setSocialAccountId("");
     setOpen(false);
   };
 
@@ -262,12 +268,12 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
               <div className="up-material">
                 <div className="up-material-ico"><img src="/watermark/reelpay-watermark.svg" alt="" /></div>
                 <div className="up-material-body">
-                  <strong>Watermark ReelPay {selected.watermarkRequired ? "обязателен" : "по желанию"}</strong>
-                  <span>Поместите в угол ролика: 12–18% ширины, прозрачность 80–90%.</span>
+                  <strong>{selected.strictVerification ? "Уникальный QR ReelPay обязателен" : `Watermark ReelPay ${selected.watermarkRequired ? "обязателен" : "по желанию"}`}</strong>
+                  <span>{selected.strictVerification ? "Этот QR подписан для конкретной работы и не подходит к другому заказу." : "Поместите в угол ролика: 12–18% ширины, прозрачность 80–90%."}</span>
                 </div>
                 <span className="up-material-downloads">
-                  <a href="/watermark/reelpay-watermark.png" download><Download size={15} /> PNG</a>
-                  <a href="/watermark/reelpay-watermark.svg" download><Download size={15} /> SVG</a>
+                  <a href={selected.strictVerification ? `/api/submissions/${selected.id}/visual-key?format=png` : "/watermark/reelpay-watermark.png"} download><Download size={15} /> PNG</a>
+                  <a href={selected.strictVerification ? `/api/submissions/${selected.id}/visual-key?format=svg` : "/watermark/reelpay-watermark.svg"} download><Download size={15} /> SVG</a>
                 </span>
               </div>
             </div>
@@ -280,7 +286,18 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
               <input name="postUrl" type="url" inputMode="url" autoComplete="off" placeholder="https://youtube.com/shorts/..." value={postUrl} onChange={(event) => setPostUrl(event.target.value)} required disabled={!canPublish} />
               {platform ? <CheckCircle2 size={18} color="#22c55e" /> : null}
             </div>
-            <small className="up-hint">{!canPublish ? "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram и VK"}</small>
+            <small className="up-hint">{!canPublish ? selected.strictVerification && !selected.visualProofConfirmed ? "Ссылка станет доступна после проверки индивидуального QR на черновике." : "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram и VK"}</small>
+            {platform && selected.socialAccounts.some((account) => account.platform === platform) ? (
+              <label className="field">
+                Аккаунт для автоматической проверки
+                <select name="socialAccountId" value={socialAccountId} onChange={(event) => setSocialAccountId(event.target.value)}>
+                  <option value="">Проверить по ключу в описании</option>
+                  {selected.socialAccounts.filter((account) => account.platform === platform).map((account) => (
+                    <option key={account.id} value={account.id}>@{account.handle}</option>
+                  ))}
+                </select>
+              </label>
+            ) : <input type="hidden" name="socialAccountId" value="" />}
           </section>
 
           <label className="up-confirm">

@@ -7,7 +7,7 @@ import { MAX_AVATAR_BYTES, processAvatarImage } from "@/lib/avatar-image";
 import { prisma } from "@/lib/prisma";
 import { stringify } from "@/lib/json";
 import { normalizePayoutDetails } from "@/lib/payout-details";
-import { revokeTikTokConnection } from "@/lib/social-platforms";
+import { revokeSocialConnection, verifySocialAccountConnection } from "@/lib/social-platforms";
 
 export async function updatePayoutDetailsAction(formData: FormData) {
   const user = await requireUser();
@@ -123,14 +123,16 @@ export async function unlinkSocialPlatformAction(formData: FormData) {
 
   const account = await prisma.socialAccount.findFirst({
     where: { id: socialAccountId, userId: user.id },
-    select: { id: true, platform: true, accessToken: true }
+    select: { id: true, platform: true, credential: { select: { accessTokenEncrypted: true } } }
   });
   if (!account) redirect("/settings/account?social=failed");
 
-  if (account.platform === "TIKTOK") {
-    await revokeTikTokConnection(account.accessToken);
-  }
+  const encryptedToken = account.credential?.accessTokenEncrypted || null;
+  const revoked = await revokeSocialConnection(account.platform, encryptedToken);
   await prisma.$transaction([
+    ...(!revoked && encryptedToken ? [prisma.socialRevocationJob.create({
+      data: { platform: account.platform, accountIdSnapshot: account.id, accessTokenEncrypted: encryptedToken }
+    })] : []),
     prisma.socialAccount.delete({ where: { id: account.id } }),
     prisma.auditLog.create({
       data: {
@@ -144,4 +146,18 @@ export async function unlinkSocialPlatformAction(formData: FormData) {
   ]);
   revalidatePath("/settings/account");
   redirect("/settings/account?social=disconnected");
+}
+
+export async function verifySocialPlatformAction(formData: FormData) {
+  const user = await requireUser();
+  const socialAccountId = String(formData.get("socialAccountId") || "");
+  if (!socialAccountId) redirect("/settings/account?social=failed");
+  try {
+    await verifySocialAccountConnection(user.id, socialAccountId);
+    await prisma.auditLog.create({ data: { userId: user.id, action: "SOCIAL_ACCOUNT_RECHECKED", entity: "SocialAccount", entityId: socialAccountId, metadata: "{}" } });
+  } catch {
+    redirect("/settings/account?social=reconnect");
+  }
+  revalidatePath("/settings/account");
+  redirect("/settings/account?social=verified");
 }

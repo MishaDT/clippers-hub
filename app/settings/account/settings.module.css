@@ -179,6 +179,19 @@
   font-size: 13px;
 }
 
+.connectedAccount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+}
+
+.connectedAccount span { overflow-wrap: anywhere; }
+.accountActions { display: flex; gap: 6px; flex-wrap: wrap; }
+
 .unavailable {
   white-space: nowrap;
 }

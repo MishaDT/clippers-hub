@@ -17,6 +17,7 @@ const items = [
   { href: "/admin/store", label: "Магазин", hint: "RP и партнёры", icon: ShoppingBag },
   { href: "/admin/referrals", label: "Рефералы", hint: "Уровни и комиссии", icon: Network },
   { href: "/admin/security", label: "Безопасность", hint: "Риски и контроль", icon: ShieldAlert },
+  { href: "/admin/integrations", label: "Площадки", hint: "OAuth и проверки", icon: Network },
   { href: "/admin/moderation", label: "Модерация", hint: "Жалобы и санкции", icon: ShieldAlert },
   { href: "/admin/disputes", label: "Споры", hint: "Апелляции по работам", icon: Scale },
   { href: "/admin/messages", label: "Аудит чатов", hint: "Правки и удаления", icon: MessageSquareText },

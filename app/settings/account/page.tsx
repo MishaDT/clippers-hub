@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { isConfigured, type ProviderId } from "@/lib/oauth";
 import { prisma } from "@/lib/prisma";
 import { socialPlatformConfigured } from "@/lib/social-platforms";
-import { unlinkAccountProviderAction, unlinkSocialPlatformAction, updatePayoutDetailsAction } from "./actions";
+import { unlinkAccountProviderAction, unlinkSocialPlatformAction, updatePayoutDetailsAction, verifySocialPlatformAction } from "./actions";
 import { AvatarUpload } from "./avatar-upload";
 import styles from "./settings.module.css";
 
@@ -31,16 +31,18 @@ export default async function AccountSettingsPage({
   const socialAccounts = await prisma.socialAccount.findMany({
     where: {
       userId: user.id,
-      platform: { in: ["TIKTOK", "INSTAGRAM"] },
-      accessToken: { not: null }
+      platform: { in: ["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK"] }
     },
     select: {
       id: true,
       platform: true,
       handle: true,
       verifiedAt: true,
-      tokenExpiresAt: true,
-      scopesJson: true
+      accountUrl: true,
+      connectionStatus: true,
+      lastCheckedAt: true,
+      credential: { select: { tokenExpiresAt: true, scopesJson: true } },
+      _count: { select: { submissions: true } }
     },
     orderBy: { updatedAt: "desc" }
   });
@@ -165,35 +167,39 @@ export default async function AccountSettingsPage({
             </div>
           </div>
           <div className={styles.providers}>
-            {(["TIKTOK", "INSTAGRAM"] as const).map((platform) => {
-              const account = socialAccounts.find((item) => item.platform === platform);
-              const configured = platform === "TIKTOK" && socialPlatformConfigured(platform);
-              const label = platform === "TIKTOK" ? "TikTok" : "Instagram Reels";
+            {(["YOUTUBE", "VK", "TIKTOK", "INSTAGRAM"] as const).map((platform) => {
+              const accountsForPlatform = socialAccounts.filter((item) => item.platform === platform);
+              const configured = (platform === "YOUTUBE" || platform === "TIKTOK") && socialPlatformConfigured(platform);
+              const label = platform === "YOUTUBE" ? "YouTube Shorts" : platform === "VK" ? "VK Клипы" : platform === "TIKTOK" ? "TikTok" : "Instagram Reels";
               return (
                 <div className={styles.provider} key={platform}>
                   <div>
                     <strong>{label}</strong>
                     <span>
-                      {account
-                        ? `${account.handle} · подключено`
+                      {accountsForPlatform.length
+                        ? `${accountsForPlatform.length} подключено · только чтение`
                         : configured
-                          ? "Можно подключить"
+                          ? "Можно подключить безопасно"
                           : platform === "INSTAGRAM"
                             ? "Будет доступно после проверки приложения Meta"
-                            : "Нужны ключи приложения"}
+                            : platform === "VK" ? "Пока доступна проверка ключом" : "Нужны ключи приложения"}
                     </span>
+                    {accountsForPlatform.map((account) => (
+                      <div key={account.id} className={styles.connectedAccount}>
+                        <span><b>@{account.handle}</b> · {account.connectionStatus === "CONNECTED" ? "подключён" : "нужен повторный вход"} · {account._count.submissions} роликов</span>
+                        <div className={styles.accountActions}>
+                          <form action={verifySocialPlatformAction}><input type="hidden" name="socialAccountId" value={account.id} /><button className="btn btn-small" type="submit">Проверить</button></form>
+                          <form action={unlinkSocialPlatformAction}><input type="hidden" name="socialAccountId" value={account.id} /><button className="btn btn-small btn-ghost" type="submit">Отключить</button></form>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  {account ? (
-                    <form action={unlinkSocialPlatformAction}>
-                      <input type="hidden" name="socialAccountId" value={account.id} />
-                      <button className="btn btn-small btn-ghost" type="submit">Отключить</button>
-                    </form>
-                  ) : configured ? (
+                  {configured ? (
                     <Link className="btn btn-small" href={`/api/social/oauth/${platform.toLowerCase()}`}>
-                      <Link2 size={15} /> Подключить
+                      <Link2 size={15} /> {accountsForPlatform.length ? "Добавить ещё" : "Подключить"}
                     </Link>
                   ) : (
-                    <span className={styles.unavailable}>Недоступно</span>
+                    <span className={styles.unavailable}>Через ключ</span>
                   )}
                 </div>
               );

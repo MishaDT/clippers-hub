@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -9,6 +8,7 @@ import {
   isConnectableSocialPlatform,
   socialPlatformConfigured
 } from "@/lib/social-platforms";
+import { createSocialOAuthChallenge, pkceChallenge, SOCIAL_OAUTH_BINDER_COOKIE } from "@/lib/social-oauth-challenge";
 
 export async function GET(request: Request, { params }: { params: Promise<{ platform: string }> }) {
   const user = await getCurrentUser();
@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
   if (!user) return NextResponse.redirect(new URL("/login?returnTo=%2Fsettings%2Faccount", base), 303);
 
   const platformValue = (await params).platform.toUpperCase();
-  if (!isConnectableSocialPlatform(platformValue) || platformValue !== "TIKTOK") {
+  if (!isConnectableSocialPlatform(platformValue) || platformValue === "INSTAGRAM") {
     return NextResponse.redirect(new URL("/settings/account?social=unavailable", base), 303);
   }
   if (!socialPlatformConfigured(platformValue)) {
@@ -26,7 +26,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
     return NextResponse.redirect(new URL("/settings/account?social=too_many", base), 303);
   }
 
-  const state = randomBytes(32).toString("base64url");
+  const challenge = await createSocialOAuthChallenge(user.id, platformValue);
   const jar = await cookies();
   const options = {
     httpOnly: true,
@@ -35,9 +35,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
     path: "/",
     maxAge: 600
   };
-  jar.set("social_oauth_state", state, options);
-  jar.set("social_oauth_platform", platformValue, options);
-  jar.set("social_oauth_user", user.id, options);
+  jar.set(SOCIAL_OAUTH_BINDER_COOKIE, challenge.binder, options);
 
   await trackEvent({
     request,
@@ -46,5 +44,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
     path: "/settings/account",
     provider: platformValue.toLowerCase()
   });
-  return NextResponse.redirect(buildSocialAuthorizeUrl(platformValue, { requestUrl: request.url, state }));
+  return NextResponse.redirect(buildSocialAuthorizeUrl(platformValue, {
+    requestUrl: request.url,
+    state: challenge.state,
+    pkceChallenge: platformValue === "YOUTUBE" ? pkceChallenge(challenge.pkceVerifier) : undefined
+  }));
 }

@@ -27,7 +27,7 @@ const cards = [
 
 export default function BudgetSafetyPage() {
   return (
-    <AppShell publicOnly>
+    <AppShell>
       <main className={styles.page}>
         <header className={styles.hero}>
           <span className="eyebrow">Защищённая сделка</span>

@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { AlertCircle, ArrowRight, CheckCircle2, Sparkles, UserPlus } from "lucide-react";
 import { SocialAuth, authErrorText } from "@/components/social-auth";
+import { getCurrentUser } from "@/lib/auth";
+import { safeAuthReturnTo, parseAuthIntent } from "@/lib/auth-intent";
+import { getActiveRoleMode } from "@/lib/role-mode";
+import { redirect } from "next/navigation";
 
 export default async function RegisterPage({
   searchParams
@@ -8,6 +12,13 @@ export default async function RegisterPage({
   searchParams: Promise<{ error?: string | string[]; ref?: string | string[]; intent?: string; returnTo?: string }>;
 }) {
   const { error, ref, intent, returnTo } = await searchParams;
+  const currentUser = await getCurrentUser();
+  if (currentUser) {
+    const parsedIntent = parseAuthIntent(intent);
+    const activeMode = await getActiveRoleMode(currentUser);
+    if (parsedIntent && parsedIntent !== activeMode) redirect(`/auth/continue?mode=${parsedIntent}&returnTo=${encodeURIComponent(safeAuthReturnTo(returnTo, parsedIntent))}`);
+    redirect(returnTo ? safeAuthReturnTo(returnTo, parsedIntent) : activeMode === "client" ? "/profile" : "/campaigns");
+  }
   const errorText = authErrorText(error);
   const refCode = (Array.isArray(ref) ? ref[0] : ref)?.trim().slice(0, 12) || "";
 

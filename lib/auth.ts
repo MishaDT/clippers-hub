@@ -81,8 +81,9 @@ export const getCurrentUser = cache(async () => {
 });
 
 export async function requireUser() {
+  const hadSessionCookie = Boolean((await cookies()).get(COOKIE_NAME)?.value);
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(hadSessionCookie ? "/login?error=session_expired" : "/login");
   return user;
 }
 

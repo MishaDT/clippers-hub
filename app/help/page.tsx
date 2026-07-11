@@ -18,7 +18,7 @@ const questions = [
 
 export default function HelpPage() {
   return (
-    <AppShell publicOnly>
+    <AppShell>
       <article className={styles.page}>
         <header className={styles.hero}>
           <span className="eyebrow">Помощь</span>

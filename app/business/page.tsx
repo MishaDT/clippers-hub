@@ -4,6 +4,8 @@ import { ArrowRight, BadgeCheck, Check, Clock3, FileText, ShieldCheck, Wallet, X
 import { AppShell } from "@/components/ui";
 import { LandingCalculator } from "@/components/landing-calculator";
 import styles from "./business.module.css";
+import { getCurrentUser } from "@/lib/auth";
+import { setRoleModeAction } from "@/app/actions";
 
 export const metadata: Metadata = {
   title: "Клип-маркетинг для бизнеса — ReelPay",
@@ -25,16 +27,25 @@ const compareRows = [
   ["Оплата", "По договорённости", "Только за подтверждённые просмотры, остаток назад"]
 ] as const;
 
-export default function BusinessPage() {
+export default async function BusinessPage() {
+  const user = await getCurrentUser();
   return (
-    <AppShell publicOnly>
+    <AppShell>
       <main className={styles.page}>
         <header className={styles.hero}>
           <span className="eyebrow">Для бизнеса</span>
           <h1>Запустите клип-кампанию за 10 минут. Без менеджеров и звонков</h1>
           <p>Вставьте ссылку на исходник, задайте цель и ставку — клипперы сделают десятки нарезок из вашего контента. Вы платите только за подтверждённые просмотры, а неизрасходованный бюджет возвращается.</p>
           <div className={styles.cta}>
-            <Link className="btn btn-primary" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">Создать кампанию <ArrowRight size={17} /></Link>
+            {user ? (
+              <form action={setRoleModeAction}>
+                <input type="hidden" name="mode" value="client" />
+                <input type="hidden" name="returnTo" value="/campaigns/new" />
+                <button className="btn btn-primary" type="submit">Создать кампанию <ArrowRight size={17} /></button>
+              </form>
+            ) : (
+              <Link className="btn btn-primary" href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">Создать кампанию <ArrowRight size={17} /></Link>
+            )}
             <Link className="btn" href="/safety/budget">Как защищён бюджет</Link>
           </div>
         </header>

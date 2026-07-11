@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -7,18 +6,16 @@ import { stringify } from "@/lib/json";
 import { prisma } from "@/lib/prisma";
 import {
   encryptedTikTokTokenData,
+  encryptedYouTubeTokenData,
   exchangeTikTokCode,
+  exchangeYouTubeCode,
   fetchTikTokProfile,
+  fetchYouTubeChannel,
   isConnectableSocialPlatform,
   socialCallbackUri,
   socialPlatformConfigured
 } from "@/lib/social-platforms";
-
-function sameState(left: string, right: string) {
-  const a = Buffer.from(left);
-  const b = Buffer.from(right);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
+import { consumeSocialOAuthChallenge, SOCIAL_OAUTH_BINDER_COOKIE } from "@/lib/social-oauth-challenge";
 
 export async function GET(request: Request, { params }: { params: Promise<{ platform: string }> }) {
   const base = new URL(request.url).origin;
@@ -37,22 +34,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
 
   if (
     !isConnectableSocialPlatform(platformValue)
-    || platformValue !== "TIKTOK"
+    || platformValue === "INSTAGRAM"
     || !socialPlatformConfigured(platformValue)
   ) {
     return fail("unavailable");
   }
 
   const jar = await cookies();
-  const expectedState = jar.get("social_oauth_state")?.value;
-  const expectedPlatform = jar.get("social_oauth_platform")?.value;
-  const expectedUserId = jar.get("social_oauth_user")?.value;
-  jar.delete("social_oauth_state");
-  jar.delete("social_oauth_platform");
-  jar.delete("social_oauth_user");
+  const binder = jar.get(SOCIAL_OAUTH_BINDER_COOKIE)?.value;
+  jar.delete(SOCIAL_OAUTH_BINDER_COOKIE);
 
   const currentUser = await getCurrentUser();
-  if (!currentUser || !expectedUserId || currentUser.id !== expectedUserId) return fail("session");
+  if (!currentUser || !binder) return fail("session");
   const url = new URL(request.url);
   if (url.searchParams.get("error")) return fail("denied", currentUser.id);
   const state = url.searchParams.get("state");
@@ -60,35 +53,67 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
   if (
     !state
     || !code
-    || !expectedState
-    || expectedPlatform !== platformValue
-    || !sameState(expectedState, state)
   ) {
     return fail("state", currentUser.id);
   }
+  const challenge = await consumeSocialOAuthChallenge({
+    userId: currentUser.id,
+    platform: platformValue,
+    state,
+    binder
+  });
+  if (!challenge) return fail("state", currentUser.id);
 
   try {
-    const tokens = await exchangeTikTokCode(code, socialCallbackUri(request.url, "TIKTOK"));
-    const profile = await fetchTikTokProfile(tokens.access_token!);
-    const externalId = tokens.open_id!;
+    const redirectUri = socialCallbackUri(request.url, platformValue);
+    const connected = platformValue === "TIKTOK"
+      ? await (async () => {
+          const tokens = await exchangeTikTokCode(code, redirectUri);
+          const profile = await fetchTikTokProfile(tokens.access_token!);
+          const externalId = tokens.open_id!;
+          return {
+            externalId,
+            handle: String(profile?.username || profile?.display_name || `tiktok-${externalId.slice(0, 8)}`).slice(0, 80),
+            accountUrl: profile?.username ? `https://www.tiktok.com/@${profile.username}` : null,
+            tokenData: encryptedTikTokTokenData(tokens)
+          };
+        })()
+      : await (async () => {
+          const tokens = await exchangeYouTubeCode(code, redirectUri, challenge.pkceVerifier || "");
+          const channel = await fetchYouTubeChannel(tokens.access_token!);
+          return {
+            externalId: channel.id,
+            handle: String(channel.snippet?.customUrl || channel.snippet?.title || channel.id).slice(0, 80),
+            accountUrl: `https://www.youtube.com/channel/${channel.id}`,
+            tokenData: encryptedYouTubeTokenData(tokens)
+          };
+        })();
+    const { externalId, handle, accountUrl, tokenData } = connected;
     const conflict = await prisma.socialAccount.findUnique({
-      where: { platform_externalId: { platform: "TIKTOK", externalId } },
+      where: { platform_externalId: { platform: platformValue, externalId } },
       select: { userId: true }
     });
     if (conflict && conflict.userId !== currentUser.id) return fail("already_connected", currentUser.id);
 
-    const handle = String(profile?.username || profile?.display_name || `tiktok-${externalId.slice(0, 8)}`).slice(0, 80);
-    const tokenData = encryptedTikTokTokenData(tokens);
     await prisma.$transaction(async (db) => {
-      await db.socialAccount.deleteMany({ where: { userId: currentUser.id, platform: "TIKTOK" } });
-      const account = await db.socialAccount.create({
-        data: {
+      const account = await db.socialAccount.upsert({
+        where: { platform_externalId: { platform: platformValue, externalId } },
+        create: {
           userId: currentUser.id,
-          platform: "TIKTOK",
+          platform: platformValue,
           externalId,
           handle,
-          ...tokenData
-        }
+          accountUrl,
+          verifiedAt: new Date(),
+          lastCheckedAt: new Date(),
+          verificationMethod: "OAUTH_READONLY"
+        },
+        update: { handle, accountUrl, connectionStatus: "CONNECTED", reconnectReason: null, verifiedAt: new Date(), lastCheckedAt: new Date() }
+      });
+      await db.socialCredential.upsert({
+        where: { socialAccountId: account.id },
+        create: { socialAccountId: account.id, ...tokenData },
+        update: tokenData
       });
       await db.auditLog.create({
         data: {
@@ -96,7 +121,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
           action: "SOCIAL_ACCOUNT_CONNECTED",
           entity: "SocialAccount",
           entityId: account.id,
-          metadata: stringify({ platform: "TIKTOK", scopes: JSON.parse(tokenData.scopesJson) })
+          metadata: stringify({ platform: platformValue, scopes: JSON.parse(tokenData.scopesJson) })
         }
       });
     });
@@ -105,7 +130,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
       userId: currentUser.id,
       type: "SOCIAL_CONNECT_COMPLETED",
       path: "/settings/account",
-      provider: "tiktok"
+      provider: platformValue.toLowerCase()
     });
     return NextResponse.redirect(new URL("/settings/account?social=connected", base), 303);
   } catch {

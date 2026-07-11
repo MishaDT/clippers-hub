@@ -23,6 +23,9 @@ import { isPaymentProvider, isPaymentProviderAvailable } from "@/lib/payment-rea
 import { syncMockViews } from "@/lib/social-sync";
 import { notifyModerators } from "@/lib/video-checks";
 import { canUseRoleMode, getActiveRoleMode, ROLE_MODE_COOKIE, type RoleMode } from "@/lib/role-mode";
+import { visualProofToken, visualProofTokenHash } from "@/lib/visual-proof";
+import { appendOwnershipEvidence } from "@/lib/ownership-evidence";
+import { checkConnectedAccountOwnership } from "@/lib/social-platforms";
 import { assertAccountActive, moderateText, reportContent } from "@/lib/moderation";
 import { moscowWeekKey, RECURRING_REWARDS, splitRpSpend, WEEKLY_RP_CAP } from "@/lib/rp";
 import { scanContent } from "@/lib/content-policy";
@@ -217,6 +220,28 @@ export async function switchRoleAction(formData: FormData) {
   redirect(returnTo);
 }
 
+/** Explicit role selection for role-aware marketing CTAs. */
+export async function setRoleModeAction(formData: FormData) {
+  const user = await requireUser();
+  const mode = String(formData.get("mode")) as RoleMode;
+  const fallback = mode === "client" ? "/campaigns/new" : "/campaigns";
+  const returnTo = safeReturnTo(formData.get("returnTo"), fallback);
+  if (!(["client", "worker"] as const).includes(mode)) {
+    redirect("/profile?error=role_mode");
+  }
+  const mayAddSecondRole = (user.role === "WORKER" && mode === "client") || (user.role === "CLIENT" && mode === "worker");
+  if (!canUseRoleMode(user.role, mode) && !mayAddSecondRole) redirect("/profile?error=role_mode");
+  (await cookies()).set(ROLE_MODE_COOKIE, mode, {
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365
+  });
+  await prisma.user.update({ where: { id: user.id }, data: { preferredRoleMode: mode, ...(mayAddSecondRole ? { role: "BOTH" as const } : {}) } });
+  revalidatePath("/profile");
+  redirect(returnTo);
+}
+
 export async function createCampaignAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
@@ -334,6 +359,7 @@ export async function createCampaignAction(formData: FormData) {
           maxRevisionRounds,
           briefVersion: 1,
           draftRequired: true,
+          strictVerification: formData.get("watermarkBonus") === "on" || reviewMode === "STRICT",
           totalBudgetCents,
           remainingBudgetCents: totalBudgetCents,
           reservedBudgetCents: 0,
@@ -560,6 +586,11 @@ export async function joinCampaignAction(formData: FormData) {
               fraudScore: 0,
               reservedPayoutCents: reserve
             }
+          });
+          const proofToken = visualProofToken(submission.id, trackingCode);
+          await tx.submission.update({
+            where: { id: submission.id },
+            data: { visualProofTokenHash: visualProofTokenHash(proofToken) }
           });
           await tx.chatThread.upsert({
             where: { campaignId_workerId: { campaignId, workerId: user.id } },
@@ -1090,7 +1121,7 @@ export async function submitDraftAction(formData: FormData) {
   const submission = await prisma.submission.findFirst({
     where: { id: submissionId, workerId: user.id },
     include: {
-      campaign: { select: { id: true, ownerId: true, title: true, reviewMode: true, maxRevisionRounds: true, draftRequired: true } },
+      campaign: { select: { id: true, ownerId: true, title: true, reviewMode: true, maxRevisionRounds: true, draftRequired: true, strictVerification: true } },
       chatThreads: { select: { id: true }, take: 1 }
     }
   });
@@ -1108,7 +1139,9 @@ export async function submitDraftAction(formData: FormData) {
     if (policy.action === "BLOCK") redirect("/upload?draft=moderation");
   }
 
-  const decision = initialDraftDecision({ reviewMode: submission.campaign.reviewMode, trustScore: user.trustScore });
+  const decision = submission.campaign.strictVerification
+    ? "PENDING" as const
+    : initialDraftDecision({ reviewMode: submission.campaign.reviewMode, trustScore: user.trustScore });
   const now = new Date();
   const result = await prisma.$transaction(async (db) => {
     const claimed = await db.submission.updateMany({
@@ -1146,6 +1179,16 @@ export async function submitDraftAction(formData: FormData) {
         })
       }
     });
+    if (submission.campaign.strictVerification) {
+      await db.videoCheck.create({
+        data: {
+          submissionId: submission.id,
+          checkType: "WATERMARK",
+          status: "PENDING",
+          resultJson: stringify({ draftUrl, revision, signedVisualKey: true, createdFrom: "submitDraftAction" })
+        }
+      });
+    }
     if (submission.chatThreads[0]) {
       await db.chatMessage.create({
         data: {
@@ -1327,17 +1370,26 @@ export async function submitClipAction(formData: FormData) {
   const platformInput = String(formData.get("platform") || "TIKTOK");
   const platform = (["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"].includes(platformInput) ? platformInput : "TIKTOK") as "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "VK";
   const watermarkConfirmed = formData.get("watermarkConfirmed") === "on";
+  const socialAccountIdInput = String(formData.get("socialAccountId") || "").trim();
 
-  const [submission, duplicate, recentSubmissions] = await Promise.all([
+  const [submission, duplicate, recentSubmissions, selectedSocialAccount] = await Promise.all([
     prisma.submission.findFirstOrThrow({ where: { id: submissionId, workerId: user.id }, include: { campaign: true } }),
     prisma.submission.findFirst({ where: { postUrl, NOT: { id: submissionId } }, select: { id: true } }),
-    prisma.submission.findMany({ where: { workerId: user.id }, orderBy: { createdAt: "desc" }, take: 20 })
+    prisma.submission.findMany({ where: { workerId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
+    socialAccountIdInput ? prisma.socialAccount.findFirst({
+      where: { id: socialAccountIdInput, userId: user.id, platform, connectionStatus: "CONNECTED", credential: { isNot: null } },
+      select: { id: true }
+    }) : Promise.resolve(null)
   ]);
+  if (socialAccountIdInput && !selectedSocialAccount) redirect("/upload?error=social_account");
   if (
     submission.campaign.draftRequired
     && (submission.draftStatus !== "APPROVED" || !submission.publishApprovedAt)
   ) {
     redirect("/upload?draft=approval_required");
+  }
+  if (submission.campaign.strictVerification && !submission.visualProofConfirmedAt) {
+    redirect("/upload?draft=visual_proof_required");
   }
 
   const campaignRules = safeJson<{ watermarkBonus?: boolean }>(submission.campaign.rulesJson, {});
@@ -1360,18 +1412,25 @@ export async function submitClipAction(formData: FormData) {
   fraudScore = Math.min(95, fraudScore);
   const status = fraudScore >= 75 ? "REJECTED" : "POSTED";
 
-  const updatedSubmission = await prisma.submission.update({
-    where: { id: submissionId, workerId: user.id },
-    data: {
-      postUrl,
-      platform,
-      platformPostId: extractPlatformPostId(postUrl),
-      status,
-      fraudScore,
-      verifiedAt: status === "POSTED" ? new Date() : null,
-      viewVelocityJson: stringify([{ at: new Date().toISOString(), event: "submitted", fraudScore, reasons, watermarkConfirmed }])
-    }
-  });
+  let updatedSubmission;
+  try {
+    updatedSubmission = await prisma.submission.update({
+      where: { id: submissionId, workerId: user.id },
+      data: {
+        postUrl,
+        platform,
+        platformPostId: extractPlatformPostId(postUrl),
+        status,
+        fraudScore,
+        socialAccountId: selectedSocialAccount?.id || null,
+        verifiedAt: status === "POSTED" ? new Date() : null,
+        viewVelocityJson: stringify([{ at: new Date().toISOString(), event: "submitted", fraudScore, reasons, watermarkConfirmed }])
+      }
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") redirect("/upload?error=duplicate_post");
+    throw error;
+  }
 
   // Referral reward is granted here — on a real, non-rejected clip — rather than at signup,
 
@@ -1380,19 +1439,39 @@ export async function submitClipAction(formData: FormData) {
   // description so the clipper gets immediate feedback. Real enforcement (and
   // re-checks) happen in syncViews — this is non-blocking and never throws.
   let ownershipState: "verified" | "code_missing" | "pending" = "pending";
-  if (status === "POSTED" && platformIsVerifiable(platform)) {
+  if (status === "POSTED" && (selectedSocialAccount && (platform === "YOUTUBE" || platform === "TIKTOK") || platformIsVerifiable(platform))) {
     try {
-      const proof = await checkOwnership({ platform, postUrl, trackingCode: submission.trackingCode });
+      const proof = selectedSocialAccount && (platform === "YOUTUBE" || platform === "TIKTOK")
+        ? await checkConnectedAccountOwnership({ userId: user.id, socialAccountId: selectedSocialAccount.id, platform, postUrl })
+        : await checkOwnership({ platform, postUrl, trackingCode: submission.trackingCode });
       if (proof.matched) {
         ownershipState = "verified";
         await prisma.submission.update({ where: { id: updatedSubmission.id }, data: { status: "VERIFIED", verifiedAt: new Date() } });
         await prisma.videoCheck.create({
           data: { submissionId: updatedSubmission.id, checkType: "OWNERSHIP", status: "PASS", score: 100, resultJson: stringify({ reason: proof.reason, evidence: proof.evidence, createdFrom: "submitClipAction" }) }
         });
+        await appendOwnershipEvidence(prisma, {
+          submissionId: updatedSubmission.id,
+          socialAccountId: selectedSocialAccount?.id,
+          method: selectedSocialAccount ? "CONNECTED_ACCOUNT" : "TRACKING_CODE",
+          status: "PASS",
+          platformPostId: updatedSubmission.platformPostId,
+          source: "SUBMIT_API",
+          details: { reason: proof.reason, evidence: proof.evidence }
+        });
       } else if (proof.reason === "code_missing") {
         ownershipState = "code_missing";
         await prisma.videoCheck.create({
           data: { submissionId: updatedSubmission.id, checkType: "OWNERSHIP", status: "FAIL", score: 0, resultJson: stringify({ reason: proof.reason, evidence: proof.evidence, createdFrom: "submitClipAction" }) }
+        });
+        await appendOwnershipEvidence(prisma, {
+          submissionId: updatedSubmission.id,
+          socialAccountId: selectedSocialAccount?.id,
+          method: selectedSocialAccount ? "CONNECTED_ACCOUNT" : "TRACKING_CODE",
+          status: "FAIL",
+          platformPostId: updatedSubmission.platformPostId,
+          source: "SUBMIT_API",
+          details: { reason: proof.reason, evidence: proof.evidence }
         });
       }
     } catch {

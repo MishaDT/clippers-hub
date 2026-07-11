@@ -54,6 +54,7 @@ model User {
   submissions               Submission[]
   transactions              Transaction[]
   socialAccounts            SocialAccount[]
+  socialOAuthChallenges     SocialOAuthChallenge[]
   oauthAccounts             OAuthAccount[]
   notifications             Notification[]
   achievements              UserAchievement[]
@@ -139,6 +140,8 @@ model SocialAccount {
   platform              Platform
   externalId            String
   handle                String
+  // Legacy encrypted columns retained for one expand/contract release. New code only
+  // reads SocialCredential; a follow-up migration removes these after rollout verification.
   accessToken           String?
   refreshToken          String?
   tokenExpiresAt        DateTime?
@@ -147,13 +150,70 @@ model SocialAccount {
   verifiedAt            DateTime?
   verificationMethod    String?
   accountUrl            String?
+  connectionStatus      String    @default("CONNECTED")
+  lastCheckedAt         DateTime?
+  reconnectReason       String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credential  SocialCredential?
+  submissions Submission[]
 
   @@unique([platform, externalId])
   @@index([userId, platform])
+}
+
+model SocialCredential {
+  id                    String    @id @default(cuid())
+  socialAccountId       String    @unique
+  accessTokenEncrypted  String
+  refreshTokenEncrypted String?
+  encryptionKeyId       String
+  tokenExpiresAt        DateTime?
+  refreshTokenExpiresAt DateTime?
+  scopesJson            String    @default("[]")
+  refreshVersion        Int       @default(0)
+  revokePendingAt       DateTime?
+  lastRefreshAt         DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+}
+
+model SocialOAuthChallenge {
+  id           String    @id @default(cuid())
+  userId       String
+  platform     Platform
+  stateHash    String    @unique
+  sessionHash  String
+  pkceVerifier String?
+  expiresAt    DateTime
+  usedAt       DateTime?
+  attempts     Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, platform, createdAt])
+  @@index([expiresAt, usedAt])
+}
+
+model SocialRevocationJob {
+  id                   String    @id @default(cuid())
+  platform             Platform
+  accountIdSnapshot    String
+  accessTokenEncrypted String
+  status               String    @default("PENDING")
+  attempts             Int       @default(0)
+  lastError            String?
+  nextAttemptAt        DateTime  @default(now())
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([status, nextAttemptAt])
 }
 
 // Social login (Google / VK / Yandex). Stores ONLY the identity link —
@@ -207,6 +267,7 @@ model Campaign {
   badgeBonusCpmCents     Int            @default(0)
   isPlatformOrganized    Boolean        @default(false)
   requireVerifiedAccount Boolean        @default(false)
+  strictVerification     Boolean        @default(false)
   isAdvertising          Boolean        @default(true)
   erid                   String?
   advertiserInn          String?
@@ -250,50 +311,55 @@ model LikedCampaign {
 }
 
 model Submission {
-  id                    String            @id @default(cuid())
-  campaignId            String
-  workerId              String
-  postUrl               String
-  platform              Platform
-  platformPostId        String
-  trackingCode          String            @unique
-  currentViews          Int               @default(0)
-  currentLikes          Int               @default(0)
-  currentComments       Int               @default(0)
-  peakViews             Int               @default(0)
-  status                SubmissionStatus  @default(POSTED)
-  fraudScore            Int               @default(0)
-  reservedPayoutCents   Int               @default(0)
-  reservationReleasedAt DateTime?
-  draftUrl              String?
-  draftStatus           DraftReviewStatus @default(NOT_SUBMITTED)
-  draftRevision         Int               @default(0)
-  draftSubmittedAt      DateTime?
-  draftReviewedAt       DateTime?
-  draftReviewNote       String?
-  draftReviewedById     String?
-  publishApprovedAt     DateTime?
-  acceptedBriefVersion  Int?
-  badgeConfirmedAt      DateTime?
-  earlyRemovalAt        DateTime?
-  shareToken            String?           @unique
-  shareTokenExpiresAt   DateTime?
-  shareTokenRevokedAt   DateTime?
-  viewVelocityJson      String            @default("[]")
-  lastSyncedAt          DateTime          @default(now())
-  verifiedAt            DateTime?
-  paidAt                DateTime?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  id                     String            @id @default(cuid())
+  campaignId             String
+  workerId               String
+  socialAccountId        String?
+  postUrl                String
+  platform               Platform
+  platformPostId         String
+  trackingCode           String            @unique
+  currentViews           Int               @default(0)
+  currentLikes           Int               @default(0)
+  currentComments        Int               @default(0)
+  peakViews              Int               @default(0)
+  status                 SubmissionStatus  @default(POSTED)
+  fraudScore             Int               @default(0)
+  reservedPayoutCents    Int               @default(0)
+  reservationReleasedAt  DateTime?
+  draftUrl               String?
+  draftStatus            DraftReviewStatus @default(NOT_SUBMITTED)
+  draftRevision          Int               @default(0)
+  draftSubmittedAt       DateTime?
+  draftReviewedAt        DateTime?
+  draftReviewNote        String?
+  draftReviewedById      String?
+  publishApprovedAt      DateTime?
+  acceptedBriefVersion   Int?
+  badgeConfirmedAt       DateTime?
+  earlyRemovalAt         DateTime?
+  visualProofTokenHash   String?           @unique
+  visualProofConfirmedAt DateTime?
+  shareToken             String?           @unique
+  shareTokenExpiresAt    DateTime?
+  shareTokenRevokedAt    DateTime?
+  viewVelocityJson       String            @default("[]")
+  lastSyncedAt           DateTime          @default(now())
+  verifiedAt             DateTime?
+  paidAt                 DateTime?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
-  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  worker        User           @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  transactions  Transaction[]
-  disputes      DisputeCase[]
-  chatThreads   ChatThread[]
-  videoChecks   VideoCheck[]
-  portfolioPins PortfolioPin[]
-  ratings       UserRating[]
+  campaign          Campaign                      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  worker            User                          @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  socialAccount     SocialAccount?                @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  transactions      Transaction[]
+  disputes          DisputeCase[]
+  chatThreads       ChatThread[]
+  videoChecks       VideoCheck[]
+  portfolioPins     PortfolioPin[]
+  ratings           UserRating[]
+  ownershipEvidence SubmissionOwnershipEvidence[]
 
   @@unique([campaignId, workerId])
   @@index([workerId, createdAt])
@@ -301,6 +367,26 @@ model Submission {
   @@index([campaignId, currentViews])
   @@index([status, fraudScore])
   @@index([draftStatus, draftSubmittedAt])
+}
+
+model SubmissionOwnershipEvidence {
+  id              String   @id @default(cuid())
+  submissionId    String
+  socialAccountId String?
+  method          String
+  status          String
+  platformPostId  String?
+  source          String
+  evidenceHash    String
+  detailsJson     String   @default("{}")
+  moderatorId     String?
+  createdAt       DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, createdAt])
+  @@index([status, createdAt])
+  @@index([socialAccountId, createdAt])
 }
 
 model CampaignTrackingLink {

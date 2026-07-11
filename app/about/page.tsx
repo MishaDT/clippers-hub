@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <AppShell publicOnly>
+    <AppShell>
       <article className={styles.page}>
         <header className={styles.hero}>
           <span className="eyebrow">О сервисе</span>

@@ -35,12 +35,19 @@ export default async function UploadPage({
   const params = await searchParams;
   const user = await requireUser();
   if (await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
-  const submissions = await prisma.submission.findMany({
-    where: { workerId: user.id },
-    include: { campaign: true },
-    orderBy: { updatedAt: "desc" },
-    take: 20
-  });
+  const [submissions, socialAccounts] = await Promise.all([
+    prisma.submission.findMany({
+      where: { workerId: user.id },
+      include: { campaign: true },
+      orderBy: { updatedAt: "desc" },
+      take: 20
+    }),
+    prisma.socialAccount.findMany({
+      where: { userId: user.id, connectionStatus: "CONNECTED", credential: { isNot: null } },
+      select: { id: true, platform: true, handle: true },
+      orderBy: { updatedAt: "desc" }
+    })
+  ]);
 
   const orders = submissions.map((submission) => {
     const rules = parseRules(submission.campaign.rulesJson);
@@ -56,6 +63,9 @@ export default async function UploadPage({
       daysLeft: Math.max(1, Math.ceil((submission.campaign.deadline.getTime() - Date.now()) / 86400000)),
       platforms: parsePlatforms(submission.campaign.allowedPlatformsJson),
       watermarkRequired: Boolean(rules.watermarkBonus),
+      strictVerification: submission.campaign.strictVerification,
+      visualProofConfirmed: Boolean(submission.visualProofConfirmedAt),
+      socialAccounts: socialAccounts.filter((account) => account.platform !== "TWITCH"),
       requiredTags: rules.requiredTags || [],
       draftRequired: submission.campaign.draftRequired,
       draftStatus: submission.draftStatus,

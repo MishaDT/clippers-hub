@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function SafetyPage() {
   return (
-    <AppShell publicOnly>
+    <AppShell>
       <article className={styles.page}>
         <header className={styles.hero}>
           <span className="eyebrow">Безопасность</span>

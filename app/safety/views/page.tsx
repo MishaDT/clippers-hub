@@ -20,7 +20,7 @@ const steps = [
 
 export default function ViewsMethodologyPage() {
   return (
-    <AppShell publicOnly>
+    <AppShell>
       <main className={styles.page}>
         <header className={styles.hero}>
           <span className="eyebrow">Прозрачность</span>

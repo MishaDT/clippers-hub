@@ -17,16 +17,14 @@ export async function AppShell({
   children,
   hideBottomNav = false,
   hideFooter = false,
-  immersive = false,
-  publicOnly = false
+  immersive = false
 }: {
   children: React.ReactNode;
   hideBottomNav?: boolean;
   hideFooter?: boolean;
   immersive?: boolean;
-  publicOnly?: boolean;
 }) {
-  const user = publicOnly ? null : await getCurrentUser();
+  const user = await getCurrentUser();
   const isAdmin = canAccessAdmin(user);
   const mode = user ? await getActiveRoleMode(user) : "worker";
   const unread = user

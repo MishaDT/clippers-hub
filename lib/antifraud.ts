@@ -20,7 +20,7 @@ export type OwnershipResult = {
   matched: boolean;
   /** Machine reason: code_found | code_missing | fetch_failed:* | platform_no_public_metadata */
   reason: string;
-  evidence?: { title?: string; channelTitle?: string; snippet?: string };
+  evidence?: { title?: string; channelTitle?: string; snippet?: string; postId?: string; channelId?: string; accountId?: string };
 };
 
 // Platforms whose public metadata we can read without a per-user OAuth token.
