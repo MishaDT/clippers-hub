@@ -15,26 +15,27 @@ import { getCurrentUser } from "@/lib/auth";
 import { LandingCalculator } from "@/components/landing-calculator";
 import { LandingFaqChat } from "@/components/landing-faq-chat";
 import { PilotLeadForm } from "@/components/pilot-lead-form";
+import { LandingMotionHero } from "@/components/landing-motion-hero";
 import styles from "./landing.module.css";
 
 const steps = [
   {
     icon: FileVideo2,
     number: "01",
-    title: "Добавьте исходное видео",
-    text: "Ссылка, короткий бриф, число публикаций и площадки."
+    title: "Заказчик публикует задачу",
+    text: "Добавляет исходник, требования, площадки и бюджет."
   },
   {
     icon: BadgeCheck,
     number: "02",
-    title: "Согласуйте ролики",
-    text: "Проверьте черновики до публикации и запросите правки."
+    title: "Клиппер создаёт ролик",
+    text: "Выбирает заказ, согласует черновик и публикует результат."
   },
   {
     icon: ChartNoAxesCombined,
     number: "03",
-    title: "Платите за результат",
-    text: "ReelPay проверит публикации и подтверждённые просмотры."
+    title: "ReelPay проводит оплату",
+    text: "Проверяет публикацию и переводит деньги из резерва."
   }
 ];
 
@@ -44,37 +45,7 @@ export default async function HomePage() {
   return (
     <AppShell>
       <div className={styles.page}>
-        <section className={styles.hero} aria-labelledby="landing-title">
-          <div className={styles.heroCopy}>
-            <span className={styles.eyebrow}><ShieldCheck size={15} /> Для авторов, экспертов и брендов</span>
-            <h1 id="landing-title">Короткие ролики из вашего контента — <span>с оплатой за результат</span></h1>
-            <p>Добавьте исходное видео, задайте цель и бюджет. Клипперы подготовят публикации, ReelPay проверит просмотры и вернёт неиспользованный остаток.</p>
-            <div className={styles.actions}>
-              <a className={styles.primary} href="#budget-calculator">Рассчитать бюджет <ArrowRight size={18} /></a>
-              <a className={styles.secondary} href="#protection">Как защищён бюджет</a>
-            </div>
-            <Link className={styles.workerLink} href="/campaigns">Я клиппер — найти заказ <ArrowRight size={15} /></Link>
-          </div>
-
-          <div className={styles.preview} aria-label="Как проходит кампания ReelPay">
-            <div className={styles.previewHead}>
-              <div><span>Пилотная кампания</span><strong>3 коротких ролика</strong></div>
-              <b>В работе</b>
-            </div>
-            <div className={styles.flow}>
-              <div data-state="done"><Check size={16} /><span>Бриф</span></div>
-              <i />
-              <div data-state="active"><FileVideo2 size={16} /><span>Ролики</span></div>
-              <i />
-              <div><BadgeCheck size={16} /><span>Проверка</span></div>
-            </div>
-            <div className={styles.previewResult}>
-              <span><small>Бюджет в резерве</small><strong>15 000 ₽</strong></span>
-              <span><small>Цель</small><strong>30 тыс.</strong></span>
-            </div>
-            <p><ShieldCheck size={16} /> Исполнитель получает выплату только после проверки результата.</p>
-          </div>
-        </section>
+        <LandingMotionHero />
 
         <section className={styles.trust} aria-label="Главные гарантии ReelPay">
           <div><CircleDollarSign size={19} /><span><b>Бюджет в резерве</b><small>до подтверждения результата</small></span></div>
@@ -82,11 +53,34 @@ export default async function HomePage() {
           <div><RotateCcw size={19} /><span><b>Остаток возвращается</b><small>на ваш баланс без заявки</small></span></div>
         </section>
 
+        <section className={`${styles.audiences} ${styles.deferred}`} aria-labelledby="audiences-title">
+          <header>
+            <span>Одна платформа — две роли</span>
+            <h2 id="audiences-title">Каждому сразу понятно, что делать дальше</h2>
+          </header>
+          <div>
+            <article>
+              <span>Заказчикам</span>
+              <h3>Превращайте готовый контент в новые охваты</h3>
+              <p>Создайте кампанию, согласуйте черновики и следите за каждым опубликованным роликом.</p>
+              <ul><li><Check size={15} /> Бюджет в резерве</li><li><Check size={15} /> Проверка просмотров</li><li><Check size={15} /> Отчёт по результату</li></ul>
+              <Link href="/register?intent=client&returnTo=%2Fcampaigns%2Fnew">Создать кампанию <ArrowRight size={16} /></Link>
+            </article>
+            <article>
+              <span>Клипперам</span>
+              <h3>Монетизируйте навык монтажа без поиска клиента</h3>
+              <p>Выбирайте понятные заказы, публикуйте ролики и получайте выплату из зарезервированного бюджета.</p>
+              <ul><li><Check size={15} /> Сумма видна заранее</li><li><Check size={15} /> Заказы в каталоге</li><li><Check size={15} /> Защищённая выплата</li></ul>
+              <Link href="/campaigns">Найти заказ <ArrowRight size={16} /></Link>
+            </article>
+          </div>
+        </section>
+
         <section className={`${styles.how} ${styles.deferred}`} id="how" aria-labelledby="how-title">
           <header>
             <span>Три понятных шага</span>
-            <h2 id="how-title">От исходника до проверенного результата</h2>
-            <p>Вся работа, согласование и статистика остаются в одной кампании.</p>
+            <h2 id="how-title">Заказчик и клиппер работают в одном процессе</h2>
+            <p>Задача, обсуждение, проверка и деньги остаются внутри ReelPay.</p>
           </header>
           <div className={styles.steps}>
             {steps.map(({ icon: Icon, number, title, text }) => (

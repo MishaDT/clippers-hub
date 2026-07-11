@@ -6779,13 +6779,11 @@ a.social-btn:hover {
     font-size: 12px;
     line-height: 1.35;
   }
-  .cookie-actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .cookie-actions .btn-primary {
-    grid-column: 1 / -1;
-  }
+  .cookie-actions { display: grid; grid-template-columns: .9fr 1.15fr .9fr; gap: 6px; }
   .cookie-actions .btn {
     min-height: 44px;
-    padding-inline: 10px;
+    padding-inline: 7px;
+    font-size: 11px;
   }
 }
 @media (prefers-reduced-motion: reduce) { .cookie-banner { animation: none; } }

@@ -71,7 +71,7 @@ export function CookieConsent() {
       </div>
       <div className="cookie-actions">
         <button className="btn btn-ghost btn-small" type="button" onClick={() => setDetails((value) => !value)}>
-          {details ? "Скрыть" : "Что собирается"}
+          {details ? "Скрыть" : "Настроить"}
         </button>
         <button className="btn btn-ghost btn-small" type="button" onClick={() => choose("necessary")}>
           Только нужное
