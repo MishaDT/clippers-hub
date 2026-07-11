@@ -21,6 +21,7 @@ export type NotificationItem = {
 // The badge count comes from the (cheap) shell summary; the list itself is fetched only when the
 // dropdown is opened, so it never runs on the render path of every page.
 export function NotificationBell({ unread }: { unread: number }) {
+  const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [visibleUnread, setVisibleUnread] = useState(unread);
   const [items, setItems] = useState<NotificationItem[] | null>(null);
@@ -29,6 +30,7 @@ export function NotificationBell({ unread }: { unread: number }) {
   const [requestVersion, setRequestVersion] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => setReady(true), []);
   useEffect(() => setVisibleUnread(unread), [unread]);
   useEffect(() => {
     const close = (event: MouseEvent) => {
@@ -68,6 +70,7 @@ export function NotificationBell({ unread }: { unread: number }) {
         data-open={open}
         aria-label={`Уведомления${visibleUnread ? `: ${visibleUnread} непрочитанных` : ""}`}
         aria-expanded={open}
+        data-ready={ready}
         onClick={() => setOpen((value) => !value)}
       >
         <Bell size={18} />

@@ -10,6 +10,33 @@ async function cleanupTestData() {
   await prisma.user.updateMany({ where: { email: "nikita@clippers.local" }, data: { role: "CLIENT" } });
 }
 
+async function createWorkerCampaign() {
+  const owner = await prisma.user.findUniqueOrThrow({ where: { email: "nikita@clippers.local" } });
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 10_000)}`;
+  return prisma.campaign.create({
+    data: {
+      ownerId: owner.id,
+      title: `E2E worker order ${suffix}`,
+      description: "Изолированный заказ для проверки полного пути исполнителя.",
+      sourceUrl: "https://example.com/e2e-source",
+      sourcePlatform: "YOUTUBE",
+      allowedPlatformsJson: JSON.stringify(["TIKTOK", "YOUTUBE"]),
+      rulesJson: JSON.stringify({ requiredTags: ["#reelpay"] }),
+      cpmRateCents: 4_500,
+      viewThreshold: 5_000,
+      totalBudgetCents: 500_000,
+      remainingBudgetCents: 500_000,
+      maxPaidResults: 2,
+      trackingPrefix: `e2e_${suffix}`,
+      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000),
+      niche: "Education",
+      isAdvertising: false,
+      isDemo: false,
+      draftRequired: false
+    }
+  });
+}
+
 test.beforeAll(cleanupTestData);
 test.afterAll(async () => {
   await cleanupTestData();
@@ -76,12 +103,15 @@ test.describe("worker flow", () => {
     await expect(page).toHaveURL(/\/campaigns$/);
     expect(recentRequests).toBe(0);
 
-    await page.getByRole("button", { name: /Уведомления/i }).click();
+    const bell = page.getByRole("button", { name: /Уведомления/i });
+    await expect(bell).toHaveAttribute("data-ready", "true");
+    await bell.click();
     await expect.poll(() => recentRequests).toBe(1);
     await expect(page.getByText(/Все уведомления/i)).toBeVisible();
   });
 
   test("clipper can log in, join a campaign and submit a clip link", async ({ page, isMobile }) => {
+    const campaign = await createWorkerCampaign();
     await login(page, "anya@clippers.local");
     await expect(page).toHaveURL(/\/campaigns$/);
     if (isMobile) {
@@ -91,8 +121,7 @@ test.describe("worker flow", () => {
       await expect(page.locator(".bottom-nav")).toBeHidden();
     }
 
-    await page.goto("/campaigns");
-    await page.locator(".mk-card").first().click();
+    await page.goto(`/campaigns/${campaign.id}`);
     const campaignAction = page.locator(".od-apply");
     await campaignAction.locator('.od-apply-btn').waitFor({ state: "visible" });
     const joinButton = campaignAction.getByRole("button", { name: /Взять заказ/i });
