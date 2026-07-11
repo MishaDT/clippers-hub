@@ -6,6 +6,7 @@ import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
 import { compactNumber, rub } from "@/lib/money";
 import { clampPage, fullDate, pageHref, statusLabel } from "@/lib/admin-format";
+import { adminSetCampaignEridAction } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,8 @@ export default async function AdminContentPage({
           title="Заказы"
           description="Плотный список кампаний. Нажми строку, чтобы увидеть бюджет, заказчика и детали."
         />
+        {params.error === "erid" ? <p className="admin-alert error">Проверьте формат erid.</p> : null}
+        {params.erid === "updated" ? <p className="admin-alert">erid сохранён, заказ доступен исполнителям.</p> : null}
 
         <div className="admin-grid compact admin-kpi-strip">
           <Card className="admin-metric"><BriefcaseBusiness /><span>Заказы</span><strong>{total}</strong><small>по фильтру</small></Card>
@@ -98,7 +101,7 @@ export default async function AdminContentPage({
               <div className="admin-table-row" key={campaign.id}>
                 <div><strong><Link href={`/campaigns/${campaign.id}?returnTo=%2Fadmin%2Fcontent`}>{campaign.title}</Link></strong><span>{campaign.niche || "без ниши"} · {campaign.sourcePlatform}</span></div>
                 <div><strong>{campaign.owner.name}</strong><span>{campaign.owner.email}</span></div>
-                <div><Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : campaign.status === "ACTIVE" ? "good" : "soft"}>{statusLabel(campaign.status)}</Tag></div>
+                <div><Tag tone={campaign.isAdvertising && !campaign.erid ? "warn" : campaign.status === "LOW_BUDGET" ? "warn" : campaign.status === "ACTIVE" ? "good" : "soft"}>{campaign.isAdvertising && !campaign.erid ? "Нужен erid" : statusLabel(campaign.status)}</Tag></div>
                 <div className="admin-budget-cell">
                   <strong>{rub(campaign.remainingBudgetCents)}</strong>
                   <i><span style={{ width: `${Math.max(3, Math.min(100, Math.round((campaign.remainingBudgetCents / Math.max(1, campaign.totalBudgetCents)) * 100)))}%` }} /></i>
@@ -123,6 +126,13 @@ export default async function AdminContentPage({
                   <p><b>Бюджет:</b> {rub(campaign.remainingBudgetCents)} из {rub(campaign.totalBudgetCents)}</p>
                   <p><b>Работ:</b> {campaign._count.submissions} · цель {compactNumber(campaign.viewThreshold)}</p>
                   <p><b>Создан:</b> {fullDate(campaign.createdAt)}</p>
+                  {campaign.isAdvertising ? (
+                    <form className="admin-row-form" action={adminSetCampaignEridAction}>
+                      <input type="hidden" name="campaignId" value={campaign.id} />
+                      <input name="erid" defaultValue={campaign.erid || ""} placeholder="erid после регистрации в ОРД" required />
+                      <button type="submit">Сохранить erid</button>
+                    </form>
+                  ) : null}
                   <p><Link href={`/campaigns/${campaign.id}?returnTo=%2Fadmin%2Fcontent`}>Открыть заказ</Link></p>
                 </div>
               </details>

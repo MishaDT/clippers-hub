@@ -335,6 +335,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
     ? campaign.minimumGuaranteeCents
     : minimumGuaranteedPayout(campaign.minimumGuaranteeCents, currentUser?.rank || "BRONZE");
   const slotsLeft = Math.max(0, campaign.maxPaidResults - campaign._count.submissions);
+  const complianceReady = !campaign.isAdvertising || Boolean(campaign.erid);
   const campaignDiagnostics = isOwner
     ? diagnoseCampaign({
         id: campaign.id,
@@ -463,7 +464,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                 <p className="od-ad-mark">
                   {campaign.erid
                     ? `Реклама.${campaign.advertiserName ? ` ${campaign.advertiserName}.` : ""} erid: ${campaign.erid}`
-                    : "Рекламная кампания — маркировка erid будет добавлена автоматически перед публикацией."}
+                    : "Рекламная кампания ожидает erid. Взять заказ и публиковать ролик до маркировки нельзя."}
                 </p>
               ) : null}
             </div>
@@ -527,9 +528,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                   payout={rub(expected)}
                   guarantee={campaign.minimumGuaranteeCents > 0 ? rub(minimumExpected) : null}
                   deadline={`${daysLeft} дн.`}
-                  disabled={slotsLeft <= 0 || campaign.remainingBudgetCents < gross}
+                  disabled={!complianceReady || slotsLeft <= 0 || campaign.remainingBudgetCents < gross}
                 />
               )}
+
+              {!complianceReady && mode !== "client" ? <p className="safe-note"><ShieldCheck size={16} /> Заказ откроется после регистрации рекламы и получения erid.</p> : null}
 
               <ul className="od-apply-notes">
                 <li><ShieldCheck size={14} /> {

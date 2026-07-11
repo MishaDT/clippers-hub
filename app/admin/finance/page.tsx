@@ -62,6 +62,7 @@ export default async function AdminFinancePage({
           description="Плотная таблица платежей, выплат, депозитов и ручных корректировок."
         />
         {params.error === "transfer_reference" ? <p className="admin-alert error">Для выполненной выплаты укажите номер банковского перевода.</p> : null}
+        {params.error === "receipt_required" ? <p className="admin-alert error">Выплату нельзя завершить без HTTPS-ссылки на подтверждающий чек.</p> : null}
         {params.error === "receipt_url" ? <p className="admin-alert error">Ссылка на чек должна быть корректной HTTPS-ссылкой.</p> : null}
 
         <div className="admin-grid compact admin-kpi-strip">

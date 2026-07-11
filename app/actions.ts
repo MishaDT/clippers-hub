@@ -537,6 +537,7 @@ export async function joinCampaignAction(formData: FormData) {
   if (campaign.visibility === "PRIVATE_INVITE") redirect("/campaigns?error=private");
   if (campaign.deadline.getTime() <= Date.now()) redirect("/campaigns?error=expired");
   if (campaign.remainingBudgetCents <= 0) redirect("/campaigns?error=no_budget");
+  if (campaign.isAdvertising && !campaign.erid) redirect(`/campaigns/${campaignId}?error=erid_pending`);
 
   const existing = await prisma.submission.findFirst({ where: { campaignId, workerId: user.id } });
   if (existing) redirect("/upload");

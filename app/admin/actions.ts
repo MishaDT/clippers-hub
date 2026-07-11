@@ -129,6 +129,9 @@ export async function adminUpdateTransactionAction(formData: FormData) {
   if (status === "COMPLETED" && externalReference.length < 3) {
     redirect("/admin/finance?error=transfer_reference");
   }
+  if (status === "COMPLETED" && !receiptUrl) {
+    redirect("/admin/finance?error=receipt_required");
+  }
   const tx = await prisma.$transaction(async (db) => {
     const current = await db.transaction.findUniqueOrThrow({ where: { id: transactionId } });
     const transition = adminTransactionTransition({
@@ -172,6 +175,30 @@ export async function adminUpdateTransactionAction(formData: FormData) {
   revalidatePath("/referrals");
   revalidatePath(`/admin/users/${tx.userId}`);
   redirect(`/admin/finance?updated=1`);
+}
+
+export async function adminSetCampaignEridAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const campaignId = clean(formData.get("campaignId"));
+  const erid = clean(formData.get("erid")).slice(0, 120);
+  if (!/^[A-Za-z0-9._:-]{6,120}$/.test(erid)) redirect("/admin/content?error=erid");
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { id: true, isAdvertising: true, erid: true } });
+  if (!campaign?.isAdvertising) redirect("/admin/content?error=not_advertising");
+  await prisma.$transaction([
+    prisma.campaign.update({ where: { id: campaignId }, data: { erid } }),
+    prisma.auditLog.create({
+      data: {
+        userId: admin.id,
+        action: "CAMPAIGN_ERID_SET",
+        entity: "Campaign",
+        entityId: campaignId,
+        metadata: stringify({ previous: campaign.erid || null, erid })
+      }
+    })
+  ]);
+  revalidatePath("/admin/content");
+  revalidatePath(`/campaigns/${campaignId}`);
+  redirect("/admin/content?erid=updated");
 }
 
 export async function adminModerateSubmissionAction(formData: FormData) {
