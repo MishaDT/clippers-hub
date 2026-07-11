@@ -56,9 +56,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const campaign = await prisma.campaign.findUnique({
     where: { id },
-    select: { title: true, description: true, cpmRateCents: true, visibility: true, isDemo: true, status: true }
+    select: { ownerId: true, title: true, description: true, cpmRateCents: true, visibility: true, isDemo: true, status: true }
   });
   if (!campaign) return { title: "Заказ не найден" };
+
+  const restricted = campaign.status === "DRAFT" || campaign.visibility === "PRIVATE_INVITE";
+  if (restricted) {
+    const viewer = await getCurrentUser();
+    if (!viewer || (viewer.id !== campaign.ownerId && !canAccessAdmin(viewer))) {
+      return {
+        title: "Заказ не найден",
+        robots: { index: false, follow: false }
+      };
+    }
+  }
 
   const indexable =
     !campaign.isDemo &&
