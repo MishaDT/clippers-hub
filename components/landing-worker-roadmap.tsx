@@ -60,8 +60,17 @@ export function LandingWorkerRoadmap() {
         <svg className={styles.road} viewBox="0 0 520 720" aria-hidden="true">
           <path className={styles.roadBase} d="M260 28 C92 52 92 142 260 155 S428 258 260 274 S92 378 260 394 S428 498 260 514 S92 618 260 692" />
           <path className={styles.roadProgress} d="M260 28 C92 52 92 142 260 155 S428 258 260 274 S92 378 260 394 S428 498 260 514 S92 618 260 692" />
+          <g className={styles.traveller}>
+            <circle r="17" />
+            <circle className={styles.travellerCore} r="12" />
+            <text x="0" y="3.5" textAnchor="middle">RP</text>
+            <animateMotion
+              dur="12s"
+              repeatCount="indefinite"
+              path="M260 28 C92 52 92 142 260 155 S428 258 260 274 S92 378 260 394 S428 498 260 514 S92 618 260 692"
+            />
+          </g>
         </svg>
-        <span className={styles.traveller} aria-hidden="true"><ArrowRight size={13} /></span>
 
         <div className={styles.steps}>
           {steps.map(({ icon: Icon, title, text }, index) => (

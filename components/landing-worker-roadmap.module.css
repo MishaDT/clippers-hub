@@ -97,22 +97,26 @@
 }
 
 .traveller {
-  position: absolute;
-  z-index: 4;
-  top: 0;
-  left: 0;
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 4px solid #202719;
-  border-radius: 50%;
-  background: #c9f31d;
-  box-shadow: 0 0 0 6px rgba(201, 243, 29, .1), 0 0 24px rgba(201, 243, 29, .48);
-  color: #080b08;
-  offset-path: path("M260 28 C92 52 92 142 260 155 S428 258 260 274 S92 378 260 394 S428 498 260 514 S92 618 260 692");
-  offset-rotate: auto 90deg;
-  animation: travel 12s ease-in-out infinite;
+  filter: drop-shadow(0 0 11px rgba(201, 243, 29, .72));
+}
+
+.traveller > circle:first-child {
+  fill: rgba(201, 243, 29, .16);
+  stroke: rgba(201, 243, 29, .2);
+  stroke-width: 1;
+}
+
+.travellerCore {
+  fill: #c9f31d;
+  stroke: #263016;
+  stroke-width: 3;
+}
+
+.traveller text {
+  fill: #090c07;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: -.04em;
 }
 
 .steps {
@@ -135,7 +139,7 @@
   background: rgba(13, 18, 12, .94);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
   animation: stepGlow 12s ease-in-out infinite;
-  animation-delay: calc(var(--step) * -2s);
+  animation-delay: calc(var(--step) * 2s);
 }
 
 .step:nth-child(1) { top: 0; right: 0; }
@@ -175,11 +179,6 @@
   to { stroke-dashoffset: -22; }
 }
 
-@keyframes travel {
-  0%, 4% { offset-distance: 0%; }
-  96%, 100% { offset-distance: 100%; }
-}
-
 @keyframes stepGlow {
   0%, 13% {
     border-color: rgba(201, 243, 29, .38);
@@ -211,11 +210,10 @@
   .step h3 { font-size: 12px; }
   .step p { font-size: 9.5px; }
   .road { transform: scaleX(.76); }
-  .traveller { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .roadProgress,
-  .traveller,
   .step { animation: none; }
+  .traveller { display: none; }
 }
