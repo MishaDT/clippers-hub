@@ -151,7 +151,6 @@
 }
 
 .step {
-  --step: 0;
   position: absolute;
   z-index: 3;
   display: grid;
@@ -164,8 +163,13 @@
   border-radius: 14px;
   background: rgba(13, 18, 12, .94);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
-  animation: stepGlow 12s ease-in-out infinite;
-  animation-delay: calc(var(--step) * 2s);
+  transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+}
+
+.step[data-active="true"] {
+  border-color: rgba(201, 243, 29, .46);
+  box-shadow: 0 0 0 1px rgba(201, 243, 29, .12), 0 14px 36px rgba(0, 0, 0, .3);
+  transform: translateY(-2px);
 }
 
 .step:nth-child(1) { top: 0; right: 0; }
@@ -205,19 +209,6 @@
   to { stroke-dashoffset: -22; }
 }
 
-@keyframes stepGlow {
-  0%, 13% {
-    border-color: rgba(201, 243, 29, .38);
-    box-shadow: 0 0 0 1px rgba(201, 243, 29, .1), 0 14px 36px rgba(0, 0, 0, .3);
-    transform: translateY(-2px);
-  }
-  22%, 100% {
-    border-color: rgba(255, 255, 255, .08);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
-    transform: none;
-  }
-}
-
 @media (max-width: 900px) {
   .section { grid-template-columns: 1fr; }
   .copy { justify-items: center; text-align: center; }
@@ -243,6 +234,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .roadProgress,
-  .step { animation: none; }
+  .step { animation: none; transition: none; }
   .traveller { display: none; }
 }
