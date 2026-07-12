@@ -5,7 +5,7 @@ import { BadgeCheck, CircleDollarSign, FileCheck2, WalletCards } from "lucide-re
 import { LandingCalculator } from "@/components/landing-calculator";
 import { LandingFaqChat } from "@/components/landing-faq-chat";
 import { LandingMotionHero, type LandingAudience } from "@/components/landing-motion-hero";
-import { LandingWorkerCalculator } from "@/components/landing-worker-calculator";
+import { LandingWorkerRoadmap } from "@/components/landing-worker-roadmap";
 import { PilotLeadForm } from "@/components/pilot-lead-form";
 import styles from "./landing-experience.module.css";
 
@@ -44,7 +44,7 @@ export function LandingExperience() {
           </>
         ) : (
           <>
-            <div className={styles.deferred}><LandingWorkerCalculator /></div>
+            <div className={styles.deferred}><LandingWorkerRoadmap /></div>
             <div className={styles.deferred}><LandingFaqChat audience="worker" /></div>
           </>
         )}

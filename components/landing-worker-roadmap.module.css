@@ -1,0 +1,221 @@
+.section {
+  display: grid;
+  grid-template-columns: minmax(0, .72fr) minmax(430px, 1fr);
+  gap: clamp(30px, 6vw, 76px);
+  align-items: center;
+  padding: clamp(24px, 4vw, 44px);
+  overflow: hidden;
+  border: 1px solid rgba(201, 243, 29, .16);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 82% 16%, rgba(201, 243, 29, .1), transparent 25%),
+    linear-gradient(135deg, #080b08, #090e08);
+}
+
+.copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+.copy > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #c9f31d;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.copy h2 {
+  max-width: 540px;
+  margin: 0;
+  color: #f5f7f2;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.02;
+  letter-spacing: -.04em;
+}
+
+.copy p {
+  max-width: 520px;
+  margin: 0;
+  color: #a2a8a0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.copy a {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 4px;
+  padding: 0 20px;
+  border-radius: 12px;
+  background: #c9f31d;
+  box-shadow: 0 12px 30px rgba(201, 243, 29, .12);
+  color: #0a0d08;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.map {
+  position: relative;
+  min-height: 660px;
+  isolation: isolate;
+}
+
+.road {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.roadBase,
+.roadProgress {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.roadBase {
+  stroke: rgba(255, 255, 255, .08);
+  stroke-width: 20;
+}
+
+.roadProgress {
+  stroke: #c9f31d;
+  stroke-width: 3;
+  stroke-dasharray: 10 12;
+  filter: drop-shadow(0 0 7px rgba(201, 243, 29, .5));
+  animation: roadFlow 1.2s linear infinite;
+}
+
+.traveller {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 0;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 4px solid #202719;
+  border-radius: 50%;
+  background: #c9f31d;
+  box-shadow: 0 0 0 6px rgba(201, 243, 29, .1), 0 0 24px rgba(201, 243, 29, .48);
+  color: #080b08;
+  offset-path: path("M260 28 C92 52 92 142 260 155 S428 258 260 274 S92 378 260 394 S428 498 260 514 S92 618 260 692");
+  offset-rotate: auto 90deg;
+  animation: travel 12s ease-in-out infinite;
+}
+
+.steps {
+  position: absolute;
+  inset: 0;
+}
+
+.step {
+  --step: 0;
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 26px 38px minmax(0, 1fr);
+  gap: 9px;
+  width: min(265px, 54%);
+  align-items: center;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 14px;
+  background: rgba(13, 18, 12, .94);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
+  animation: stepGlow 12s ease-in-out infinite;
+  animation-delay: calc(var(--step) * -2s);
+}
+
+.step:nth-child(1) { top: 0; right: 0; }
+.step:nth-child(2) { top: 19%; left: 0; }
+.step:nth-child(3) { top: 37%; right: 0; }
+.step:nth-child(4) { top: 55%; left: 0; }
+.step:nth-child(5) { top: 73%; right: 0; }
+.step:nth-child(6) { right: 7%; bottom: 0; }
+
+.number {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(201, 243, 29, .28);
+  border-radius: 50%;
+  color: #c9f31d;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(201, 243, 29, .1);
+  color: #c9f31d;
+}
+
+.step div { min-width: 0; }
+.step h3 { margin: 0 0 3px; color: #eef1eb; font-size: 13px; }
+.step p { margin: 0; color: #929990; font-size: 10.5px; line-height: 1.35; }
+
+@keyframes roadFlow {
+  to { stroke-dashoffset: -22; }
+}
+
+@keyframes travel {
+  0%, 4% { offset-distance: 0%; }
+  96%, 100% { offset-distance: 100%; }
+}
+
+@keyframes stepGlow {
+  0%, 13% {
+    border-color: rgba(201, 243, 29, .38);
+    box-shadow: 0 0 0 1px rgba(201, 243, 29, .1), 0 14px 36px rgba(0, 0, 0, .3);
+    transform: translateY(-2px);
+  }
+  22%, 100% {
+    border-color: rgba(255, 255, 255, .08);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .section { grid-template-columns: 1fr; }
+  .copy { justify-items: center; text-align: center; }
+  .map { width: min(100%, 540px); margin: 0 auto; }
+}
+
+@media (max-width: 640px) {
+  .section { gap: 22px; padding: 20px 13px; border-radius: 19px; }
+  .copy h2 { font-size: 31px; }
+  .copy p { font-size: 14px; }
+  .map { min-height: 610px; }
+  .step { grid-template-columns: 23px 34px minmax(0, 1fr); width: 58%; gap: 7px; padding: 9px; }
+  .step:nth-child(6) { right: 0; }
+  .number { width: 23px; height: 23px; }
+  .icon { width: 34px; height: 34px; }
+  .step h3 { font-size: 12px; }
+  .step p { font-size: 9.5px; }
+  .road { transform: scaleX(.76); }
+  .traveller { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roadProgress,
+  .traveller,
+  .step { animation: none; }
+}
