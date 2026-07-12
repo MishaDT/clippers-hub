@@ -176,6 +176,11 @@ function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
           </g>
         </svg>
 
+        <div className={styles.mobileRail} aria-hidden="true">
+          <i style={{ height: `${(activeStep / (steps.length - 1)) * 100}%` }} />
+          <b style={{ top: `${(activeStep / (steps.length - 1)) * 100}%` }}>RP</b>
+        </div>
+
         <div className={styles.steps}>
           {steps.map(({ icon: Icon, title, text }, index) => (
             <article className={styles.step} key={title} data-active={index === activeStep}>
