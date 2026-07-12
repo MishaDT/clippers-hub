@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Calculator, Check, ShieldCheck } from "lucide-react";
+import { ArrowRight, Calculator, ShieldCheck } from "lucide-react";
 import styles from "./landing-calculator.module.css";
 
 export function LandingCalculator() {
@@ -29,11 +29,6 @@ export function LandingCalculator() {
         <span><ShieldCheck size={15} /> Оплата за подтверждённый результат</span>
         <h2 id="budget-calculator-title">Рассчитайте бюджет кампании</h2>
         <p>Задайте количество публикаций, цель по просмотрам и ставку. ReelPay соберёт публикации, проверит результат и вернёт неиспользованный остаток.</p>
-        <ul>
-          <li><Check size={15} /> Деньги резервируются до результата</li>
-          <li><Check size={15} /> Накрутка и чужие публикации проверяются</li>
-          <li><Check size={15} /> По каждому ролику сохраняется отчёт</li>
-        </ul>
       </div>
 
       <div className={styles.calculator}>

@@ -49,9 +49,6 @@
 .secondary { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; padding: 0 20px; border-radius: 12px; font-size: 14px; font-weight: 850; }
 .primary { color: #0a0c07; background: var(--lime); box-shadow: 0 12px 36px rgba(201,243,29,.16); }
 .secondary { color: #e7e9e5; border: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.035); }
-.promise { display: flex; flex-wrap: wrap; gap: 7px 16px; color: #8f948d; font-size: 11px; font-weight: 700; }
-.promise span { display: inline-flex; align-items: center; gap: 5px; }
-.promise svg { color: var(--lime); }
 
 .stage { position: relative; display: grid; min-height: 520px; place-items: center; isolation: isolate; }
 .glow { position: absolute; z-index: -2; width: 78%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(201,243,29,.2), rgba(201,243,29,.03) 45%, transparent 68%); filter: blur(18px); animation: breathe 5s ease-in-out infinite; }
@@ -117,7 +114,6 @@
   .copy > p { font-size: 14px; line-height: 1.52; }
   .actions { display: grid; width: 100%; }
   .primary, .secondary { width: 100%; min-height: 48px; }
-  .promise { gap: 6px 12px; }
   .stage { min-height: 425px; overflow: hidden; }
   .product { width: 100%; gap: 18px; padding: 17px; border-radius: 20px; }
   .scene { min-height: 164px; padding: 18px 12px; }

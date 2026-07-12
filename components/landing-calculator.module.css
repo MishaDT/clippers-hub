@@ -45,26 +45,6 @@
   line-height: 1.55;
 }
 
-.copy ul {
-  display: grid;
-  gap: 7px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.copy li {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #c8cdc7;
-  font-size: 13px;
-}
-
-.copy li svg {
-  color: #c9f31d;
-}
-
 .calculator {
   display: grid;
   gap: 14px;

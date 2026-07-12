@@ -39,8 +39,8 @@ const content = {
     text: "Сразу видите задачу, дедлайн и чистую выплату. Создаёте ролик, публикуете со своего аккаунта и получаете деньги после проверки.",
     primary: "Смотреть заказы",
     primaryHref: "/campaigns",
-    secondary: "Как начать",
-    secondaryHref: "#how",
+    secondary: "Создать профиль",
+    secondaryHref: "/register?intent=worker&returnTo=%2Fcampaigns",
     stages: ["Заказ", "Публикация", "Выплата"],
     scenes: [
       { label: "Подходящий заказ", value: "до 450 ₽", note: "ТЗ и сумма видны до старта", icon: Sparkles },
@@ -94,11 +94,6 @@ export function LandingMotionHero() {
         <div className={styles.actions}>
           <Link className={styles.primary} href={active.primaryHref}>{active.primary} <ArrowRight size={18} /></Link>
           <a className={styles.secondary} href={active.secondaryHref}>{active.secondary}</a>
-        </div>
-        <div className={styles.promise}>
-          <span><Check size={14} /> Без подписки</span>
-          <span><Check size={14} /> Безопасная сделка</span>
-          <span><Check size={14} /> Понятный результат</span>
         </div>
       </div>
 
