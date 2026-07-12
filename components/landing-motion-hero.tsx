@@ -9,6 +9,7 @@ import {
   Check,
   CircleDollarSign,
   FileVideo2,
+  MousePointer2,
   Scissors,
   ShieldCheck,
   Sparkles
@@ -28,9 +29,9 @@ const content = {
     secondaryHref: "#budget-calculator",
     stages: ["Бриф", "Ролики", "Проверка"],
     scenes: [
-      { label: "Кампания опубликована", value: "3 ролика", note: "Бюджет уже в резерве", icon: BriefcaseBusiness },
-      { label: "Клиппер взял заказ", value: "Черновик готов", note: "Можно согласовать до публикации", icon: FileVideo2 },
-      { label: "Результат подтверждён", value: "30 000 просмотров", note: "Оплата только за проверенные данные", icon: BadgeCheck }
+      { label: "Кампания опубликована", value: "3 ролика", note: "Бюджет уже в резерве", action: "Посмотреть отклик", icon: BriefcaseBusiness },
+      { label: "Клиппер взял заказ", value: "Черновик готов", note: "Можно согласовать до публикации", action: "Согласовать ролик", icon: FileVideo2 },
+      { label: "Результат подтверждён", value: "30 000 просмотров", note: "Оплата только за проверенные данные", action: "Открыть отчёт", icon: BadgeCheck }
     ]
   },
   worker: {
@@ -43,9 +44,9 @@ const content = {
     secondaryHref: "/register?intent=worker&returnTo=%2Fcampaigns",
     stages: ["Заказ", "Публикация", "Выплата"],
     scenes: [
-      { label: "Подходящий заказ", value: "до 450 ₽", note: "ТЗ и сумма видны до старта", icon: Sparkles },
-      { label: "Ролик опубликован", value: "Ссылка принята", note: "ReelPay проверяет владельца и статистику", icon: FileVideo2 },
-      { label: "Выплата защищена", value: "383 ₽ доступно", note: "Начисление после защитного окна", icon: CircleDollarSign }
+      { label: "Подходящий заказ", value: "до 450 ₽", note: "ТЗ и сумма видны до старта", action: "Взять заказ", icon: Sparkles },
+      { label: "Ролик опубликован", value: "Ссылка принята", note: "ReelPay проверяет владельца и статистику", action: "Отправить ссылку", icon: FileVideo2 },
+      { label: "Выплата защищена", value: "383 ₽ доступно", note: "Начисление после защитного окна", action: "Открыть кошелёк", icon: CircleDollarSign }
     ]
   }
 } as const;
@@ -131,6 +132,18 @@ export function LandingMotionHero({
             <small>{active.scenes[step].label}</small>
             <strong>{active.scenes[step].value}</strong>
             <p>{active.scenes[step].note}</p>
+            <button
+              className={styles.demoAction}
+              type="button"
+              onClick={() => setStep((step + 1) % 3)}
+              aria-label={`${active.scenes[step].action}. Показать следующий шаг`}
+            >
+              {active.scenes[step].action} <ArrowRight size={14} />
+            </button>
+            <span className={styles.demoCursor} aria-hidden="true">
+              <MousePointer2 size={24} fill="currentColor" />
+              <i />
+            </span>
           </div>
           <footer>
             <span><ShieldCheck size={15} /> Проверено ReelPay</span>
