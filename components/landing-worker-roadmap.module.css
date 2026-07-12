@@ -63,6 +63,32 @@
   font-weight: 900;
 }
 
+.estimate {
+  display: grid;
+  width: min(100%, 520px);
+  gap: 10px;
+  margin-top: 3px;
+  padding: 14px;
+  border: 1px solid rgba(201, 243, 29, .18);
+  border-radius: 15px;
+  background: rgba(201, 243, 29, .055);
+}
+
+.estimate header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.estimate header span { color: #f0f3ec; font-size: 13px; font-weight: 850; }
+.estimate header small { color: #858d82; font-size: 10px; }
+.estimate > div { display: grid; grid-template-columns: .7fr 1fr 1.1fr; gap: 7px; }
+.estimate > div > span { display: grid; gap: 2px; padding: 9px; border-radius: 10px; background: rgba(255,255,255,.04); }
+.estimate b { color: #dfff63; font-size: 17px; letter-spacing: -.02em; }
+.estimate small { color: #90978e; font-size: 9px; }
+.estimate > p { margin: 0; color: #8f968d; font-size: 10px; line-height: 1.45; }
+
 .map {
   position: relative;
   min-height: 660px;
@@ -202,6 +228,9 @@
   .section { gap: 22px; padding: 20px 13px; border-radius: 19px; }
   .copy h2 { font-size: 31px; }
   .copy p { font-size: 14px; }
+  .estimate { padding: 12px; text-align: left; }
+  .estimate > div { grid-template-columns: 1fr 1fr; }
+  .estimate > div > span:last-child { grid-column: 1 / -1; }
   .map { min-height: 610px; }
   .step { grid-template-columns: 23px 34px minmax(0, 1fr); width: 58%; gap: 7px; padding: 9px; }
   .step:nth-child(6) { right: 0; }

@@ -25,7 +25,7 @@ const content = {
     text: "Добавьте исходное видео и условия. Клипперы выберут кампанию, подготовят публикации, а ReelPay проверит просмотры и вернёт остаток.",
     primary: "Запустить кампанию",
     primaryHref: "/register?intent=client&returnTo=%2Fcampaigns%2Fnew",
-    secondary: "Рассчитать бюджет",
+    secondary: "Посмотреть пример расчёта",
     secondaryHref: "#budget-calculator",
     stages: ["Бриф", "Ролики", "Проверка"],
     scenes: [

@@ -62,12 +62,12 @@ test.describe("public experience", () => {
 
     await expect(page.getByRole("heading", { name: /Запускайте короткие ролики/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Рассчитать бюджет/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Рассчитайте бюджет кампании/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /От исходного видео до проверенного результата/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Запустим первые ролики вместе/i })).toBeVisible();
     await page.getByRole("tab", { name: "Клипперам" }).click();
     await expect(page.getByRole("heading", { name: /Зарабатывайте на роликах/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Посчитайте чистую выплату/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Рассчитайте бюджет кампании/i })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /От исходного видео до проверенного результата/i })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /Запустим первые ролики вместе/i })).toHaveCount(0);
     await expect(page.getByText("Что я вижу до принятия заказа?")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Рџ");

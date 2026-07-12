@@ -2,15 +2,19 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
+  BriefcaseBusiness,
   CircleDollarSign,
   FileCheck2,
   Search,
   Send,
   Scissors,
+  SlidersHorizontal,
+  Upload,
+  WalletCards,
 } from "lucide-react";
 import styles from "./landing-worker-roadmap.module.css";
 
-const steps = [
+const workerSteps = [
   {
     icon: Search,
     title: "Найдите заказ",
@@ -43,20 +47,72 @@ const steps = [
   },
 ] as const;
 
-export function LandingWorkerRoadmap() {
+const clientSteps = [
+  {
+    icon: Upload,
+    title: "Добавьте исходник",
+    text: "Прикрепите видео, из которого нужны короткие ролики.",
+  },
+  {
+    icon: SlidersHorizontal,
+    title: "Задайте условия",
+    text: "Выберите формат, число публикаций, цель и срок.",
+  },
+  {
+    icon: WalletCards,
+    title: "Защитите бюджет",
+    text: "Максимальная сумма резервируется до результата.",
+  },
+  {
+    icon: FileCheck2,
+    title: "Согласуйте ролики",
+    text: "Посмотрите черновики до того, как они появятся в ленте.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Получите проверку",
+    text: "ReelPay проверит публикации и подтверждённые просмотры.",
+  },
+  {
+    icon: CircleDollarSign,
+    title: "Оплатите результат",
+    text: "Списывается подтверждённая сумма, остаток сохраняется.",
+  },
+] as const;
+
+function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
+  const isClient = audience === "client";
+  const steps = isClient ? clientSteps : workerSteps;
+  const titleId = isClient ? "client-roadmap-title" : "worker-roadmap-title";
+
   return (
-    <section className={styles.section} aria-labelledby="worker-roadmap-title">
+    <section className={styles.section} aria-labelledby={titleId}>
       <div className={styles.copy}>
-        <span><Scissors size={15} /> Как начать зарабатывать</span>
-        <h2 id="worker-roadmap-title">От заказа до выплаты — один понятный путь</h2>
-        <p>
-          Не нужно разбираться в сложных кабинетах. ReelPay показывает следующий шаг,
-          хранит договорённости и проверяет результат.
-        </p>
-        <Link href="/campaigns">Найти первый заказ <ArrowRight size={17} /></Link>
+        <span>{isClient ? <BriefcaseBusiness size={15} /> : <Scissors size={15} />} {isClient ? "Как проходит кампания" : "Как начать зарабатывать"}</span>
+        <h2 id={titleId}>{isClient ? "От исходного видео до проверенного результата" : "От заказа до выплаты — один понятный путь"}</h2>
+        <p>{isClient
+          ? "Вы задаёте условия и видите каждый этап. ReelPay хранит договорённости, проверяет публикации и показывает, за что списаны деньги."
+          : "Не нужно разбираться в сложных кабинетах. ReelPay показывает следующий шаг, хранит договорённости и проверяет результат."
+        }</p>
+
+        {isClient ? (
+          <div className={styles.estimate} id="budget-calculator" aria-label="Пример расчёта кампании">
+            <header><span>Пример расчёта</span><small>по выбранным условиям</small></header>
+            <div>
+              <span><b>3</b><small>публикации</small></span>
+              <span><b>30 000</b><small>целевая выдача</small></span>
+              <span><b>до 750 ₽</b><small>максимальный резерв</small></span>
+            </div>
+            <p>Цель — 10 тыс. просмотров на публикацию при ставке 25 ₽ за 1000. Фактическое списание зависит от подтверждённого результата.</p>
+          </div>
+        ) : null}
+
+        <Link href={isClient ? "/register?intent=client&returnTo=%2Fcampaigns%2Fnew" : "/campaigns"}>
+          {isClient ? "Запустить кампанию" : "Найти первый заказ"} <ArrowRight size={17} />
+        </Link>
       </div>
 
-      <div className={styles.map} aria-label="Шесть шагов от выбора заказа до выплаты">
+      <div className={styles.map} aria-label={isClient ? "Шесть шагов от исходного видео до результата" : "Шесть шагов от выбора заказа до выплаты"}>
         <svg className={styles.road} viewBox="0 0 520 720" aria-hidden="true">
           <path className={styles.roadBase} d="M260 28 C92 52 92 142 260 155 S428 258 260 274 S92 378 260 394 S428 498 260 514 S92 618 260 692" />
           <path className={styles.roadProgress} d="M260 28 C92 52 92 142 260 155 S428 258 260 274 S92 378 260 394 S428 498 260 514 S92 618 260 692" />
@@ -84,4 +140,12 @@ export function LandingWorkerRoadmap() {
       </div>
     </section>
   );
+}
+
+export function LandingClientRoadmap() {
+  return <LandingRoadmap audience="client" />;
+}
+
+export function LandingWorkerRoadmap() {
+  return <LandingRoadmap audience="worker" />;
 }

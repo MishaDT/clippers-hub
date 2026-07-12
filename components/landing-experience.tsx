@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { BadgeCheck, CircleDollarSign, FileCheck2, WalletCards } from "lucide-react";
-import { LandingCalculator } from "@/components/landing-calculator";
 import { LandingFaqChat } from "@/components/landing-faq-chat";
 import { LandingMotionHero, type LandingAudience } from "@/components/landing-motion-hero";
-import { LandingWorkerRoadmap } from "@/components/landing-worker-roadmap";
+import { LandingClientRoadmap, LandingWorkerRoadmap } from "@/components/landing-worker-roadmap";
 import { PilotLeadForm } from "@/components/pilot-lead-form";
 import styles from "./landing-experience.module.css";
 
@@ -38,7 +37,7 @@ export function LandingExperience() {
       <div className={styles.roleContent} key={audience}>
         {audience === "client" ? (
           <>
-            <div className={styles.deferred}><LandingCalculator /></div>
+            <div className={styles.deferred}><LandingClientRoadmap /></div>
             <div className={styles.deferred}><PilotLeadForm /></div>
             <div className={styles.deferred}><LandingFaqChat audience="client" /></div>
           </>
