@@ -59,8 +59,8 @@ export default async function NotificationsPage({
         <header className="notifications-head">
           <div><span className="eyebrow"><Bell size={15} /> События</span><h1>Уведомления</h1></div>
           <div className="notifications-bulk">
-            <form action={markAllNotificationsReadAction}><button type="submit"><CheckCheck size={16} /> Прочитать все</button></form>
-            <form action={archiveReadNotificationsAction}><button type="submit"><Archive size={16} /> Скрыть прочитанные</button></form>
+            <form action={markAllNotificationsReadAction}><button type="submit" aria-label="Прочитать все уведомления" title="Прочитать все"><CheckCheck size={16} /> Прочитать все</button></form>
+            <form action={archiveReadNotificationsAction}><button type="submit" aria-label="Скрыть прочитанные уведомления" title="Скрыть прочитанные"><Archive size={16} /> Скрыть прочитанные</button></form>
           </div>
         </header>
 

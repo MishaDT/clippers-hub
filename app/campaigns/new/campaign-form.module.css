@@ -152,8 +152,17 @@
 }
 
 @media (max-width: 700px) {
-  .wizard { padding: 12px; border-radius: 13px; }
+  .wizard {
+    gap: 14px;
+    padding: 0 0 16px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 0;
+    background: transparent;
+  }
+  .wizardTop { align-items: flex-start; }
   .labels { margin-inline: -4px; }
   .reviewModes { grid-template-columns: 1fr; }
-  .reviewModes span { min-height: 0; }
+  .reviewModes span { min-height: 0; padding: 14px 15px; }
+  .nav { gap: 8px; }
 }

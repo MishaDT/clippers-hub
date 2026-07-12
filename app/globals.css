@@ -16,6 +16,56 @@
   --shadow: 0 20px 60px rgba(0, 0, 0, .35);
 }
 
+/* 2026 UX pass: a single mobile rhythm for money and work screens. */
+@media (max-width: 640px) {
+  .wallet-screen {
+    gap: 20px !important;
+  }
+
+  .wallet-hero {
+    gap: 12px !important;
+  }
+
+  .wallet-action-card,
+  .wallet-history {
+    padding: 18px 0 !important;
+    border-width: 1px 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .wallet-action-card .form {
+    gap: 16px !important;
+  }
+
+  .wallet-row {
+    padding: 14px 0 !important;
+  }
+
+  .wallet-tabs {
+    padding: 4px !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .wallet-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .order-create-screen .order-panel {
+    padding: 18px 0 !important;
+    border-width: 1px 0 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .order-create-screen .order-fields {
+    gap: 18px !important;
+  }
+}
+
 
 /* Dense admin rows for scale */
 .admin-dense-list {

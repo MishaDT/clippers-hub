@@ -123,7 +123,11 @@
 
   .section,
   .faq {
-    padding: 18px;
+    margin: 0;
+    padding: 22px 0;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .steps {
@@ -132,5 +136,11 @@
 
   .steps > div {
     min-height: 0;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 0;
+    background: transparent;
   }
+
+  .faq details { padding: 18px 0; }
 }

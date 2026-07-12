@@ -383,14 +383,21 @@
 @media (max-width: 760px) {
   .orderGroups {
     grid-template-columns: 1fr;
+    gap: 22px;
   }
 
   .orderGroup {
-    padding: 12px;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .orderCard {
-    padding: 12px;
+    padding: 14px;
+    border-radius: 15px;
   }
 
   .orderMetrics {
