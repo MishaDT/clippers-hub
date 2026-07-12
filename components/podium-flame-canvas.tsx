@@ -56,7 +56,7 @@ export function PodiumFlameCanvas({ tone = "lime", jet = false }: { tone?: keyof
 
     let frame = 0;
     let lastFrame = 0;
-    let visible = true;
+    let running = false;
 
     function resize() {
       if (!canvas || !context) return;
@@ -87,9 +87,10 @@ export function PodiumFlameCanvas({ tone = "lime", jet = false }: { tone?: keyof
     }
 
     function draw(time: number) {
+      if (!running) return;
       frame = requestAnimationFrame(draw);
       if (!canvas || !context) return;
-      if (!visible || time - lastFrame < 33) return;
+      if (time - lastFrame < 33) return;
       lastFrame = time;
 
       const width = canvas.clientWidth;
@@ -131,18 +132,47 @@ export function PodiumFlameCanvas({ tone = "lime", jet = false }: { tone?: keyof
       context.restore();
     }
 
+    function start() {
+      if (running || document.hidden) return;
+      running = true;
+      frame = requestAnimationFrame(draw);
+    }
+
+    function stop() {
+      running = false;
+      cancelAnimationFrame(frame);
+    }
+
+    function renderStatic() {
+      running = true;
+      draw(0);
+      stop();
+    }
+
     const observer = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
+      if (entry.isIntersecting) {
+        if (reduced) renderStatic();
+        else start();
+      }
+      else stop();
     }, { rootMargin: "120px" });
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else if (canvas.getBoundingClientRect().bottom > -120 && canvas.getBoundingClientRect().top < innerHeight + 120) {
+        if (reduced) renderStatic();
+        else start();
+      }
+    };
     observer.observe(canvas);
     resize();
     window.addEventListener("resize", resize);
-    frame = requestAnimationFrame(draw);
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", resize);
-      cancelAnimationFrame(frame);
+      document.removeEventListener("visibilitychange", onVisibility);
+      stop();
     };
   }, [jet, tone]);
 

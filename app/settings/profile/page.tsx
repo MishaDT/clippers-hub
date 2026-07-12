@@ -16,25 +16,27 @@ export default async function ProfileSettingsPage({
 }) {
   const session = await requireUser();
   const params = await searchParams;
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: session.id },
-    include: {
-      portfolioPins: {
-        orderBy: { position: "asc" },
-        include: { submission: { include: { campaign: { select: { title: true } } } } }
+  const [user, submissions] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: session.id },
+      include: {
+        portfolioPins: {
+          orderBy: { position: "asc" },
+          include: { submission: { include: { campaign: { select: { title: true } } } } }
+        }
       }
-    }
-  });
-  const submissions = await prisma.submission.findMany({
-    where: {
-      workerId: user.id,
-      verifiedAt: { not: null },
-      status: { in: ["VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"] }
-    },
-    include: { campaign: { select: { title: true } } },
-    orderBy: { currentViews: "desc" },
-    take: 6
-  });
+    }),
+    prisma.submission.findMany({
+      where: {
+        workerId: session.id,
+        verifiedAt: { not: null },
+        status: { in: ["VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"] }
+      },
+      include: { campaign: { select: { title: true } } },
+      orderBy: { currentViews: "desc" },
+      take: 6
+    })
+  ]);
   const selected = parseJson<string[]>(user.specialtiesJson, []);
   const socialLinks = parseJson<string[]>(user.socialLinksJson, []);
 

@@ -23,29 +23,31 @@ export default async function AccountSettingsPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const accounts = await prisma.oAuthAccount.findMany({
-    where: { userId: user.id },
-    select: { id: true, provider: true, createdAt: true },
-    orderBy: { createdAt: "desc" }
-  });
-  const socialAccounts = await prisma.socialAccount.findMany({
-    where: {
-      userId: user.id,
-      platform: { in: ["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK"] }
-    },
-    select: {
-      id: true,
-      platform: true,
-      handle: true,
-      verifiedAt: true,
-      accountUrl: true,
-      connectionStatus: true,
-      lastCheckedAt: true,
-      credential: { select: { tokenExpiresAt: true, scopesJson: true } },
-      _count: { select: { submissions: true } }
-    },
-    orderBy: { updatedAt: "desc" }
-  });
+  const [accounts, socialAccounts] = await Promise.all([
+    prisma.oAuthAccount.findMany({
+      where: { userId: user.id },
+      select: { id: true, provider: true, createdAt: true },
+      orderBy: { createdAt: "desc" }
+    }),
+    prisma.socialAccount.findMany({
+      where: {
+        userId: user.id,
+        platform: { in: ["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK"] }
+      },
+      select: {
+        id: true,
+        platform: true,
+        handle: true,
+        verifiedAt: true,
+        accountUrl: true,
+        connectionStatus: true,
+        lastCheckedAt: true,
+        credential: { select: { tokenExpiresAt: true, scopesJson: true } },
+        _count: { select: { submissions: true } }
+      },
+      orderBy: { updatedAt: "desc" }
+    })
+  ]);
 
   return (
     <AppShell>

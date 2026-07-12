@@ -71,12 +71,13 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight") switchTab(1);
-      else if (e.key === "ArrowLeft") switchTab(-1);
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const direction = e.key === "ArrowRight" ? 1 : -1;
+      setActiveTab((current) => tabs[(tabs.indexOf(current) + direction + tabs.length) % tabs.length]);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, []);
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -137,7 +138,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
 
               <div className="reel-info">
                 <div className="reel-creator-row">
-                  <img src={campaign.ownerAvatar} alt="" />
+                  <img src={campaign.ownerAvatar} alt="" loading="lazy" decoding="async" />
                   <div className="reel-creator-meta">
                     <strong>{campaign.ownerName}</strong>
                     <span>{compactNumber(campaign.views)} просмотров в кампании</span>

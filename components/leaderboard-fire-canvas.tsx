@@ -44,7 +44,7 @@ export function LeaderboardFireCanvas() {
     let raf = 0;
     let frame = 0;
     let lastFrame = 0;
-    let visible = true;
+    let running = false;
 
     function resize() {
       const rect = canvasEl.getBoundingClientRect();
@@ -81,8 +81,9 @@ export function LeaderboardFireCanvas() {
     }
 
     function loop(time: number) {
+      if (!running) return;
       raf = requestAnimationFrame(loop);
-      if (!visible || time - lastFrame < 33) return;
+      if (time - lastFrame < 33) return;
       lastFrame = time;
       const width = canvasEl.clientWidth;
       const height = canvasEl.clientHeight;
@@ -122,17 +123,37 @@ export function LeaderboardFireCanvas() {
       context.restore();
     }
 
+    function start() {
+      if (running || document.hidden) return;
+      running = true;
+      raf = requestAnimationFrame(loop);
+    }
+
+    function stop() {
+      running = false;
+      cancelAnimationFrame(raf);
+    }
+
     const observer = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
+      if (entry.isIntersecting) start();
+      else stop();
     }, { rootMargin: "120px" });
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else if (canvasEl.getBoundingClientRect().bottom > -120 && canvasEl.getBoundingClientRect().top < innerHeight + 120) start();
+    };
     observer.observe(canvasEl);
     resize();
     window.addEventListener("resize", resize);
-    raf = requestAnimationFrame(loop);
+    document.addEventListener("visibilitychange", onVisibility);
+    if (reduced) {
+      drawBranches(canvasEl.clientWidth, canvasEl.clientHeight, 0);
+    }
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", resize);
-      cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
+      stop();
     };
   }, []);
 

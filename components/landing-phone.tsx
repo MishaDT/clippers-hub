@@ -7,10 +7,10 @@ import styles from "./landing-phone.module.css";
 type Clip = { poster: string; label: string; views: string; payout: string };
 
 const clips: Clip[] = [
-  { poster: "/assets/gaming-order.png", label: "Нарезка стрима", views: "121K", payout: "+2 400 ₽" },
-  { poster: "/assets/podcast-order.png", label: "Момент из подкаста", views: "64K", payout: "+1 280 ₽" },
-  { poster: "/assets/creator-nika.png", label: "Обзор продукта", views: "38K", payout: "+760 ₽" },
-  { poster: "/assets/hero-studio.png", label: "Хайлайт матча", views: "205K", payout: "+4 100 ₽" }
+  { poster: "/assets/gaming-order.webp", label: "Нарезка стрима", views: "121K", payout: "+2 400 ₽" },
+  { poster: "/assets/podcast-order.webp", label: "Момент из подкаста", views: "64K", payout: "+1 280 ₽" },
+  { poster: "/assets/creator-nika.webp", label: "Обзор продукта", views: "38K", payout: "+760 ₽" },
+  { poster: "/assets/hero-studio.webp", label: "Хайлайт матча", views: "205K", payout: "+4 100 ₽" }
 ];
 
 export function LandingPhone() {

@@ -2383,15 +2383,15 @@ h3 { font-size: 18px; margin-bottom: 8px; }
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.76)),
-    url(/assets/marketplace-thumb.png) center/cover;
+    url(/assets/marketplace-thumb.webp) center/cover;
 }
 .auth-video-strip i:nth-child(2) {
   transform: translateY(28px);
-  background-image: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.76)), url(/assets/gaming-order.png);
+  background-image: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.76)), url(/assets/gaming-order.webp);
 }
 .auth-video-strip i:nth-child(3) {
   transform: translateY(56px);
-  background-image: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.76)), url(/assets/podcast-order.png);
+  background-image: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.76)), url(/assets/podcast-order.webp);
 }
 .auth-task {
   position: absolute;

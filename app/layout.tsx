@@ -24,13 +24,13 @@ export const metadata: Metadata = {
     siteName: "ReelPay",
     title: "ReelPay — биржа коротких видео",
     description,
-    images: [{ url: "/assets/hero-studio.png", width: 1200, height: 630, alt: "ReelPay" }]
+    images: [{ url: "/assets/hero-studio.webp", width: 1200, height: 675, alt: "ReelPay" }]
   },
   twitter: {
     card: "summary_large_image",
     title: "ReelPay — биржа коротких видео",
     description,
-    images: ["/assets/hero-studio.png"]
+    images: ["/assets/hero-studio.webp"]
   }
 };
 

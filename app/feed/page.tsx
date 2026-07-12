@@ -6,11 +6,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { getActiveRoleMode } from "@/lib/role-mode";
 
 const images = [
-  "/assets/gaming-order.png",
-  "/assets/podcast-order.png",
-  "/assets/marketplace-thumb.png",
-  "/assets/hero-studio.png",
-  "/assets/creator-nika.png"
+  "/assets/gaming-order.webp",
+  "/assets/podcast-order.webp",
+  "/assets/marketplace-thumb.webp",
+  "/assets/hero-studio.webp",
+  "/assets/creator-nika.webp"
 ];
 const videos = [
   "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",

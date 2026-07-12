@@ -41,11 +41,11 @@ type Row = {
 };
 
 const COVERS = [
-  "/assets/gaming-order.png",
-  "/assets/podcast-order.png",
-  "/assets/marketplace-thumb.png",
-  "/assets/hero-studio.png",
-  "/assets/creator-nika.png"
+  "/assets/gaming-order.webp",
+  "/assets/podcast-order.webp",
+  "/assets/marketplace-thumb.webp",
+  "/assets/hero-studio.webp",
+  "/assets/creator-nika.webp"
 ];
 
 function coverFor(seed: string) {
