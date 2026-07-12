@@ -21,7 +21,10 @@ const secondaryLinks = [
 export function SiteFooter() {
   return (
     <footer className={styles.footer}>
-      <Link className={styles.brand} href="/">Reel<span>Pay</span></Link>
+      <div className={styles.identity}>
+        <Link className={styles.brand} href="/">Reel<span>Pay</span></Link>
+        <small>Короткие ролики с оплатой за результат</small>
+      </div>
       <nav className={styles.links} aria-label="Основные ссылки">
         {primaryLinks.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}
         {secondaryLinks.map(([href, label]) => <Link href={href} key={href}>{label}</Link>)}

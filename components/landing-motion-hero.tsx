@@ -37,7 +37,7 @@ const content = {
   worker: {
     eyebrow: "Для клипперов",
     title: <>Выбирайте заказы. <span>Зарабатывайте на роликах.</span></>,
-    text: "Сразу видите задачу, дедлайн и чистую выплату. Создаёте ролик, публикуете со своего аккаунта и получаете деньги после проверки.",
+    text: "Выберите заказ, сделайте ролик и получите оплату после проверки.",
     primary: "Смотреть заказы",
     primaryHref: "/campaigns",
     secondary: "Создать профиль",
@@ -146,7 +146,6 @@ export function LandingMotionHero({
             </span>
           </div>
           <footer>
-            <span><ShieldCheck size={15} /> Проверено ReelPay</span>
             <div>{active.stages.map((label, index) => <i key={label} data-active={index === step} />)}</div>
           </footer>
         </div>

@@ -176,10 +176,23 @@ function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
           </g>
         </svg>
 
-        <div className={styles.mobileRail} aria-hidden="true">
-          <i style={{ height: `${(activeStep / (steps.length - 1)) * 100}%` }} />
-          <b style={{ top: `${(activeStep / (steps.length - 1)) * 100}%` }}>RP</b>
-        </div>
+        <svg className={styles.mobileRoad} viewBox="0 0 44 500" preserveAspectRatio="none" aria-hidden="true">
+          <path className={styles.mobileRoadBase} d="M22 0 C2 30 2 70 22 100 S42 170 22 200 S2 270 22 300 S42 370 22 400 S2 470 22 500" />
+          <path className={styles.mobileRoadProgress} d="M22 0 C2 30 2 70 22 100 S42 170 22 200 S2 270 22 300 S42 370 22 400 S2 470 22 500" />
+          <g className={styles.mobileTraveller} transform={running ? undefined : "translate(22 0)"}>
+            <circle r="11" />
+            <circle className={styles.mobileTravellerCore} r="8" />
+            <text x="0" y="2.7" textAnchor="middle">RP</text>
+            {running ? (
+              <animateMotion
+                key={`mobile-${runKey}`}
+                dur="9s"
+                repeatCount="indefinite"
+                path="M22 0 C2 30 2 70 22 100 S42 170 22 200 S2 270 22 300 S42 370 22 400 S2 470 22 500"
+              />
+            ) : null}
+          </g>
+        </svg>
 
         <div className={styles.steps}>
           {steps.map(({ icon: Icon, title, text }, index) => (

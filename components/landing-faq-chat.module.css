@@ -133,8 +133,14 @@
   }
 
   .item {
-    padding: 10px;
+    gap: 7px;
+    padding: 11px;
   }
+
+  .question { padding: 10px 11px; }
+  .avatar { display: none; }
+  .bubble { padding: 7px 3px 2px; border: 0; background: transparent; }
+  .bubble p { font-size: 13px; line-height: 1.5; }
 
   .head h2 {
     font-size: 22px;

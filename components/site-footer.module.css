@@ -21,6 +21,9 @@
   color: #c9f31d;
 }
 
+.identity { display: grid; gap: 3px; }
+.identity small { color: #6f756f; font-size: 10px; white-space: nowrap; }
+
 .links {
   display: flex;
   align-items: center;
@@ -50,8 +53,11 @@
 @media (max-width: 760px) {
   .footer {
     grid-template-columns: 1fr auto;
-    gap: 9px 12px;
-    padding: 14px 4px 8px;
+    gap: 13px 12px;
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 18px;
+    background: linear-gradient(145deg,rgba(255,255,255,.025),rgba(201,243,29,.025));
     font-size: 11px;
   }
 
@@ -59,15 +65,18 @@
     margin-bottom: calc(72px + var(--safe-b));
   }
 
-  .brand {
-    font-size: 13px;
-  }
+  .identity { grid-column: 1 / -1; }
+  .brand { font-size: 15px; }
+  .identity small { white-space: normal; }
 
   .links {
     grid-column: 1 / -1;
-    justify-content: flex-start;
-    gap: 8px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
   }
+
+  .links > a { display:flex;min-height:38px;align-items:center;padding:0 10px;border-radius:10px;background:rgba(255,255,255,.035); }
 
   .links > a:nth-of-type(n + 5) {
     display: none;
@@ -75,14 +84,24 @@
 
   .more {
     display: block;
+    grid-column: 1 / -1;
   }
 
   .more summary {
-    display: block;
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.035);
     color: #aeb4af;
     cursor: pointer;
     font-weight: 750;
   }
+
+  .more summary::after { content: "+"; color: #c9f31d; font-size: 16px; }
+  .more[open] summary::after { content: "−"; }
 
   .more div {
     display: none;
@@ -97,9 +116,13 @@
 
   .more[open] div {
     display: grid;
+    padding: 10px;
+    border-radius: 0 0 10px 10px;
+    background: rgba(255,255,255,.02);
   }
 
   .copy {
+    grid-column: 2;
     justify-self: end;
   }
 }

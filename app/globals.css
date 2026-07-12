@@ -16,6 +16,7 @@
   --shadow: 0 20px 60px rgba(0, 0, 0, .35);
 }
 
+
 /* Dense admin rows for scale */
 .admin-dense-list {
   display: none;
@@ -14776,4 +14777,11 @@ body:has(.wallet-screen) {
 .manual-verify-row input[type="number"] { min-height: 40px; padding: 8px 10px; }
 @media (max-width: 640px) {
   .manual-verify-row { grid-template-columns: 1fr; }
+}
+
+/* Public mobile pages do not need space reserved for the signed-in bottom navigation. */
+@media (max-width: 760px) {
+  body:not(:has(.bottom-nav)) .content {
+    padding-bottom: 24px;
+  }
 }
