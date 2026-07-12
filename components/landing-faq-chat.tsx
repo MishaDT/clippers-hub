@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import styles from "./landing-faq-chat.module.css";
 
-const faq: { q: string; a: string; href?: string; hrefLabel?: string }[] = [
+const clientFaq: { q: string; a: string; href?: string; hrefLabel?: string }[] = [
   {
     q: "Как проверяются просмотры?",
     a: "Где доступно, ReelPay получает статистику через подключённый аккаунт площадки. Дополнительно проверяются владелец публикации, повторные ссылки и подозрительная динамика. Неоднозначный результат отправляется модератору.",
@@ -27,12 +27,38 @@ const faq: { q: string; a: string; href?: string; hrefLabel?: string }[] = [
   }
 ];
 
-export function LandingFaqChat() {
+const workerFaq: typeof clientFaq = [
+  {
+    q: "Что я вижу до принятия заказа?",
+    a: "Задачу, исходник, площадки, дедлайн, правила публикации и чистую выплату с учётом вашей лиги."
+  },
+  {
+    q: "Нужно ли много подписчиков?",
+    a: "Общего минимального порога нет. Но отдельный заказ может содержать требования к площадке или аккаунту — они будут видны заранее."
+  },
+  {
+    q: "Как подтвердить, что ролик мой?",
+    a: "Можно выбрать подключённый аккаунт площадки или использовать выданный ReelPay код. Способ проверки указан при сдаче работы.",
+    href: "/settings/account#social-accounts",
+    hrefLabel: "Подключить площадку"
+  },
+  {
+    q: "Когда я получу выплату?",
+    a: "После достижения условия результата начисление проходит защитное окно до 48 часов. Затем подтверждённая сумма становится доступной к выводу."
+  },
+  {
+    q: "Что делать при несправедливом отклонении?",
+    a: "Подайте апелляцию до выплаты. Поддержка проверит бриф, черновик, ссылку и сохранённую историю статистики."
+  }
+];
+
+export function LandingFaqChat({ audience = "client" }: { audience?: "client" | "worker" }) {
+  const faq = audience === "worker" ? workerFaq : clientFaq;
   return (
     <section className={styles.section} aria-labelledby="faq-title">
       <div className={styles.head}>
         <span className={styles.badge}><Sparkles size={14} /> Коротко о главном</span>
-        <h2 id="faq-title">Что важно знать до старта</h2>
+        <h2 id="faq-title">{audience === "worker" ? "Что важно знать клипперу" : "Что важно знать заказчику"}</h2>
       </div>
 
       <div className={styles.chat}>

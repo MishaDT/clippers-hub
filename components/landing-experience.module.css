@@ -5,7 +5,8 @@
   width: min(1180px, 100%);
   margin: 0 auto;
 }
-.page > * { min-width: 0; }
+.page > *,
+.roleContent > * { min-width: 0; }
 
 .trust {
   display: grid;
@@ -22,11 +23,22 @@
 .trust b { font-size: 13px; }
 .trust small { overflow: hidden; color: #92978f; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 
+.roleContent { display: grid; gap: 22px; animation: contentIn .32s ease both; }
 .deferred { min-width: 0; content-visibility: auto; contain-intrinsic-size: auto 620px; }
 
+@keyframes contentIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (max-width: 640px) {
-  .page { gap: 14px; }
+  .page,
+  .roleContent { gap: 14px; }
   .trust { grid-template-columns: 1fr; }
   .trust > div { padding: 14px 16px; }
   .trust > div + div { border-top: 1px solid rgba(255,255,255,.08); border-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roleContent { animation: none; }
 }

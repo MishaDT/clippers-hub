@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import styles from "./landing-motion-hero.module.css";
 
-type Audience = "client" | "worker";
+export type LandingAudience = "client" | "worker";
 
 const content = {
   client: {
@@ -50,8 +50,13 @@ const content = {
   }
 } as const;
 
-export function LandingMotionHero() {
-  const [audience, setAudience] = useState<Audience>("client");
+export function LandingMotionHero({
+  audience,
+  onAudienceChange
+}: {
+  audience: LandingAudience;
+  onAudienceChange: (audience: LandingAudience) => void;
+}) {
   const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
@@ -81,10 +86,10 @@ export function LandingMotionHero() {
     >
       <div className={styles.copy}>
         <div className={styles.switcher} role="tablist" aria-label="Выберите свою роль">
-          <button type="button" role="tab" aria-selected={audience === "client"} onClick={() => { setStep(0); setAudience("client"); }}>
+          <button type="button" role="tab" aria-selected={audience === "client"} onClick={() => { setStep(0); onAudienceChange("client"); }}>
             <BriefcaseBusiness size={16} /> Заказчикам
           </button>
-          <button type="button" role="tab" aria-selected={audience === "worker"} onClick={() => { setStep(0); setAudience("worker"); }}>
+          <button type="button" role="tab" aria-selected={audience === "worker"} onClick={() => { setStep(0); onAudienceChange("worker"); }}>
             <Scissors size={16} /> Клипперам
           </button>
         </div>

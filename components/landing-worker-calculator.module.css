@@ -1,0 +1,42 @@
+.section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, .78fr);
+  gap: clamp(24px, 5vw, 62px);
+  align-items: center;
+  padding: clamp(22px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid rgba(201,243,29,.14);
+  border-radius: 26px;
+  background: radial-gradient(circle at 85% 5%, rgba(201,243,29,.1), transparent 32%), #080b08;
+}
+.copy { display: grid; justify-items: start; gap: 14px; }
+.copy > span { display: inline-flex; align-items: center; gap: 7px; color: #c9f31d; font-size: 11px; font-weight: 850; text-transform: uppercase; }
+.copy h2 { max-width: 620px; margin: 0; font-size: clamp(27px, 3.8vw, 42px); line-height: 1.05; letter-spacing: -.03em; }
+.copy p { max-width: 650px; margin: 0; color: #9da49d; font-size: 16px; line-height: 1.55; }
+.calculator { display: grid; gap: 14px; padding: 18px; border: 1px solid rgba(201,243,29,.16); border-radius: 18px; background: rgba(17,22,16,.9); }
+.calculator header { display: flex; align-items: center; gap: 10px; color: #c9f31d; }
+.calculator header div { display: grid; }
+.calculator header b { color: #f3f5ef; font-size: 15px; }
+.calculator header span,
+.calculator > p { color: #9da49d; font-size: 11px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fields label { display: grid; gap: 5px; color: #9da49d; font-size: 11px; }
+.fields .wide { grid-column: 1 / -1; }
+.fields input,
+.fields select { width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid #323832; border-radius: 9px; background: #0d100d; color: #f2f4ef; font: inherit; font-size: 13px; }
+.result { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.result span { display: grid; gap: 2px; padding: 10px; border-radius: 10px; background: rgba(255,255,255,.035); }
+.result small { color: #9da49d; font-size: 10.5px; }
+.result b { font-size: 17px; }
+.result .net { grid-column: 1 / -1; background: rgba(201,243,29,.1); }
+.result .net b { color: #dfff63; font-size: 22px; }
+.calculator > a { display: inline-flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; gap: 8px; padding: 0 19px; border-radius: 11px; background: #c9f31d; color: #0b0d08; font-size: 13px; font-weight: 900; }
+.calculator > p { margin: 0; line-height: 1.45; }
+
+@media (max-width: 900px) { .section { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .section { gap: 17px; padding: 18px 14px; border-radius: 19px; }
+  .copy h2 { font-size: 32px; }
+  .copy p { font-size: 14px; }
+  .calculator { padding: 14px; }
+}
