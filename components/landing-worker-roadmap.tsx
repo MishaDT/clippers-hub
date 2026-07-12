@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -91,7 +91,6 @@ function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
   const [inView, setInView] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
   const [runKey, setRunKey] = useState(0);
   const running = inView && pageVisible && !reducedMotion;
 
@@ -122,13 +121,8 @@ function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
 
   useEffect(() => {
     if (!running) return;
-    setActiveStep(0);
     setRunKey((value) => value + 1);
-    const timer = window.setInterval(() => {
-      setActiveStep((current) => (current + 1) % steps.length);
-    }, 1500);
-    return () => window.clearInterval(timer);
-  }, [running, steps.length]);
+  }, [running]);
 
   return (
     <section className={styles.section} aria-labelledby={titleId}>
@@ -194,9 +188,9 @@ function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
           </g>
         </svg>
 
-        <div className={styles.steps}>
+        <div className={styles.steps} data-running={running} key={`steps-${runKey}`}>
           {steps.map(({ icon: Icon, title, text }, index) => (
-            <article className={styles.step} key={title} data-active={index === activeStep}>
+            <article className={styles.step} key={title} style={{ "--step": index } as CSSProperties}>
               <span className={styles.number}>{index + 1}</span>
               <span className={styles.icon}><Icon size={18} /></span>
               <div><h3>{title}</h3><p>{text}</p></div>

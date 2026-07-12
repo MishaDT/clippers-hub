@@ -105,6 +105,7 @@ export function LandingMotionHero({
 
       <div className={styles.stage} aria-label={`Демонстрация пути: ${active.stages.join(", ")}`}>
         <i className={styles.glow} aria-hidden="true" />
+        <span className={styles.demoLabel} aria-hidden="true"><Sparkles size={13} /> Интерактивный пример</span>
         <div className={`${styles.floatCard} ${styles.floatOne}`} aria-hidden="true">Shorts <b>+12,4K</b></div>
         <div className={`${styles.floatCard} ${styles.floatTwo}`} aria-hidden="true">VK Клипы <b>готово</b></div>
         <div className={styles.product}>

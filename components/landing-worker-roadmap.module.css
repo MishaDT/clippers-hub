@@ -153,6 +153,7 @@
 .mobileRoad { display: none; }
 
 .step {
+  --step: 0;
   position: absolute;
   z-index: 3;
   display: grid;
@@ -165,10 +166,14 @@
   border-radius: 14px;
   background: rgba(13, 18, 12, .94);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
-  transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
 }
 
-.step[data-active="true"] {
+.steps[data-running="true"] .step {
+  animation: stepSequence 9s linear infinite;
+  animation-delay: calc(var(--step) * 1.5s);
+}
+
+.steps:not([data-running="true"]) .step:first-child {
   border-color: rgba(201, 243, 29, .46);
   box-shadow: 0 0 0 1px rgba(201, 243, 29, .12), 0 14px 36px rgba(0, 0, 0, .3);
   transform: translateY(-2px);
@@ -209,6 +214,19 @@
 
 @keyframes roadFlow {
   to { stroke-dashoffset: -22; }
+}
+
+@keyframes stepSequence {
+  0%, 14% {
+    border-color: rgba(201, 243, 29, .46);
+    box-shadow: 0 0 0 1px rgba(201, 243, 29, .12), 0 14px 36px rgba(0, 0, 0, .3);
+    transform: translateY(-2px);
+  }
+  18%, 100% {
+    border-color: rgba(255, 255, 255, .08);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
+    transform: none;
+  }
 }
 
 @media (max-width: 900px) {

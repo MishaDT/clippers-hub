@@ -8,21 +8,6 @@
 .page > *,
 .roleContent > * { min-width: 0; }
 
-.trust {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 18px;
-  background: rgba(255,255,255,.025);
-}
-.trust > div { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 17px 19px; }
-.trust > div + div { border-left: 1px solid rgba(255,255,255,.08); }
-.trust svg { flex: none; color: var(--lime); }
-.trust span { display: grid; min-width: 0; gap: 2px; }
-.trust b { font-size: 13px; }
-.trust small { overflow: hidden; color: #92978f; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-
 .roleContent { display: grid; gap: clamp(22px, 3vw, 34px); animation: contentIn .32s ease both; }
 .deferred { min-width: 0; content-visibility: auto; contain-intrinsic-size: auto 620px; }
 
@@ -34,9 +19,6 @@
 @media (max-width: 640px) {
   .page,
   .roleContent { gap: 20px; }
-  .trust { grid-template-columns: 1fr; }
-  .trust > div { padding: 14px 16px; }
-  .trust > div + div { border-top: 1px solid rgba(255,255,255,.08); border-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
