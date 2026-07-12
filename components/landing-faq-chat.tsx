@@ -63,7 +63,7 @@ export function LandingFaqChat({ audience = "client" }: { audience?: "client" | 
 
       <div className={styles.chat}>
         {faq.map(({ q, a, href, hrefLabel }) => (
-          <details className={styles.item} key={q}>
+          <details className={styles.item} key={q} open>
             <summary className={styles.question}>{q}</summary>
             <div className={styles.answer}>
               <span className={styles.avatar}><Sparkles size={14} /></span>

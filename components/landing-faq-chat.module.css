@@ -1,15 +1,15 @@
 .section {
   display: grid;
-  gap: 20px;
-  padding: clamp(22px, 4vw, 40px);
+  gap: 16px;
+  padding: clamp(18px, 3vw, 28px);
   border: 1px solid rgba(255, 255, 255, .07);
-  border-radius: 24px;
+  border-radius: 20px;
   background: #080b08;
 }
 
 .head {
   display: grid;
-  gap: 8px;
+  gap: 5px;
   justify-items: center;
   text-align: center;
 }
@@ -26,36 +26,43 @@
 
 .head h2 {
   margin: 0;
-  font-size: clamp(24px, 3.6vw, 38px);
+  font-size: clamp(22px, 3vw, 32px);
   letter-spacing: -.03em;
   color: #f6f8f3;
 }
 
 .chat {
   display: grid;
-  gap: 10px;
-  max-width: 760px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  max-width: 980px;
   width: 100%;
   margin: 0 auto;
 }
 
 .item {
-  border-radius: 16px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .025);
 }
 
 .question {
   list-style: none;
   cursor: pointer;
-  margin-left: auto;
-  max-width: 88%;
-  width: fit-content;
-  padding: 12px 16px;
-  border-radius: 16px 16px 4px 16px;
+  max-width: 100%;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 11px;
   border: 1px solid rgba(201, 243, 29, .35);
   background: rgba(201, 243, 29, .13);
   color: #e3ecc9;
   font-weight: 750;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .item[open] .question {
@@ -74,16 +81,16 @@
 .answer {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  margin-top: 10px;
-  max-width: 88%;
+  gap: 8px;
+  margin-top: 0;
+  max-width: 100%;
 }
 
 .avatar {
   flex-shrink: 0;
   display: inline-flex;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
@@ -94,8 +101,8 @@
 .bubble {
   display: grid;
   gap: 8px;
-  padding: 12px 15px;
-  border-radius: 4px 16px 16px 16px;
+  padding: 10px 12px;
+  border-radius: 4px 12px 12px 12px;
   background: rgba(255, 255, 255, .045);
   border: 1px solid rgba(255, 255, 255, .07);
 }
@@ -103,12 +110,33 @@
 .bubble p {
   margin: 0;
   color: #c8cdc7;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .bubble a {
   color: #c9f31d;
   font-size: 13px;
   font-weight: 750;
+}
+
+@media (max-width: 720px) {
+  .section {
+    gap: 14px;
+    padding: 16px 12px;
+    border-radius: 16px;
+  }
+
+  .chat {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .item {
+    padding: 10px;
+  }
+
+  .head h2 {
+    font-size: 22px;
+  }
 }
