@@ -91,8 +91,9 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   }
 
   function apply() {
+    const target = urlWith(draft);
     setOpen(false);
-    startTransition(() => router.push(urlWith(draft)));
+    startTransition(() => router.push(target));
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
