@@ -165,7 +165,8 @@ test.describe("worker flow", () => {
     await expectNoHorizontalScroll(page);
   });
 
-  test("open dispute blocks the payout until an admin decision", async ({ page }) => {
+  test("open dispute blocks the payout until an admin decision", async ({ page, isMobile }) => {
+    test.skip(!isMobile, "Stateful financial flow is covered once on mobile");
     const worker = await prisma.user.findUniqueOrThrow({ where: { email: "anya@clippers.local" } });
     const submission = await prisma.submission.findFirstOrThrow({
       where: { workerId: worker.id, status: { not: "PAID" } },
@@ -222,7 +223,8 @@ test.describe("client flow", () => {
     await expectNoHorizontalScroll(page);
   });
 
-  test("accepted client dispute reverses a pending earning exactly once", async ({ page }) => {
+  test("accepted client dispute reverses a pending earning exactly once", async ({ page, isMobile }) => {
+    test.skip(!isMobile, "Stateful financial flow is covered once on mobile");
     const client = await prisma.user.findUniqueOrThrow({ where: { email: "nikita@clippers.local" } });
     const submission = await prisma.submission.findFirstOrThrow({
       where: { campaign: { ownerId: client.id }, status: { not: "PAID" } },

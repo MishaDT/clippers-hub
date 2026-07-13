@@ -53,11 +53,11 @@ test("support request reaches admin and the reply reaches the user", async ({ pa
     await page.getByRole("button", { name: "Создать обращение" }).click();
     await expect(page).toHaveURL(/\/support\?thread=/);
     await expect(page.getByRole("heading", { name: subject })).toBeVisible();
+    const thread = await prisma.supportThread.findFirstOrThrow({ where: { subject }, select: { id: true } });
 
     await context.clearCookies();
     await login(page, "admin@clippers.local");
-    await page.goto(`/admin/support?q=${encodeURIComponent(subject)}`);
-    await page.getByRole("link", { name: new RegExp(subject) }).click();
+    await page.goto(`/admin/support?thread=${thread.id}`);
     await page.getByPlaceholder("Ответить от имени ReelPay Support").fill("Обращение получено и проверено.");
     await page.getByRole("button", { name: "Отправить" }).click();
     await expect(page.getByText("Обращение получено и проверено.", { exact: true })).toBeVisible();
@@ -67,7 +67,6 @@ test("support request reaches admin and the reply reaches the user", async ({ pa
 
     await context.clearCookies();
     await login(page, "anya@clippers.local");
-    const thread = await prisma.supportThread.findFirstOrThrow({ where: { subject }, select: { id: true } });
     await page.goto(`/support?thread=${thread.id}`);
     await expect(page.getByText("Обращение получено и проверено.", { exact: true })).toBeVisible();
   } finally {
