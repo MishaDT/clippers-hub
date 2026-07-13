@@ -2,6 +2,27 @@
   width: min(1180px, 100%);
 }
 
+.marketplace :global(.fs-card) {
+  margin-bottom: 28px;
+}
+
+.marketplace :global(.campaign-guide-collapsed) {
+  margin-bottom: 32px;
+}
+
+.marketplace :global(.mk-head) {
+  margin: 0 0 18px;
+  padding: 0;
+}
+
+.marketplace :global(.mk-stats) {
+  margin-bottom: 16px;
+}
+
+.marketplace :global(.campaign-filter-shell) {
+  margin-bottom: 26px;
+}
+
 .marketplace :global(.mk-compact-top) {
   display: grid;
   gap: 12px;
@@ -55,15 +76,16 @@
 
 .marketplace :global(.mk-grid) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .marketplace :global(.mk-card) {
-  min-height: 260px;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 8px;
-  background: #111115;
+  min-height: 286px;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border-color: rgba(255, 255, 255, .09);
+  background: linear-gradient(160deg, rgba(19, 23, 18, .96), rgba(12, 13, 13, .98));
   box-shadow: none;
 }
 
@@ -72,8 +94,8 @@
 }
 
 .marketplace :global(.mk-title) {
-  min-height: 42px;
-  font-size: 17px;
+  min-height: 44px;
+  font-size: 18px;
   letter-spacing: 0;
 }
 
@@ -81,11 +103,14 @@
   min-height: 39px;
 }
 
-.marketplace :global(.mk-payline) {
+.marketplace :global(.mk-card-footer) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 28px;
+  align-items: center;
+  gap: 10px;
   margin-top: auto;
-  padding: 11px 12px;
-  border-radius: 8px;
-  background: rgba(201, 243, 29, .055);
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, .075);
 }
 
 .marketplace :global(.mk-pay b) {
@@ -96,6 +121,76 @@
 .marketplace :global(.mk-meta) {
   min-height: 24px;
   gap: 7px 12px;
+}
+
+.marketplace :global(.mk-platforms) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.marketplace :global(.mk-platform) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 9px;
+  color: #dfe3dc;
+  background: rgba(255, 255, 255, .035);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.marketplace :global(.mk-platform > b) {
+  font-size: 10px;
+  letter-spacing: -.04em;
+}
+
+.marketplace :global(.mk-platform > svg) {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.marketplace :global(.mk-platform--youtube) { color: #ff7777; }
+.marketplace :global(.mk-platform--vk) { color: #72a7ff; }
+.marketplace :global(.mk-platform--tiktok) { color: #80e5df; }
+.marketplace :global(.mk-platform--instagram) { color: #f08ac4; }
+.marketplace :global(.mk-platform--twitch) { color: #b696ff; }
+
+.marketplace :global(.mk-card-footer .mk-client) {
+  overflow: hidden;
+}
+
+.marketplace :global(.mk-card-footer .mk-client strong) {
+  font-size: 12px;
+}
+
+.marketplace :global(.mk-card-footer .mk-client span) {
+  font-size: 10px;
+}
+
+.marketplace :global(.mk-card-footer .mk-pay) {
+  justify-items: end;
+  text-align: right;
+}
+
+.marketplace :global(.mk-card-footer .mk-pay b) {
+  color: #dfff73;
+}
+
+.marketplace :global(.mk-card-footer .mk-go) {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #0a0b08;
+  background: var(--primary);
 }
 
 .marketplace :global(.mk-signal--new) {
@@ -112,17 +207,19 @@
 
 @media (max-width: 720px) {
   .marketplace {
-    padding-top: 4px;
+    padding-top: 10px;
   }
 
   .marketplace :global(.mk-grid) {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 14px;
   }
 
   .marketplace :global(.mk-card) {
     min-height: 0;
-    padding: 14px;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 16px;
   }
 
   .marketplace :global(.mk-title),
@@ -132,7 +229,19 @@
 
   .marketplace :global(.mk-head) {
     display: grid;
-    gap: 12px;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .marketplace :global(.mk-head h1) {
+    margin-top: 7px;
+    font-size: 27px;
+    line-height: 1.08;
+  }
+
+  .marketplace :global(.mk-head p) {
+    max-width: 33ch;
+    font-size: 14px;
   }
 
   .marketplace :global(.mk-compact-top) {
@@ -140,7 +249,7 @@
   }
 
   .marketplace :global(.campaign-filter-shell) {
-    margin: 0;
+    margin: 0 0 20px;
   }
 
   .marketplace :global(.campaign-search-row) {
@@ -180,7 +289,9 @@
   .marketplace :global(.mk-stats) {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
+    gap: 0;
+    margin-bottom: 14px;
+    border-block: 1px solid rgba(255, 255, 255, .075);
   }
 
   .marketplace :global(.mk-stat) {
@@ -188,8 +299,10 @@
     display: grid;
     justify-items: center;
     gap: 2px;
-    padding: 8px 4px;
-    border-radius: 8px;
+    padding: 10px 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     text-align: center;
     font-size: 10px;
   }
@@ -199,9 +312,63 @@
   }
 
   .marketplace :global(.mk-leaders) {
-    width: 100%;
-    justify-content: center;
-    border-radius: 8px;
+    width: fit-content;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #d7ddcb;
+  }
+
+  .marketplace :global(.fs-card) {
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 12px 0;
+    border-width: 1px 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .marketplace :global(.fs-steps li) {
+    padding: 7px 0;
+    background: transparent;
+  }
+
+  .marketplace :global(.campaign-guide-collapsed) {
+    margin-bottom: 28px;
+  }
+
+  .marketplace :global(.mk-card-top) {
+    align-items: flex-start;
+  }
+
+  .marketplace :global(.mk-card-signals) {
+    max-width: 46%;
+  }
+
+  .marketplace :global(.mk-seed),
+  .marketplace :global(.mk-fast) {
+    display: none;
+  }
+
+  .marketplace :global(.mk-meta) {
+    gap: 8px 13px;
+  }
+
+  .marketplace :global(.mk-meta > span) {
+    font-size: 11.5px;
+  }
+
+  .marketplace :global(.mk-card-footer) {
+    grid-template-columns: minmax(0, 1fr) auto 28px;
+  }
+
+  .marketplace :global(.mk-card-footer .mk-pay b) {
+    font-size: 19px;
+  }
+
+  .marketplace :global(.mk-card-footer .mk-pay em) {
+    max-width: 116px;
+    font-size: 10px;
   }
 
   .signalRules p {

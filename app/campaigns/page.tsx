@@ -92,6 +92,7 @@ const getCampaigns = unstable_cache(
         title: true,
         description: true,
         sourcePlatform: true,
+        allowedPlatformsJson: true,
         cpmRateCents: true,
         minimumGuaranteeCents: true,
         viewThreshold: true,
@@ -114,7 +115,7 @@ const getCampaigns = unstable_cache(
       orderBy: { createdAt: "desc" },
       take: 80
     }),
-  ["campaigns-marketplace-v6"],
+  ["campaigns-marketplace-v7"],
   { revalidate: 30, tags: ["campaigns"] }
 );
 
@@ -306,11 +307,13 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const quickCount = filtered.filter((campaign) => Math.ceil((timeOf(campaign.deadline) - Date.now()) / 86400000) <= 3).length;
   const cards: MarketplaceCard[] = filtered.map((campaign) => {
     const match = user ? campaignMatch(campaign, matchProfile) : null;
+    const allowedPlatforms = parseJson<string[]>(campaign.allowedPlatformsJson, []);
     return {
     id: campaign.id,
     title: campaign.title,
     description: campaign.description,
     niche: campaign.niche,
+    platforms: Array.from(new Set(allowedPlatforms.length ? allowedPlatforms : [campaign.sourcePlatform])),
     cpmRateCents: campaign.cpmRateCents,
     viewThreshold: campaign.viewThreshold,
     payoutCents: campaignPayout(campaign, workerRank),
@@ -365,7 +368,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         <div>
           <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>
           <h1>Найди заказ, который сделаешь сегодня</h1>
-          <p>Заказчик ставит цель по просмотрам — ты делаешь короткий ролик и получаешь оплату за результат.</p>
+          <p>Выбери площадку и задачу. Срок и чистая выплата известны заранее.</p>
         </div>
         <Link className="mk-leaders" href="/leaderboard"><Trophy size={16} /> Доска лидеров</Link>
       </header>

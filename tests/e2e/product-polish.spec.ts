@@ -19,6 +19,8 @@ test.afterAll(async () => {
 
 test("campaign filters stay simple and responsive", async ({ page }) => {
   await login(page, "anya@clippers.local");
+  await expect(page.locator(".mk-platform").first()).toBeVisible();
+  await expect(page.locator(".mk-card").first()).toContainText(/YouTube|TikTok|Instagram|VK Клипы|Twitch/);
   await page.getByRole("button", { name: /Фильтры/ }).click();
   await expect(page.getByRole("dialog", { name: "Фильтры заказов" })).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Игры" }).click();

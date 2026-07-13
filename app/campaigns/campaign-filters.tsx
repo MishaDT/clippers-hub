@@ -87,9 +87,10 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   function urlWith(values: Partial<typeof draft> & { q?: string }) {
     const next = new URLSearchParams();
     const nextQuery = values.q === undefined ? query : values.q;
-    const nextCategory = values.category ?? draft.category;
-    const nextDeadline = values.deadline ?? draft.deadline;
-    const nextSort = values.sort ?? draft.sort;
+    const current = draftRef.current;
+    const nextCategory = values.category ?? current.category;
+    const nextDeadline = values.deadline ?? current.deadline;
+    const nextSort = values.sort ?? current.sort;
     if (nextQuery) next.set("q", nextQuery);
     if (nextCategory !== "all") next.set("category", nextCategory);
     if (nextDeadline !== "any") next.set("deadline", nextDeadline);
@@ -101,7 +102,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   function apply() {
     const target = urlWith(draftRef.current);
     setOpen(false);
-    startTransition(() => router.push(target));
+    router.push(target);
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
