@@ -2,7 +2,7 @@
 
 import { Bookmark, Check, ChevronDown, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState, useTransition } from "react";
+import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import styles from "./campaign-filters.module.css";
 
 const CATEGORIES = [
@@ -54,7 +54,13 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState({ category, deadline, sort });
+  const draftRef = useRef(draft);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+
+  function updateDraft(next: typeof draft) {
+    draftRef.current = next;
+    setDraft(next);
+  }
 
   useEffect(() => {
     try {
@@ -66,7 +72,9 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   }, []);
 
   useEffect(() => {
-    setDraft({ category, deadline, sort });
+    const next = { category, deadline, sort };
+    draftRef.current = next;
+    setDraft(next);
   }, [category, deadline, sort]);
 
   useEffect(() => {
@@ -91,7 +99,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   }
 
   function apply() {
-    const target = urlWith(draft);
+    const target = urlWith(draftRef.current);
     setOpen(false);
     startTransition(() => router.push(target));
   }
@@ -187,7 +195,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
                 <div className="campaign-filter-options">
                   {savedFilters.map((filter) => (
                     <span className={styles.saved} key={filter.id}>
-                      <button type="button" onClick={() => setDraft({ category: filter.category, deadline: filter.deadline, sort: filter.sort })}>
+                      <button type="button" onClick={() => updateDraft({ category: filter.category, deadline: filter.deadline, sort: filter.sort })}>
                         <Bookmark size={14} /> {filter.label}
                       </button>
                       <button type="button" onClick={() => removeSavedFilter(filter.id)} aria-label={`Удалить подборку ${filter.label}`}>
@@ -203,7 +211,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
               <legend>Категория</legend>
               <div className="campaign-filter-options">
                 {CATEGORIES.map(([key, label]) => (
-                  <button className={draft.category === key ? "active" : ""} type="button" onClick={() => setDraft({ ...draft, category: key })} key={key}>
+                  <button className={draft.category === key ? "active" : ""} type="button" onClick={() => updateDraft({ ...draftRef.current, category: key })} key={key}>
                     {label}{draft.category === key ? <Check size={15} /> : null}
                   </button>
                 ))}
@@ -214,7 +222,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
               <legend>Срок до дедлайна</legend>
               <div className="campaign-filter-options">
                 {DEADLINES.map(([key, label]) => (
-                  <button className={draft.deadline === key ? "active" : ""} type="button" onClick={() => setDraft({ ...draft, deadline: key })} key={key}>
+                  <button className={draft.deadline === key ? "active" : ""} type="button" onClick={() => updateDraft({ ...draftRef.current, deadline: key })} key={key}>
                     {label}{draft.deadline === key ? <Check size={15} /> : null}
                   </button>
                 ))}
@@ -225,7 +233,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
               <legend>Сортировка</legend>
               <div className="campaign-filter-options">
                 {SORTS.map(([key, label]) => (
-                  <button className={draft.sort === key ? "active" : ""} type="button" onClick={() => setDraft({ ...draft, sort: key })} key={key}>
+                  <button className={draft.sort === key ? "active" : ""} type="button" onClick={() => updateDraft({ ...draftRef.current, sort: key })} key={key}>
                     {label}{draft.sort === key ? <Check size={15} /> : null}
                   </button>
                 ))}
