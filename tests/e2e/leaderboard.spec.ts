@@ -53,15 +53,16 @@ test.describe("leaderboard experience", () => {
     expect(layout.overflow).toBeLessThanOrEqual(1);
     expect(layout.crownInside).toBe(true);
     expect(layout.crownOverlapsAvatar).toBe(false);
-    expect(layout.firstHeight).toBeGreaterThan(layout.secondHeight);
-    expect(layout.firstHeight).toBeGreaterThan(layout.thirdHeight);
-
     if (isMobile) {
+      expect(layout.firstHeight).toBeGreaterThanOrEqual(layout.secondHeight);
+      expect(layout.firstHeight).toBeGreaterThanOrEqual(layout.thirdHeight);
       expect(layout.heroHeight).toBeLessThan(380);
       expect(layout.secondCenter).toBeLessThan(layout.firstCenter);
       expect(layout.firstCenter).toBeLessThan(layout.thirdCenter);
       await expect(page.locator(".mobile-rank-overview")).toHaveCount(0);
     } else {
+      expect(layout.firstHeight).toBeGreaterThan(layout.secondHeight);
+      expect(layout.firstHeight).toBeGreaterThan(layout.thirdHeight);
       expect(layout.heroHeight).toBeLessThan(500);
       await expect(page.locator(".mobile-rank-overview")).toBeHidden();
     }

@@ -37,17 +37,13 @@ test("notification archive page is compact and reachable", async ({ page }) => {
   await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
 });
 
-test("presentation asks portrait users for a viewing mode", async ({ page, isMobile }) => {
-  test.skip(!isMobile, "Portrait prompt is mobile-only");
+test("landing shows a clear role-specific roadmap on portrait screens", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Mobile-only landing check");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  const collapsedGuide = page.locator(".campaign-guide-collapsed");
-  await expect(collapsedGuide).toBeVisible();
-  await collapsedGuide.click();
-  const start = page.getByRole("button", { name: /Смотреть, как работает ReelPay/ });
-  await expect(start).toBeVisible();
-  await start.click();
-  await expect(page.getByRole("dialog", { name: "Режим просмотра" })).toBeVisible();
-  await page.getByRole("button", { name: "Смотреть вертикально" }).click();
-  await expect(page.getByRole("dialog", { name: "Режим просмотра" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /От исходного видео до проверенного результата/i })).toBeVisible();
+  await page.getByRole("tab", { name: "Клипперам" }).click();
+  await expect(page.getByRole("heading", { name: /От заказа до выплаты/i })).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
 });
