@@ -40,7 +40,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma migrate deploy
+      # This database is created from scratch for every CI run. The project predates
+      # its Prisma migration history, so the historical migrations are not a complete
+      # empty-database baseline. Sync only this disposable test database to the schema;
+      # production continues to use `prisma migrate deploy`.
+      - run: npx prisma db push --skip-generate
       - run: npm test
       - run: npm run typecheck
       - run: npm run lint
