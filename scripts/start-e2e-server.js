@@ -1,4 +1,5 @@
 const { loadEnvConfig } = require("@next/env");
+const { existsSync } = require("node:fs");
 
 loadEnvConfig(process.cwd());
 const databaseUrl = new URL(process.env.DATABASE_URL_TEST || process.env.DATABASE_URL);
@@ -16,10 +17,13 @@ setTimeout(() => {
 }, 4_000).unref();
 
 const { startServer } = require("next/dist/server/lib/start-server");
+const hasProductionBuild = existsSync(`${process.cwd()}/.next/BUILD_ID`);
 
 startServer({
   dir: process.cwd(),
-  isDev: true,
+  // CI already runs `next build`. Serving that output is faster and avoids
+  // the development server's memory-based restart during the mobile suite.
+  isDev: !hasProductionBuild,
   hostname: "127.0.0.1",
   port: 3000,
   allowRetry: false

@@ -98,6 +98,13 @@ test.describe("public experience", () => {
 });
 
 test.describe("worker flow", () => {
+  test.beforeEach(async () => {
+    await prisma.user.updateMany({
+      where: { email: "anya@clippers.local" },
+      data: { role: "WORKER", preferredRoleMode: "worker" }
+    });
+  });
+
   test("public information pages preserve the authenticated session", async ({ page }) => {
     await login(page, "anya@clippers.local");
     await page.goto("/business");
@@ -116,7 +123,7 @@ test.describe("worker flow", () => {
     });
 
     await login(page, "anya@clippers.local");
-    await expect(page).toHaveURL(/\/campaigns(?:\/new)?$/);
+    await expect(page).toHaveURL(/\/campaigns$/);
     expect(recentRequests).toBe(0);
 
     const bell = page.getByRole("button", { name: /Уведомления/i });
