@@ -435,7 +435,7 @@ export function CampaignGuide({ variant = "general", initiallyCollapsed = false,
       </div>
 
       <div className="campaign-promo" ref={frameRef}>
-        <audio ref={audioRef} src="/assets/reelpay-promo-music.mp3" preload="metadata" loop />
+        <audio ref={audioRef} src="/assets/reelpay-promo-music.mp3" preload="none" loop />
         <div className="campaign-promo-stage" data-scene={active}>
           <header>
             <div className="campaign-promo-brand"><Sparkles size={16} /><b>ReelPay</b></div>
