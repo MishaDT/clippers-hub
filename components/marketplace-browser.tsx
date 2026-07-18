@@ -41,9 +41,9 @@ const PLATFORM_NAMES: Record<string, string> = {
 };
 
 function PlatformIcon({ platform }: { platform: string }) {
-  if (platform === "YOUTUBE") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M17.7 5.2a2.1 2.1 0 0 0-1.5-1.5C14.9 3.3 10 3.3 10 3.3s-4.9 0-6.2.4a2.1 2.1 0 0 0-1.5 1.5A22 22 0 0 0 2 10a22 22 0 0 0 .3 4.8 2.1 2.1 0 0 0 1.5 1.5c1.3.4 6.2.4 6.2.4s4.9 0 6.2-.4a2.1 2.1 0 0 0 1.5-1.5A22 22 0 0 0 18 10a22 22 0 0 0-.3-4.8ZM8.4 13V7l5.1 3-5.1 3Z" fill="currentColor" /></svg>;
+  if (platform === "YOUTUBE") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8.2 6.7 5.4 3.3-5.4 3.3V6.7Z" fill="#fff" /></svg>;
   if (platform === "INSTAGRAM") return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="4" fill="none" stroke="currentColor" strokeWidth="1.8"/><circle cx="10" cy="10" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8"/><circle cx="14.6" cy="5.6" r="1" fill="currentColor"/></svg>;
-  if (platform === "TIKTOK") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.1 3.2v8.2a3.9 3.9 0 1 1-3.4-3.8v2.1a1.9 1.9 0 1 0 1.3 1.8V3.2h2.1Zm0 0c.4 1.7 1.4 2.7 3.1 3.1v2.1a6 6 0 0 1-3.1-1.2" fill="currentColor"/></svg>;
+  if (platform === "TIKTOK") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.2 4.1v8a3.1 3.1 0 1 1-2.7-3.1v1.7a1.4 1.4 0 1 0 1 1.4v-8h1.7Zm0 0c.4 1.5 1.3 2.3 2.8 2.7v1.7a5.2 5.2 0 0 1-2.8-1" fill="none" stroke="#25f4ee" strokeWidth="2.2"/><path d="M12.2 3.5v8a3.1 3.1 0 1 1-2.7-3.1v1.7a1.4 1.4 0 1 0 1 1.4v-8h1.7Zm0 0c.4 1.5 1.3 2.3 2.8 2.7v1.7a5.2 5.2 0 0 1-2.8-1" fill="none" stroke="#fe2c55" strokeWidth="2.2"/><path d="M11.7 3.8v8a3.1 3.1 0 1 1-2.7-3.1v1.7a1.4 1.4 0 1 0 1 1.4v-8h1.7Zm0 0c.4 1.5 1.3 2.3 2.8 2.7v1.7a5.2 5.2 0 0 1-2.8-1" fill="none" stroke="#fff" strokeWidth="1.25"/></svg>;
   if (platform === "TWITCH") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h13v9l-4 4H9l-2.2 2v-2H4V3Zm2 2v9h2.5v1.3L10 14h3l2-2V5H6Zm3 2h2v4H9V7Zm3.5 0h2v4h-2V7Z" fill="currentColor"/></svg>;
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.4 5.2h3.1c.2 0 .4.1.5.4.7 2 1.8 3.7 2.4 4.3.3.3.5.2.5-.2V5.9c0-.5.2-.7.7-.7h2.4c.4 0 .6.2.6.7v3.2c0 .4.2.5.4.2.7-.8 1.7-2.4 2.2-3.6.1-.3.4-.5.7-.5h2.9c.6 0 .8.3.5.8-.6 1.2-1.9 3.1-2.8 4.1-.3.4-.3.7 0 1 1 .9 2.6 2.6 3.2 3.8.2.4 0 .7-.5.7h-3.2c-.4 0-.6-.2-.8-.5-.5-.9-1.4-2.1-2-2.6-.3-.3-.6-.2-.6.3v2.1c0 .5-.2.7-.7.7h-1.5c-3.7 0-6.5-3.3-7.9-9.6-.1-.5.1-.8.6-.8Z" fill="currentColor"/></svg>;
 }
@@ -151,9 +151,14 @@ export function MarketplaceBrowser({
                 <div className="mk-card-top">
                   <div className="mk-platforms" aria-label={`Площадки: ${card.platforms.map((platform) => PLATFORM_NAMES[platform] || platform).join(", ")}`}>
                     {card.platforms.slice(0, 3).map((platform) => (
-                      <span className={`mk-platform mk-platform--${platform.toLowerCase()}`} key={platform}>
+                      <span
+                        className={`mk-platform mk-platform--${platform.toLowerCase()}`}
+                        aria-label={PLATFORM_NAMES[platform] || platform}
+                        role="img"
+                        title={PLATFORM_NAMES[platform] || platform}
+                        key={platform}
+                      >
                         <PlatformIcon platform={platform} />
-                        {PLATFORM_NAMES[platform] || platform}
                       </span>
                     ))}
                   </div>
