@@ -1,26 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-async function canvasSignature(page: import("@playwright/test").Page) {
-  return page.locator(".podium-flame-canvas").evaluateAll((canvases) =>
-    canvases.map((element) => {
-      const canvas = element as HTMLCanvasElement;
-      const context = canvas.getContext("2d");
-      if (!context) return { alpha: 0, hash: 0 };
-      const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
-      let alpha = 0;
-      let hash = 2166136261;
-      for (let index = 3; index < data.length; index += 64) {
-        alpha += data[index];
-        hash ^= data[index];
-        hash = Math.imul(hash, 16777619);
-      }
-      return { alpha, hash: hash >>> 0 };
-    })
-  );
-}
-
 test.describe("leaderboard experience", () => {
-  test("podium is responsive, unobstructed and animated", async ({ page, isMobile }) => {
+  test("podium is responsive and unobstructed", async ({ page, isMobile }) => {
     await page.goto("/leaderboard?period=all");
     await expect(page.getByRole("heading", { name: /Доска лидеров/i })).toBeVisible();
     await expect(page.locator(".podium-card")).toHaveCount(3);
@@ -68,16 +49,11 @@ test.describe("leaderboard experience", () => {
     }
 
     await expect(page.locator(".podium-flame-canvas")).toHaveCount(3);
-    await expect.poll(async () => {
-      const signatures = await canvasSignature(page);
-      return signatures.length === 3 && signatures.every((item) => item.alpha > 1000);
-    }).toBe(true);
-    const before = await canvasSignature(page);
-    await page.waitForTimeout(650);
-    const after = await canvasSignature(page);
-
-    expect(before.every((item) => item.alpha > 1000)).toBe(true);
-    expect(after.some((item, index) => item.hash !== before[index]?.hash)).toBe(true);
+    await expect(page.locator(".podium-flame-canvas").first()).toBeHidden();
+    const legacyLabel = await page.locator(".leaderboard-hero").evaluate((element) =>
+      getComputedStyle(element, "::before").content
+    );
+    expect(["none", '""']).toContain(legacyLabel);
   });
 
   test("period controls react and navigate correctly", async ({ page }) => {

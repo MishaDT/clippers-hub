@@ -61,14 +61,14 @@ export async function checkOwnership(opts: {
   let meta;
   try {
     meta = await provider.fetchMeta(postUrl);
-  } catch (error) {
+  } catch {
     // Missing API key, quota, network, deleted/private video — transient, don't
     // penalize the clipper; the next sync retries.
     return {
       platform,
       verifiable: true,
       matched: false,
-      reason: `fetch_failed:${error instanceof Error ? error.message : "unknown"}`
+      reason: "fetch_failed:provider_unavailable"
     };
   }
 

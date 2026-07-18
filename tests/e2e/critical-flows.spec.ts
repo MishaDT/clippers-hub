@@ -206,7 +206,7 @@ test.describe("client flow", () => {
     await expect(page.getByRole("heading", { name: /Опиши задачу/i })).toBeVisible();
     await page.locator('input[name="title"]').fill(`E2E заказ ${Date.now()}`);
     await page.getByRole("button", { name: /Продолжить/i }).click();
-    await page.locator('input[name="sourceUrl"]').fill("https://twitch.tv/videos/e2e-demo");
+    await page.locator('input[name="sourceUrl"]').fill("https://www.twitch.tv/videos/1234567890");
     await page.getByRole("button", { name: /Продолжить/i }).click();
     await page.getByRole("button", { name: /Продолжить/i }).click();
     await page.getByRole("button", { name: /Продолжить/i }).click();
@@ -218,7 +218,7 @@ test.describe("client flow", () => {
     await page.locator('input[name="briefConfirmed"]').check();
     await page.getByRole("button", { name: /Опубликовать заказ/i }).click();
 
-    await expect(page).toHaveURL(/\/campaigns\/(?!new$)[^/]+$/, { timeout: 45_000 });
+    await expect(page).toHaveURL(/\/campaigns\/(?!new(?:[/?#]|$))[^/?#]+(?:\?.*)?$/, { timeout: 45_000 });
     await expect(page.getByRole("heading", { name: /E2E заказ/ })).toBeVisible();
     await expectNoHorizontalScroll(page);
   });

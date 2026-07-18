@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasValidBearerSecret } from "@/lib/bearer-auth";
 import { prisma } from "@/lib/prisma";
 import { formatWeeklyDigest, postToChannel, telegramEnabled } from "@/lib/telegram";
 import { realTransactionWhere } from "@/lib/data-scope";
@@ -6,12 +7,6 @@ import { realTransactionWhere } from "@/lib/data-scope";
 export const maxDuration = 30;
 
 // When CRON_SECRET is set, only callers presenting it may run the digest.
-function authorized(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 async function run() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -62,11 +57,11 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasValidBearerSecret(request, process.env.CRON_SECRET)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   return NextResponse.json(await run());
 }
 
 export async function POST(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasValidBearerSecret(request, process.env.CRON_SECRET)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   return NextResponse.json(await run());
 }

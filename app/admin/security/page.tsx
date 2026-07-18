@@ -71,9 +71,11 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
     { label: "Google OAuth", ok: isConfigured("google"), detail: "соц-вход" },
     { label: "VK ID OAuth", ok: isConfigured("vk"), detail: "RU-вход" },
     { label: "Yandex OAuth", ok: isConfigured("yandex"), detail: "доп. вход" },
-    { label: "SESSION_SECRET", ok: Boolean(process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16), detail: "сессии" },
-    { label: "CRON_SECRET", ok: Boolean(process.env.CRON_SECRET), detail: "воркеры" },
-    { label: "ANALYTICS_SALT", ok: Boolean(process.env.ANALYTICS_SALT), detail: "хеш IP/UA" }
+    { label: "SESSION_SECRET", ok: Boolean(process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32), detail: "сессии" },
+    { label: "CRON_SECRET", ok: Boolean(process.env.CRON_SECRET && process.env.CRON_SECRET.length >= 32), detail: "воркеры" },
+    { label: "ANALYTICS_SALT", ok: Boolean(process.env.ANALYTICS_SALT && process.env.ANALYTICS_SALT.length >= 32), detail: "хеш IP/UA" },
+    { label: "SOCIAL_TOKEN_ENCRYPTION_KEY", ok: Boolean(process.env.SOCIAL_TOKEN_ENCRYPTION_KEY && process.env.SOCIAL_TOKEN_ENCRYPTION_KEY.length >= 32), detail: "OAuth-токены" },
+    { label: "VISUAL_PROOF_SECRET", ok: Boolean((process.env.VISUAL_PROOF_SECRET || process.env.SESSION_SECRET || "").length >= 32), detail: "QR-доказательства" }
   ];
 
   return (

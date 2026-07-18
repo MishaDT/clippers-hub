@@ -10,6 +10,21 @@ import { rateLimit } from "@/lib/rate-limit";
 const MAX_DRAFT_BYTES = 500 * 1024 * 1024;
 const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
+class DraftUploadError extends Error {
+  constructor(readonly code: "INVALID_PATH" | "DRAFT_UNAVAILABLE" | "UPLOAD_LIMIT") {
+    super(code);
+  }
+}
+
+function publicUploadError(error: unknown) {
+  if (error instanceof DraftUploadError) {
+    if (error.code === "UPLOAD_LIMIT") return "Слишком много загрузок для этой работы. Попробуйте позже.";
+    if (error.code === "DRAFT_UNAVAILABLE") return "Черновик недоступен для загрузки.";
+    return "Некорректный путь загрузки.";
+  }
+  return "Не удалось подготовить загрузку. Попробуйте ещё раз.";
+}
+
 export async function POST(request: Request) {
   if (!strictSameOrigin(request)) return NextResponse.json({ error: "INVALID_ORIGIN" }, { status: 403 });
   const user = await getCurrentUser();
@@ -40,7 +55,7 @@ export async function POST(request: Request) {
           || pathname.includes("..")
           || pathname.length > 240
         ) {
-          throw new Error("Некорректный путь загрузки");
+          throw new DraftUploadError("INVALID_PATH");
         }
         const submission = await prisma.submission.findFirst({
           where: {
@@ -51,9 +66,9 @@ export async function POST(request: Request) {
           },
           select: { id: true }
         });
-        if (!submission) throw new Error("Черновик недоступен для загрузки");
+        if (!submission) throw new DraftUploadError("DRAFT_UNAVAILABLE");
         if (!(await rateLimit(`draft-upload-submission:${user.id}:${submissionId}`, 3, 60 * 60_000))) {
-          throw new Error("Слишком много загрузок для этой работы. Попробуйте позже.");
+          throw new DraftUploadError("UPLOAD_LIMIT");
         }
         return {
           allowedContentTypes: VIDEO_TYPES,
@@ -66,7 +81,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось подготовить загрузку";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: publicUploadError(error) }, { status: 400 });
   }
 }

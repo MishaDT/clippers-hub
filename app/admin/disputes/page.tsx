@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Scale } from "lucide-react";
-import { adminResolveDisputeAction } from "@/app/admin/actions";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
@@ -83,7 +82,7 @@ export default async function AdminDisputesPage({ searchParams }: {
                   </dl>
                   <Link href={`/campaigns/${dispute.submission.campaign.id}`}>Открыть комнату сделки</Link>
                   {dispute.status === "OPEN" ? (
-                    <form action={adminResolveDisputeAction}>
+                    <form action="/api/admin/disputes/resolve" method="post">
                       <input type="hidden" name="disputeId" value={dispute.id} />
                       <textarea name="resolution" minLength={10} maxLength={1000} required placeholder="Объясните решение по фактам, брифу и проверкам" />
                       <div>

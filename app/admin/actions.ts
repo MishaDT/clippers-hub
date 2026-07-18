@@ -326,7 +326,8 @@ export async function adminResolveDisputeAction(formData: FormData) {
       }
     }
   });
-  if (!dispute || dispute.status !== "OPEN") redirect("/admin/disputes");
+  if (!dispute) redirect("/admin/disputes?error=missing");
+  if (dispute.status !== "OPEN") redirect("/admin/disputes?resolved=1");
 
   try {
     await prisma.$transaction(async (db) => {
@@ -397,6 +398,21 @@ export async function adminResolveDisputeAction(formData: FormData) {
           metadata: stringify({ submissionId: dispute.submissionId, resolution })
         }
       });
+      const recipients = new Set([
+        dispute.user.id,
+        dispute.submission.worker.id,
+        dispute.submission.campaign.ownerId
+      ]);
+      recipients.delete(admin.id);
+      await Promise.all([...recipients].map((userId) => notify({
+        userId,
+        groupKey: notificationGroup("dispute-result", disputeId),
+        title: decision === "accept" ? "Апелляция удовлетворена" : "Апелляция отклонена",
+        body: resolution,
+        priority: "HIGH",
+        kind: "DISPUTE",
+        href: `/campaigns/${dispute.submission.campaign.id}`
+      }, db)));
     });
   } catch (error) {
     if (error instanceof CampaignReservationError) {
@@ -404,22 +420,6 @@ export async function adminResolveDisputeAction(formData: FormData) {
     }
     throw error;
   }
-
-  const recipients = new Set([
-    dispute.user.id,
-    dispute.submission.worker.id,
-    dispute.submission.campaign.ownerId
-  ]);
-  recipients.delete(admin.id);
-  await Promise.all([...recipients].map((userId) => notify({
-    userId,
-    groupKey: notificationGroup("dispute-result", disputeId),
-    title: decision === "accept" ? "Апелляция удовлетворена" : "Апелляция отклонена",
-    body: resolution,
-    priority: "HIGH",
-    kind: "DISPUTE",
-    href: `/campaigns/${dispute.submission.campaign.id}`
-  })));
 
   revalidatePath("/admin/disputes");
   revalidatePath(`/campaigns/${dispute.submission.campaign.id}`);

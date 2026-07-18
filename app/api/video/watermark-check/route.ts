@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasValidBearerSecret } from "@/lib/bearer-auth";
 import { prisma } from "@/lib/prisma";
 import { runWatermarkQueue } from "@/lib/video-checks";
 import { readJsonWithLimit } from "@/lib/request-json";
@@ -6,14 +7,8 @@ import { boundedInteger } from "@/lib/numbers";
 
 export const dynamic = "force-dynamic";
 
-function authorized(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 export async function POST(request: Request) {
-  if (!authorized(request)) {
+  if (!hasValidBearerSecret(request, process.env.CRON_SECRET)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 

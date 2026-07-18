@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasValidBearerSecret } from "@/lib/bearer-auth";
 import { prisma } from "@/lib/prisma";
 import { notificationGroup, notify } from "@/lib/notifications";
 import { boundedInteger } from "@/lib/numbers";
@@ -8,12 +9,6 @@ export const maxDuration = 60;
 
 // When CRON_SECRET is set, only callers presenting it may run the cleanup.
 // Vercel Cron automatically sends `Authorization: Bearer ${CRON_SECRET}`.
-function authorized(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 // Retention: keep high-volume PAGE_VIEW analytics for a bounded window, then prune. Other
 // event types (auth, submissions, store clicks) are retained for audit / abuse history.
 async function run() {
@@ -94,11 +89,11 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasValidBearerSecret(request, process.env.CRON_SECRET)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   return NextResponse.json(await run());
 }
 
 export async function POST(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasValidBearerSecret(request, process.env.CRON_SECRET)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   return NextResponse.json(await run());
 }

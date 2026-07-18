@@ -82,7 +82,15 @@ export async function logoutAction() {
   redirect("/login");
 }
 
-export async function openDisputeAction(formData: FormData) {
+export type OpenDisputeActionState = {
+  status: "idle" | "opened";
+  redirectTo?: string;
+};
+
+export async function openDisputeAction(
+  _previousState: OpenDisputeActionState,
+  formData: FormData
+): Promise<OpenDisputeActionState> {
   const user = await requireUser();
   await assertAccountActive(user);
   if (!(await rateLimit(`dispute:${user.id}`, 3, 60 * 60 * 1000))) {
@@ -116,12 +124,9 @@ export async function openDisputeAction(formData: FormData) {
     redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}error=dispute_paid`);
   }
 
-  let disputeId = "";
+  const counterpartId = user.id === submission.workerId ? submission.campaign.ownerId : submission.workerId;
   try {
-    const dispute = await prisma.$transaction(async (db) => {
-      await db.$queryRaw(Prisma.sql`
-        SELECT "id" FROM "Submission" WHERE "id" = ${submissionId} FOR UPDATE
-      `);
+    await prisma.$transaction(async (db) => {
       const lockedSubmission = await db.submission.findUnique({
         where: { id: submissionId },
         select: { status: true }
@@ -144,9 +149,28 @@ export async function openDisputeAction(formData: FormData) {
           metadata: stringify({ submissionId, campaignId: submission.campaign.id })
         }
       });
-      return created;
+      const admins = await db.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+      await Promise.all([
+        notify({
+          userId: counterpartId,
+          groupKey: notificationGroup("dispute", submissionId),
+          title: "Открыта апелляция",
+          body: `В работе «${submission.campaign.title}» открыт спор. Выплата приостановлена до решения.`,
+          priority: "HIGH",
+          kind: "DISPUTE",
+          href: `/campaigns/${submission.campaign.id}`
+        }, db),
+        ...admins.map((admin) => notify({
+          userId: admin.id,
+          groupKey: notificationGroup("admin-dispute", created.id),
+          title: "Новый спор по работе",
+          body: `${user.name} просит проверить результат по кампании «${submission.campaign.title}».`,
+          priority: "HIGH",
+          kind: "MODERATION",
+          href: "/admin/disputes"
+        }, db))
+      ]);
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    disputeId = dispute.id;
   } catch (error) {
     if (error instanceof Error && error.message === "DISPUTE_PAID") {
       redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}error=dispute_paid`);
@@ -157,29 +181,11 @@ export async function openDisputeAction(formData: FormData) {
     throw error;
   }
 
-  const counterpartId = user.id === submission.workerId ? submission.campaign.ownerId : submission.workerId;
-  await notify({
-    userId: counterpartId,
-    groupKey: notificationGroup("dispute", submissionId),
-    title: "Открыта апелляция",
-    body: `В работе «${submission.campaign.title}» открыт спор. Выплата приостановлена до решения.`,
-    priority: "HIGH",
-    kind: "DISPUTE",
-    href: `/campaigns/${submission.campaign.id}`
-  });
-  const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
-  await Promise.all(admins.map((admin) => notify({
-    userId: admin.id,
-    groupKey: notificationGroup("admin-dispute", disputeId),
-    title: "Новый спор по работе",
-    body: `${user.name} просит проверить результат по кампании «${submission.campaign.title}».`,
-    priority: "HIGH",
-    kind: "MODERATION",
-    href: "/admin/disputes"
-  })));
-
   revalidatePath(`/campaigns/${submission.campaign.id}`);
-  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}dispute=opened`);
+  return {
+    status: "opened",
+    redirectTo: `${returnTo}${returnTo.includes("?") ? "&" : "?"}dispute=opened`
+  };
 }
 
 export async function unlinkOAuthAccountAction(formData: FormData) {
@@ -461,7 +467,8 @@ export async function createClipShareAction(formData: FormData) {
     await prisma.submission.update({
       where: { id: submissionId },
       data: {
-        shareToken: randomBytes(12).toString("hex"),
+        // 128 bits keeps public report links impractical to enumerate even at scale.
+        shareToken: randomBytes(16).toString("hex"),
         shareTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         shareTokenRevokedAt: null
       }

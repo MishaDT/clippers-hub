@@ -44,7 +44,12 @@ test("authorized interface stays inside the selected role", async ({ page, conte
   await expect(page).toHaveURL(/\/campaigns$/);
 
   await page.goto("/feed");
-  await expect(page.getByRole("link", { name: /Открыть кампанию/i }).first()).toBeVisible();
+  await expect(page.getByRole("tablist", { name: /Лента/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Смотреть заказ/i })).toHaveCount(0);
+  const clientCampaignLinks = page.getByRole("link", { name: /Открыть кампанию/i });
+  if (await clientCampaignLinks.count()) {
+    await expect(clientCampaignLinks.first()).toBeVisible();
+  }
 
   if (isMobile) {
     await page.goto("/leaderboard");

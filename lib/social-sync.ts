@@ -203,8 +203,10 @@ export async function syncViews() {
           };
         }
         apiSynced += 1;
-      } catch (error) {
-        providerMode = `fallback:${error instanceof Error ? error.message : "unknown"}`;
+      } catch {
+        // Provider responses can contain implementation details. Store only a stable,
+        // non-sensitive state in verification history and logs.
+        providerMode = "fallback:provider_unavailable";
       }
     }
 

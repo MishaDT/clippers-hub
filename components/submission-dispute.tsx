@@ -1,5 +1,4 @@
 import { Scale } from "lucide-react";
-import { openDisputeAction } from "@/app/actions";
 import styles from "./submission-dispute.module.css";
 
 type Dispute = {
@@ -29,6 +28,7 @@ export function SubmissionDispute({
   canOpen: boolean;
 }) {
   const hasOpen = disputes.some((item) => item.status === "OPEN");
+
   return (
     <details className={styles.box} open={hasOpen}>
       <summary className={styles.summary}>
@@ -53,7 +53,7 @@ export function SubmissionDispute({
       ) : null}
 
       {canOpen && !hasOpen ? (
-        <form className={styles.form} action={openDisputeAction}>
+        <form className={styles.form} action="/api/disputes/open" method="post">
           <input type="hidden" name="submissionId" value={submissionId} />
           <input type="hidden" name="returnTo" value={`/campaigns/${campaignId}`} />
           <label htmlFor={`dispute-${submissionId}`}>Почему решение нужно пересмотреть?</label>

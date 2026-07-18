@@ -102,7 +102,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   function apply() {
     const target = urlWith(draftRef.current);
     setOpen(false);
-    router.push(target);
+    window.location.assign(target);
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
