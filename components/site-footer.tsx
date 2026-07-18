@@ -20,7 +20,7 @@ const secondaryLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className={styles.footer}>
+    <footer className={`${styles.footer} site-footer`}>
       <div className={styles.identity}>
         <Link className={styles.brand} href="/">Reel<span>Pay</span></Link>
         <small>Короткие ролики с оплатой за результат</small>
