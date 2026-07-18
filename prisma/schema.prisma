@@ -669,6 +669,8 @@ model BusinessLead {
   utmCampaign     String?
   status          BusinessLeadStatus @default(NEW)
   notes           String             @default("")
+  consentVersion  String
+  consentedAt     DateTime
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 

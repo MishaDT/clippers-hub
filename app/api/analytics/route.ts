@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { cookies } from "next/headers";
+import { analyticsAllowed, CONSENT_COOKIE } from "@/lib/cookie-preferences";
 
 const schema = z.object({
   type: z.string().max(40).default("PAGE_VIEW"),
@@ -11,6 +13,9 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!analyticsAllowed((await cookies()).get(CONSENT_COOKIE)?.value)) {
+    return new NextResponse(null, { status: 204 });
+  }
   if (!(await rateLimit(`analytics:${clientIp(request)}`, 80, 60_000))) {
     return NextResponse.json({ ok: true });
   }

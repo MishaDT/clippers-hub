@@ -3,31 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-
-const COOKIE = "rp_consent";
+import { CONSENT_ANALYTICS, CONSENT_COOKIE, CONSENT_NECESSARY } from "@/lib/cookie-preferences";
 
 const DATA_ITEMS = [
   {
-    title: "Сессия входа",
-    text: "clippers_session хранит факт входа. Cookie подписанная, httpOnly, нужна для аккаунта."
+    title: "Обязательные",
+    text: "Вход, безопасность, выбранная роль, OAuth и реферальная ссылка. Без них часть сервиса не работает."
   },
   {
-    title: "Выбор cookie",
-    text: "rp_consent запоминает, что вы выбрали в этом окне, чтобы не спрашивать каждый раз."
-  },
-  {
-    title: "Соц-вход",
-    text: "oauth_state и oauth_verifier живут несколько минут и защищают вход через Google, VK ID или Yandex."
-  },
-  {
-    title: "Рабочие данные",
-    text: "В базе хранятся профиль, заказы, отклики, ссылки на ролики, баланс и история операций."
+    title: "Необязательная аналитика",
+    text: "Просмотры страниц и действия в интерфейсе. Рекламных cookie нет, исходный IP для аналитики не сохраняется."
   }
 ];
 
 function hasConsent() {
   if (typeof document === "undefined") return true;
-  return document.cookie.split("; ").some((c) => c.startsWith(`${COOKIE}=`));
+  return document.cookie.split("; ").some((c) => c.startsWith(`${CONSENT_COOKIE}=`));
 }
 
 export function CookieConsent() {
@@ -45,17 +36,19 @@ export function CookieConsent() {
 
   if (!show) return null;
 
-  function choose(value: "all" | "necessary") {
-    document.cookie = `${COOKIE}=${value}; path=/; max-age=${60 * 60 * 24 * 180}; samesite=lax`;
+  function choose(value: typeof CONSENT_ANALYTICS | typeof CONSENT_NECESSARY) {
+    const secure = location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `${CONSENT_COOKIE}=${value}; path=/; max-age=${60 * 60 * 24 * 180}; samesite=lax${secure}`;
     setShow(false);
+    window.dispatchEvent(new Event("rp:consent"));
   }
 
   return (
-    <div className="cookie-banner" role="dialog" aria-label="Согласие на cookie и данные">
+    <div className="cookie-banner" role="dialog" aria-modal="false" aria-label="Настройки cookie">
       <div className="cookie-text">
-        <b>Мы бережём ваши данные</b>
+        <b>Cookie — только по делу</b>
         <p>
-          Используем только нужное для входа и работы сервиса. Рекламных трекеров нет.{" "}
+          Обязательные cookie обеспечивают вход и безопасность. Аналитику можно разрешить отдельно; рекламных cookie нет.{" "}
           <Link href="/legal/cookies">Подробнее</Link>.
         </p>
         {details ? (
@@ -73,11 +66,11 @@ export function CookieConsent() {
         <button className="btn btn-ghost btn-small" type="button" onClick={() => setDetails((value) => !value)}>
           {details ? "Скрыть" : "Настроить"}
         </button>
-        <button className="btn btn-ghost btn-small" type="button" onClick={() => choose("necessary")}>
-          Только нужное
+        <button className="btn btn-ghost btn-small" type="button" onClick={() => choose(CONSENT_NECESSARY)}>
+          Без аналитики
         </button>
-        <button className="btn btn-primary btn-small" type="button" onClick={() => choose("all")}>
-          Принять
+        <button className="btn btn-primary btn-small" type="button" onClick={() => choose(CONSENT_ANALYTICS)}>
+          Разрешить аналитику
         </button>
       </div>
     </div>

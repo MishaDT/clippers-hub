@@ -1,10 +1,20 @@
-// Replace these with your real legal entity / contacts before public launch.
+// Public operator details are supplied through server-only environment variables.
+// Never invent these values: they must match the actual person or legal entity.
 export const LEGAL = {
   brand: "ReelPay",
   site: "clippers-hub.vercel.app",
   contact: "support@reelpay.app",
-  updated: "18 июля 2026"
+  updated: "18 июля 2026",
+  operatorName: process.env.LEGAL_OPERATOR_NAME?.trim() || "",
+  operatorId: process.env.LEGAL_OPERATOR_ID?.trim() || "",
+  operatorAddress: process.env.LEGAL_OPERATOR_ADDRESS?.trim() || ""
 };
+
+export const hasPublicOperatorDetails = Boolean(
+  LEGAL.operatorName && LEGAL.operatorId && LEGAL.operatorAddress
+);
+
+export const LEAD_CONSENT_VERSION = "2026-07-18";
 
 /**
  * Единая формулировка для упоминаний продуктов Meta в российской версии сервиса.

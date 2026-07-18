@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { ArrowRight, BadgeCheck, CheckCircle2, CircleAlert, Clock3, Eye, Megaphone, Sparkles, TrendingUp, Users, Zap } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { compactNumber, rub } from "@/lib/money";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 
 export type MarketplaceCard = {
   id: string;
@@ -209,6 +210,8 @@ export function MarketplaceBrowser({
           <Link className="btn btn-primary" href="/campaigns">Сбросить фильтры</Link>
         </div>
       )}
+
+      {visible.some((card) => card.platforms.includes("INSTAGRAM")) ? <MetaProductsNotice compact /> : null}
 
       {totalPages > 1 ? (
         <nav className="mk-pages" aria-label="Страницы заказов">

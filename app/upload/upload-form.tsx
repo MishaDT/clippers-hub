@@ -8,6 +8,7 @@ import {
 import { submitClipAction, submitDraftAction } from "@/app/actions";
 import styles from "./upload-form.module.css";
 import { upload } from "@vercel/blob/client";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 
 type Order = {
   id: string;
@@ -287,6 +288,7 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
               {platform ? <CheckCircle2 size={18} color="#22c55e" /> : null}
             </div>
             <small className="up-hint">{!canPublish ? selected.strictVerification && !selected.visualProofConfirmed ? "Ссылка станет доступна после проверки индивидуального QR на черновике." : "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram* и VK"}</small>
+            {platform === "INSTAGRAM" ? <MetaProductsNotice compact /> : null}
             {platform && selected.socialAccounts.some((account) => account.platform === platform) ? (
               <label className="field">
                 Аккаунт для автоматической проверки

@@ -4,6 +4,7 @@ import { businessLeadSchema } from "@/lib/business-lead";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { trackEvent } from "@/lib/analytics";
+import { LEAD_CONSENT_VERSION } from "@/lib/legal";
 
 export async function POST(request: Request) {
   if (!(await rateLimit(`business-lead:${clientIp(request)}`, 3, 60 * 60 * 1000))) {
@@ -37,7 +38,9 @@ export async function POST(request: Request) {
       source: "pilot_landing",
       utmSource: data.utmSource || null,
       utmMedium: data.utmMedium || null,
-      utmCampaign: data.utmCampaign || null
+      utmCampaign: data.utmCampaign || null,
+      consentVersion: LEAD_CONSENT_VERSION,
+      consentedAt: new Date()
     }
   });
   await trackEvent({

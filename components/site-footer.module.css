@@ -50,10 +50,6 @@
   white-space: nowrap;
 }
 
-.legalNotice {
-  grid-column: 1 / -1;
-  max-width: 900px;
-}
 
 @media (max-width: 760px) {
   .footer {
@@ -131,7 +127,4 @@
     justify-self: end;
   }
 
-  .legalNotice {
-    grid-column: 1 / -1;
-  }
 }

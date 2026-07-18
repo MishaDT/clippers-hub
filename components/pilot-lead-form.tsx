@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { ArrowRight, BadgeCheck, ChevronDown, LoaderCircle } from "lucide-react";
 import styles from "./pilot-lead-form.module.css";
+import Link from "next/link";
 
 export function PilotLeadForm() {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -78,7 +79,7 @@ export function PilotLeadForm() {
               <label>Планируемый бюджет, ₽<input name="budgetRub" type="number" min={15000} max={10000000} step={1000} defaultValue={15000} required /></label>
               <label className={styles.wide}>Что хотите получить<textarea name="goal" rows={3} maxLength={500} placeholder="Например: 5 Shorts из выпусков подкаста" required /></label>
               <input className={styles.trap} name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-              <label className={`${styles.consent} ${styles.wide}`}><input name="consent" type="checkbox" required /><span>Согласен на обработку контактных данных для ответа на заявку.</span></label>
+              <label className={`${styles.consent} ${styles.wide}`}><input name="consent" type="checkbox" required /><span>Согласен на обработку контактных данных для ответа на заявку по <Link href="/legal/lead-consent" target="_blank">условиям согласия</Link>.</span></label>
               {state === "error" ? <p className={`${styles.error} ${styles.wide}`} role="alert">{message}</p> : null}
               <button className={styles.wide} type="submit" disabled={state === "sending"}>
                 {state === "sending" ? <LoaderCircle className={styles.spin} size={18} /> : null}

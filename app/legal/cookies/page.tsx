@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PrivacyControls } from "@/components/privacy-controls";
 import { LEGAL } from "@/lib/legal";
+import { CookiePreferenceControls } from "@/components/cookie-preference-controls";
 
 export const metadata: Metadata = {
   title: "Cookie и данные",
@@ -16,11 +17,12 @@ export default function CookiesPage() {
         <h1>Что сайт сохраняет и зачем</h1>
         <p className="legal-updated">Обновлено: {LEGAL.updated}</p>
         <p className="legal-lead">
-          Коротко: сайт использует только данные, которые нужны для входа, безопасности, работы интерфейса и общей
-          статистики продукта. Рекламных трекеров сейчас нет.
+          Обязательные cookie нужны для входа, безопасности и выбранных функций. Необязательная продуктовая
+          аналитика включается только после нажатия «Разрешить аналитику». Рекламных cookie сейчас нет.
         </p>
       </header>
 
+      <CookiePreferenceControls />
       <PrivacyControls />
 
       <section>
@@ -42,7 +44,17 @@ export default function CookiesPage() {
             <span>До 180 дней</span>
           </div>
           <div className="legal-row">
-            <span><code>oauth_state</code>, <code>oauth_verifier</code>, <code>oauth_provider</code></span>
+            <span><code>rp_role_mode</code></span>
+            <span>Запоминает выбранный режим: заказчик или исполнитель.</span>
+            <span>До 1 года</span>
+          </div>
+          <div className="legal-row">
+            <span><code>rp_referral</code></span>
+            <span>Связывает регистрацию с партнёрской ссылкой. Значение подписано и не содержит имени или email.</span>
+            <span>До 30 дней</span>
+          </div>
+          <div className="legal-row">
+            <span><code>oauth_state</code>, <code>oauth_verifier</code>, <code>oauth_provider</code>, <code>oauth_intent</code>, <code>oauth_role_intent</code>, <code>oauth_return_to</code>, <code>oauth_referral</code></span>
             <span>Защищают вход через Google, VK ID или Yandex от подмены запроса.</span>
             <span>Около 10 минут</span>
           </div>
@@ -57,9 +69,10 @@ export default function CookiesPage() {
       <section>
         <h2>Аналитика сайта</h2>
         <p>
-          Чтобы владелец видел, работает ли продукт, сайт сохраняет технические события: просмотр страницы, вход,
-          регистрацию, вход через Google/VK/Yandex и привязку соцсети. Мы не храним сырой IP-адрес: вместо него
-          сохраняется короткий хеш. Это нужно для общей статистики и защиты от накруток, а не для рекламы.
+          После отдельного разрешения сайт сохраняет просмотры страниц и действия в интерфейсе. Исходный IP в
+          продуктовой аналитике не хранится: используется необратимый хеш. Отказ не ограничивает основные функции.
+          События безопасности, необходимые для защиты аккаунтов, финансовых операций и ограничения атак, ведутся
+          отдельно от необязательной продуктовой аналитики.
         </p>
       </section>
 
@@ -78,6 +91,8 @@ export default function CookiesPage() {
       <section>
         <h2>Что можно отключить</h2>
         <ul>
+          <li>«Без аналитики» — только обязательные cookie; основные функции продолжают работать.</li>
+          <li>«Разрешить аналитику» — обязательные cookie плюс просмотры страниц и действия в интерфейсе.</li>
           <li>Рекламных и маркетинговых cookie сейчас нет.</li>
           <li>Необходимые cookie отключить нельзя без потери входа в аккаунт.</li>
           <li>Cookie на этом устройстве можно сбросить кнопкой выше.</li>

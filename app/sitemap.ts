@@ -19,7 +19,8 @@ const staticEntries: MetadataRoute.Sitemap = [
   { url: abs("/safety/views"), changeFrequency: "monthly", priority: 0.5 },
   { url: abs("/legal/terms"), changeFrequency: "yearly", priority: 0.3 },
   { url: abs("/legal/privacy"), changeFrequency: "yearly", priority: 0.3 },
-  { url: abs("/legal/cookies"), changeFrequency: "yearly", priority: 0.3 }
+  { url: abs("/legal/cookies"), changeFrequency: "yearly", priority: 0.3 },
+  { url: abs("/legal/lead-consent"), changeFrequency: "yearly", priority: 0.2 }
 ];
 
 export const revalidate = 3600;
