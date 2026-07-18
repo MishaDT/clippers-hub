@@ -95,10 +95,25 @@ model User {
   ratingsGiven              UserRating[]             @relation("RatingAuthor")
   ratingsReceived           UserRating[]             @relation("RatingSubject")
   invoiceRequests           InvoiceRequest[]
+  authSessions              AuthSession[]
 
   @@index([role, createdAt])
   @@index([isDemo, role, createdAt])
   @@index([createdAt])
+}
+
+model AuthSession {
+  // SHA-256 of the complete signed cookie. The bearer token itself is never stored.
+  id        String    @id
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }
 
 // Bank-transfer top-up requests for business (юрлицо) clients. Admin confirms receipt,
@@ -955,7 +970,8 @@ model AuditLog {
   metadata  String   @default("{}")
   createdAt DateTime @default(now())
 
-  user User? @relation(fields: [userId], references: [id])
+  // Preserve the security trail when a user exercises account deletion.
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model AnalyticsEvent {

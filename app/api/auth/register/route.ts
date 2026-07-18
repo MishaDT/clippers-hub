@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { normalizeEmail, sameOrigin, validatePassword } from "@/lib/security";
+import { normalizeEmail, strictSameOrigin, validatePassword } from "@/lib/security";
 import { parseAuthIntent, safeAuthReturnTo } from "@/lib/auth-intent";
 import { ROLE_MODE_COOKIE } from "@/lib/role-mode";
 import { sendEmailVerification } from "@/lib/email-verification";
 import { referralCookieFromHeader, referralFingerprint } from "@/lib/referral-attribution";
+import { readFormDataWithLimit } from "@/lib/request-json";
 
 const schema = z.object({
   email: z.string().email(),
@@ -30,13 +32,14 @@ async function fail(request: Request, code: string) {
 export async function POST(request: Request) {
   // Cross-origin and rate-limited probes redirect without writing an analytics row, so a
   // flood of blocked attempts can't be used to inflate the events table.
-  if (!sameOrigin(request)) {
+  if (!strictSameOrigin(request)) {
     return NextResponse.redirect(redirectUrl("/register?error=invalid", request), 303);
   }
   if (!(await rateLimit(`register:${clientIp(request)}`, 5, 60_000))) {
     return NextResponse.redirect(redirectUrl("/register?error=too_many", request), 303);
   }
-  const formData = await request.formData();
+  const formData = await readFormDataWithLimit(request, 24_000).catch(() => null);
+  if (!formData) return fail(request, "invalid");
   const intent = parseAuthIntent(formData.get("intent"));
   const returnTo = safeAuthReturnTo(formData.get("returnTo"), intent);
   const parsed = schema.safeParse({
@@ -48,6 +51,10 @@ export async function POST(request: Request) {
     return fail(request, "invalid");
   }
   const input = parsed.data;
+  const accountKey = createHash("sha256").update(input.email).digest("hex").slice(0, 32);
+  if (!(await rateLimit(`register-account:${accountKey}`, process.env.E2E_TEST === "1" ? 100 : 5, 60 * 60_000))) {
+    return NextResponse.redirect(redirectUrl("/register?error=too_many", request), 303);
+  }
   const passwordError = validatePassword(input.password, input.email);
   if (passwordError) {
     return fail(request, "weak_password");

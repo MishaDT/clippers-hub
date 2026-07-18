@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Platform } from "@prisma/client";
+import { extractSupportedPlatformPostId } from "@/lib/platform-post-url";
 
 const platformHosts: Record<Platform, string[]> = {
   YOUTUBE: ["youtube.com", "youtu.be", "youtube-nocookie.com"],
@@ -64,6 +65,9 @@ export function validatePublicMediaUrl(value: string, platform?: Platform) {
     if (isPrivateHost(host)) reasons.push("Локальные и тестовые адреса запрещены");
     if (suspiciousExtensions.some((ext) => url!.pathname.toLowerCase().endsWith(ext))) reasons.push("Ссылка похожа на файл, а нужна страница видео");
     if (platform && !platformMatchesUrl(platform, url)) reasons.push(`Ссылка не совпадает с платформой ${platform}`);
+    if (platform && platformMatchesUrl(platform, url) && !extractSupportedPlatformPostId(trimmed, platform)) {
+      reasons.push("Ссылка должна вести на конкретный ролик или публикацию");
+    }
     if (!platform && !detectPlatformFromUrl(trimmed)) reasons.push("Поддерживаются только YouTube, TikTok, Instagram, VK и Twitch");
   }
 
@@ -75,14 +79,6 @@ export function validatePublicMediaUrl(value: string, platform?: Platform) {
   };
 }
 
-export function extractPlatformPostId(postUrl: string) {
-  try {
-    const url = new URL(postUrl);
-    if (url.hostname.includes("youtu.be")) return url.pathname.split("/").filter(Boolean)[0]?.slice(0, 80) || `post_${Date.now()}`;
-    if (url.searchParams.get("v")) return url.searchParams.get("v")!.slice(0, 80);
-    const parts = url.pathname.split("/").filter(Boolean);
-    return parts.at(-1)?.slice(0, 80) || `post_${Date.now()}`;
-  } catch {
-    return `post_${Date.now()}`;
-  }
+export function extractPlatformPostId(postUrl: string, platform: Platform) {
+  return extractSupportedPlatformPostId(postUrl, platform);
 }

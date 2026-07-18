@@ -1,3 +1,5 @@
+import { readTextWithLimit } from "../../request-json.ts";
+
 // External URL-reputation providers (URLhaus / PhishTank). Deliberately INACTIVE until the
 // relevant API key is configured: with no env set, checkUrlReputation makes zero network
 // calls and returns "not malicious", so it adds no latency and never blocks messages by
@@ -45,7 +47,7 @@ async function urlhaus(url: string): Promise<RepResult | null> {
     1500
   );
   if (!res.ok) return null;
-  const data = await res.json();
+  const data = JSON.parse(await readTextWithLimit(res, 256_000));
   if (data?.query_status === "ok" && (data.threat || data.url_status === "online")) {
     return { malicious: true, code: "MALWARE_URL", sample: url.slice(0, 80) };
   }
@@ -67,7 +69,7 @@ async function phishtank(url: string): Promise<RepResult | null> {
     1500
   );
   if (!res.ok) return null;
-  const data = await res.json();
+  const data = JSON.parse(await readTextWithLimit(res, 256_000));
   if (data?.results?.in_database && data.results.valid) {
     return { malicious: true, code: "PHISHING_URL", sample: url.slice(0, 80) };
   }

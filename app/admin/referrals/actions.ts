@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { stringify } from "@/lib/json";
+import { boundedInteger, boundedNumber } from "@/lib/numbers";
 
 export async function saveReferralProgramAction(formData: FormData) {
   const admin = await requireAdmin();
   const enabled = formData.get("enabled") === "on";
-  const attributionDays = Math.max(1, Math.min(90, Number(formData.get("attributionDays") || 30)));
-  const activationRewardRp = Math.max(0, Math.min(10_000, Number(formData.get("activationRewardRp") || 25)));
+  const attributionDays = boundedInteger(formData.get("attributionDays"), { min: 1, max: 90, fallback: 30 });
+  const activationRewardRp = boundedInteger(formData.get("activationRewardRp"), { min: 0, max: 10_000, fallback: 25 });
   await prisma.$transaction([
     prisma.referralProgramConfig.upsert({
       where: { id: "default" },
@@ -34,9 +35,9 @@ export async function saveReferralTierAction(formData: FormData) {
   const admin = await requireAdmin();
   const id = String(formData.get("id") || "");
   const title = String(formData.get("title") || "").trim().slice(0, 40);
-  const minActiveReferrals = Math.max(1, Math.min(100_000, Number(formData.get("minActiveReferrals") || 1)));
-  const ratePercent = Math.max(0, Math.min(25, Number(formData.get("ratePercent") || 0)));
-  const sortOrder = Math.max(-1000, Math.min(1000, Number(formData.get("sortOrder") || minActiveReferrals)));
+  const minActiveReferrals = boundedInteger(formData.get("minActiveReferrals"), { min: 1, max: 100_000, fallback: 1 });
+  const ratePercent = boundedNumber(formData.get("ratePercent"), { min: 0, max: 25, fallback: 0 });
+  const sortOrder = boundedInteger(formData.get("sortOrder"), { min: -1_000, max: 1_000, fallback: minActiveReferrals });
   if (title.length < 2) return;
   const data = {
       title,

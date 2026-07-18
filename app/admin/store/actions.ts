@@ -8,6 +8,8 @@ import { stringify } from "@/lib/json";
 import { prisma } from "@/lib/prisma";
 import { fetchStoreMetadata, safeHttpsUrl } from "@/lib/store";
 import { syncPampaduCatalog } from "@/lib/pampadu-catalog";
+import { processStoreImage } from "@/lib/store-image";
+import { boundedInteger } from "@/lib/numbers";
 
 const kinds = ["RP_REWARD", "PARTNER_LINK", "PAMPADU_WIDGET"] as const;
 const statuses = ["NEW", "CONFIRMED", "FULFILLED", "CANCELLED"] as const;
@@ -16,12 +18,10 @@ function text(value: FormDataEntryValue | null, max = 500) {
   return String(value || "").trim().slice(0, max);
 }
 
-function imageData(file: FormDataEntryValue | null) {
+async function imageData(file: FormDataEntryValue | null, qr = false) {
   if (!(file instanceof File) || !file.size) return Promise.resolve<string | null>(null);
-  if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(file.type) || file.size > 1_500_000) {
-    throw new Error("BAD_IMAGE");
-  }
-  return file.arrayBuffer().then((buffer) => `data:${file.type};base64,${Buffer.from(buffer).toString("base64")}`);
+  const normalized = await processStoreImage(Buffer.from(await file.arrayBuffer()), file.type, qr);
+  return `data:${normalized.contentType};base64,${normalized.buffer.toString("base64")}`;
 }
 
 export async function adminSaveStoreOfferAction(formData: FormData) {
@@ -36,8 +36,9 @@ export async function adminSaveStoreOfferAction(formData: FormData) {
   let description = text(formData.get("description"), 600);
   let imageUrl = safeHttpsUrl(formData.get("imageUrl"));
   const qrImageUrl = safeHttpsUrl(formData.get("qrImageUrl"));
-  const existingImageUrl = text(formData.get("existingImageUrl"), 2_000) || null;
-  const existingQrImageUrl = text(formData.get("existingQrImageUrl"), 2_000) || null;
+  const existing = id
+    ? await prisma.storeOffer.findUnique({ where: { id }, select: { imageUrl: true, qrImageUrl: true } })
+    : null;
   if (url && (!title || !description || !imageUrl)) {
     try {
       const metadata = await fetchStoreMetadata(url);
@@ -49,12 +50,12 @@ export async function adminSaveStoreOfferAction(formData: FormData) {
     }
   }
   const uploadedImage = await imageData(formData.get("imageFile"));
-  const uploadedQr = await imageData(formData.get("qrFile"));
+  const uploadedQr = await imageData(formData.get("qrFile"), true);
   title ||= kind === "PAMPADU_WIDGET" ? "Партнёрская витрина Pampadu" : "Предложение";
   description ||= kind === "RP_REWARD" ? "Награда магазина ReelPay" : "Предложение партнёра";
-  const priceRp = Math.max(0, Math.min(1_000_000, Number(formData.get("priceRp") || 0)));
+  const priceRp = boundedInteger(formData.get("priceRp"), { min: 0, max: 1_000_000, fallback: 0 });
   const stockRaw = text(formData.get("stock"), 20);
-  const stock = stockRaw === "" ? null : Math.max(0, Math.min(1_000_000, Number(stockRaw) || 0));
+  const stock = stockRaw === "" ? null : boundedInteger(stockRaw, { min: 0, max: 1_000_000, fallback: 0 });
   const data = {
     kind,
     category,
@@ -62,13 +63,13 @@ export async function adminSaveStoreOfferAction(formData: FormData) {
     title,
     description,
     url,
-    imageUrl: uploadedImage || imageUrl || existingImageUrl,
-    qrImageUrl: uploadedQr || qrImageUrl || existingQrImageUrl,
+    imageUrl: uploadedImage || imageUrl || existing?.imageUrl || null,
+    qrImageUrl: uploadedQr || qrImageUrl || existing?.qrImageUrl || null,
     priceRp,
     stock,
     active: formData.get("active") === "on",
     featured: formData.get("featured") === "on",
-    sortOrder: Math.max(-1000, Math.min(1000, Number(formData.get("sortOrder") || 0)))
+    sortOrder: boundedInteger(formData.get("sortOrder"), { min: -1_000, max: 1_000, fallback: 0 })
   };
   const offer = id
     ? await prisma.storeOffer.update({ where: { id }, data })

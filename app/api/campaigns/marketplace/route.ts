@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { boundedInteger } from "@/lib/numbers";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -8,7 +9,7 @@ const SORTS = new Set(["promoted", "rate", "pay", "deadline", "new"]);
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const page = Math.max(1, Math.min(100, Number(url.searchParams.get("page") || 1)));
+  const page = boundedInteger(url.searchParams.get("page"), { min: 1, max: 100, fallback: 1 });
   const query = String(url.searchParams.get("query") || "").trim().slice(0, 80);
   const category = CATEGORIES.has(String(url.searchParams.get("category"))) ? String(url.searchParams.get("category")) : "all";
   const deadline = DEADLINES.has(String(url.searchParams.get("deadline"))) ? String(url.searchParams.get("deadline")) : "any";
@@ -20,12 +21,17 @@ export async function GET(request: Request) {
   const where: Prisma.CampaignWhereInput = {
     status: { in: ["ACTIVE", "LOW_BUDGET"] },
     visibility: { in: ["PUBLIC", "FEATURED"] },
+    deadline: deadlineDate
+      ? { gt: now, lte: deadlineDate }
+      : deadline === "later"
+        ? { gt: new Date(now.getTime() + 7 * 86400000) }
+        : { gt: now },
+    remainingBudgetCents: { gt: 0 },
     ...(query ? { OR: [
       { title: { contains: query, mode: "insensitive" as const } },
       { description: { contains: query, mode: "insensitive" as const } },
       { niche: { contains: query, mode: "insensitive" as const } }
     ] } : {}),
-    ...(deadlineDate ? { deadline: { lte: deadlineDate } } : deadline === "later" ? { deadline: { gt: new Date(now.getTime() + 7 * 86400000) } } : {}),
     ...(category === "streams" ? { sourcePlatform: "TWITCH" as const } : {}),
     ...(category === "games" ? { niche: "Gaming" } : {}),
     ...(category === "business" ? { niche: { in: ["Business", "Brand", "Finance", "Career", "Design"] } } : {})

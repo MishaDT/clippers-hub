@@ -15,7 +15,11 @@ export function compactNumber(value: number) {
 
 export function parseRubToCents(value: FormDataEntryValue | null) {
   const amount = Number(String(value ?? "0").replace(",", "."));
-  return Math.max(0, Math.round(amount * 100));
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const cents = Math.round(amount * 100);
+  // Monetary columns use PostgreSQL INTEGER. Keep malformed or overflowing
+  // browser input from reaching Prisma and turning into a 500 response.
+  return Number.isSafeInteger(cents) && cents <= 2_000_000_000 ? cents : 0;
 }
 
 export function commissionRate(rank: string) {
@@ -28,7 +32,9 @@ export function commissionRate(rank: string) {
 
 // Full amount reserved from the client's funded campaign for one successful result.
 export function grossPayout(viewThreshold: number, cpmRateCents: number) {
-  return Math.max(0, Math.round((viewThreshold / 1000) * cpmRateCents));
+  if (!Number.isFinite(viewThreshold) || !Number.isFinite(cpmRateCents)) return 0;
+  const payout = Math.round((Math.max(0, viewThreshold) / 1000) * Math.max(0, cpmRateCents));
+  return Number.isSafeInteger(payout) ? Math.min(payout, 2_000_000_000) : 0;
 }
 
 // Amount the clipper receives after their rank-specific platform commission.

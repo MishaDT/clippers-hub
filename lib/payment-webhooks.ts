@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { depositProofMatches, type DepositProof } from "@/lib/payment-proof";
+import { readTextWithLimit } from "@/lib/request-json";
 
 function safeJson(value: string) {
   try {
@@ -11,16 +13,19 @@ function safeJson(value: string) {
   }
 }
 
-async function completeDepositByProviderId(provider: string, providerPaymentId: string) {
-  const tx = await prisma.transaction.findFirst({
-    where: {
-      provider,
-      providerRef: providerPaymentId,
-      type: "DEPOSIT",
-      status: "PENDING"
-    }
+async function pendingDeposit(provider: string, providerPaymentId: string) {
+  return prisma.transaction.findFirst({
+    where: { provider, providerRef: providerPaymentId, type: "DEPOSIT", status: "PENDING" }
   });
-  if (!tx) return { completed: false, reason: "transaction_not_found" };
+}
+
+async function completeDeposit(
+  tx: NonNullable<Awaited<ReturnType<typeof pendingDeposit>>>,
+  proof: DepositProof
+) {
+  if (!depositProofMatches(tx, proof)) {
+    return { completed: false, reason: "payment_proof_mismatch" };
+  }
 
   // Atomic claim: only the caller that actually flips this transaction PENDING -> COMPLETED
   // is allowed to credit the balance. A concurrent or replayed webhook updates 0 rows and
@@ -43,33 +48,49 @@ export function verifyStripeSignature(body: string, signature: string | null) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) return false;
   if (!signature) return false;
-  const parts = Object.fromEntries(signature.split(",").map((item) => item.split("=", 2)) as Array<[string, string]>);
-  const timestamp = parts.t;
-  const expected = parts.v1;
-  if (!timestamp || !expected) return false;
+  const parts = signature.split(",").map((item) => item.trim().split("=", 2));
+  const timestamp = parts.find(([key]) => key === "t")?.[1];
+  const candidates = parts.filter(([key, value]) => key === "v1" && value).map(([, value]) => value);
+  if (!timestamp || candidates.length === 0) return false;
   // Reject replays outside a 5-minute window.
   const age = Math.abs(Date.now() / 1000 - Number(timestamp));
   if (!Number.isFinite(age) || age > 300) return false;
   const actual = createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
-  return actual.length === expected.length && timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+  return candidates.some((candidate) => (
+    actual.length === candidate.length
+    && timingSafeEqual(Buffer.from(actual), Buffer.from(candidate))
+  ));
 }
 
 // YooKassa has no HMAC signature, so never trust the webhook body — re-fetch the
 // payment from the API and only credit if it is genuinely paid.
-async function yooKassaPaymentSucceeded(paymentId: string) {
+async function verifiedYooKassaProof(paymentId: string): Promise<DepositProof | null> {
   const shopId = process.env.YOOKASSA_SHOP_ID;
   const secret = process.env.YOOKASSA_SECRET_KEY;
-  if (!shopId || !secret) return false;
+  if (!shopId || !secret) return null;
   const auth = Buffer.from(`${shopId}:${secret}`).toString("base64");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
     const res = await fetch(`https://api.yookassa.ru/v3/payments/${encodeURIComponent(paymentId)}`, {
-      headers: { Authorization: `Basic ${auth}` }
+      headers: { Authorization: `Basic ${auth}` },
+      signal: controller.signal,
+      cache: "no-store"
     });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return data?.status === "succeeded" && data?.paid === true;
+    if (!res.ok) return null;
+    const data = JSON.parse(await readTextWithLimit(res, 256_000));
+    if (data?.status !== "succeeded" || data?.paid !== true) return null;
+    const amountCents = Math.round(Number(data?.amount?.value) * 100);
+    return {
+      amountCents,
+      currency: String(data?.amount?.currency || ""),
+      userId: String(data?.metadata?.userId || ""),
+      source: String(data?.metadata?.source || "")
+    };
   } catch {
-    return false;
+    return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -78,15 +99,25 @@ export async function handleStripeWebhook(body: string) {
   if (event.type !== "checkout.session.completed") return { ignored: true, type: event.type };
   const session = event.data?.object;
   if (!session?.id || session.payment_status !== "paid") return { ignored: true, type: event.type };
-  return completeDepositByProviderId("stripe", String(session.id));
+  const tx = await pendingDeposit("stripe", String(session.id));
+  if (!tx) return { completed: false, reason: "transaction_not_found" };
+  return completeDeposit(tx, {
+    amountCents: Number(session.amount_total),
+    currency: String(session.currency || ""),
+    userId: String(session.client_reference_id || session.metadata?.userId || ""),
+    source: String(session.metadata?.source || "")
+  });
 }
 
 export async function handleYooKassaWebhook(body: string) {
   const event = safeJson(body);
   const payment = event.object;
   if (!payment?.id || payment.status !== "succeeded") return { ignored: true, event: event.event };
-  if (!(await yooKassaPaymentSucceeded(String(payment.id)))) {
+  const tx = await pendingDeposit("yookassa", String(payment.id));
+  if (!tx) return { completed: false, reason: "transaction_not_found" };
+  const proof = await verifiedYooKassaProof(String(payment.id));
+  if (!proof) {
     return { verified: false, reason: "yookassa_verify_failed" };
   }
-  return completeDepositByProviderId("yookassa", String(payment.id));
+  return completeDeposit(tx, proof);
 }

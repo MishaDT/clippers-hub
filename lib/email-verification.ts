@@ -54,7 +54,8 @@ export async function sendEmailVerification(input: { userId: string; email: stri
         subject: "Подтвердите email в ReelPay",
         text: `Здравствуйте, ${input.name}. Подтвердите email в течение 24 часов: ${verifyUrl}`
       }),
-      cache: "no-store"
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000)
     });
 
     if (!response.ok) return { sent: false as const, reason: "provider_error" as const };

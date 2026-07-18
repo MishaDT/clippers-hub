@@ -36,8 +36,6 @@ function OfferFields({
   return (
     <form className="admin-store-form" action={adminSaveStoreOfferAction}>
       {offer ? <input type="hidden" name="id" value={offer.id} /> : null}
-      {offer ? <input type="hidden" name="existingImageUrl" value={offer.imageUrl || ""} /> : null}
-      {offer ? <input type="hidden" name="existingQrImageUrl" value={offer.qrImageUrl || ""} /> : null}
 
       <label>
         <span>Тип предложения</span>
@@ -86,11 +84,11 @@ function OfferFields({
       </label>
       <label className="admin-file-field">
         <span>Загрузить картинку</span>
-        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp" />
       </label>
       <label className="admin-file-field">
         <span>Свой QR, если нужен</span>
-        <input name="qrFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+        <input name="qrFile" type="file" accept="image/png,image/jpeg,image/webp" />
       </label>
 
       <div className="admin-store-switches wide">

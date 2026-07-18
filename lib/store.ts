@@ -4,18 +4,12 @@ import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
 import QRCode from "qrcode";
 import { isPrivateAddress } from "@/lib/ip-guard";
+import { safeHttpsUrl } from "@/lib/safe-https-url";
+
+export { safeHttpsUrl } from "@/lib/safe-https-url";
 
 export const PAMPADU_URL = "https://ppdu.ru/2f0f0fbc-775f-471a-8cc3-783b3e50b904";
 export const PAMPADU_SCRIPT_URL = "https://ppdu.ru/ppdw.js";
-
-export function safeHttpsUrl(value: unknown) {
-  try {
-    const url = new URL(String(value || "").trim());
-    return url.protocol === "https:" ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
 
 // SVG can carry inline <script>; served from our own origin that is stored XSS. We never
 // accept or emit SVG from the image proxy — only raster formats.
@@ -151,7 +145,7 @@ export async function fetchStoreMetadata(input: string) {
       if (!response.ok) throw new Error("FETCH_FAILED");
       const length = Number(response.headers.get("content-length") || 0);
       if (length > 1_000_000) throw new Error("TOO_LARGE");
-      const html = (await response.text()).slice(0, 1_000_000);
+      const html = new TextDecoder().decode(await readCapped(response, 1_000_000));
       const titleTag = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] || "";
       return {
         title: decode(meta(html, "og:title") || titleTag),

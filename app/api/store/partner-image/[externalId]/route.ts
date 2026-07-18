@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { readBytesWithLimit, RequestBodyTooLargeError } from "@/lib/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +32,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ externalId
     if (!response.ok) return new Response(null, { status: 502 });
     const contentType = response.headers.get("content-type")?.split(";")[0] || "";
     if (!["image/png", "image/jpeg", "image/webp"].includes(contentType)) return new Response(null, { status: 415 });
-    const declared = Number(response.headers.get("content-length") || 0);
-    if (declared > 1_500_000) return new Response(null, { status: 413 });
-    const body = new Uint8Array(await response.arrayBuffer());
-    if (body.byteLength > 1_500_000) return new Response(null, { status: 413 });
-    return new Response(body, {
+    const body = await readBytesWithLimit(response, 1_500_000);
+    const responseBody = new ArrayBuffer(body.byteLength);
+    new Uint8Array(responseBody).set(body);
+    return new Response(responseBody, {
       headers: {
         "content-type": contentType,
         "cache-control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000",
@@ -44,7 +44,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ externalId
         "content-disposition": "inline"
       }
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) return new Response(null, { status: 413 });
     return new Response(null, { status: 504 });
   } finally {
     clearTimeout(timer);

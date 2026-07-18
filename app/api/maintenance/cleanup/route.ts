@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notificationGroup, notify } from "@/lib/notifications";
+import { boundedInteger } from "@/lib/numbers";
 
 // A prune pass can touch many rows; give it room but stay within serverless limits.
 export const maxDuration = 60;
@@ -16,9 +17,15 @@ function authorized(request: Request) {
 // Retention: keep high-volume PAGE_VIEW analytics for a bounded window, then prune. Other
 // event types (auth, submissions, store clicks) are retained for audit / abuse history.
 async function run() {
-  const retentionDays = Math.max(7, Number(process.env.ANALYTICS_RETENTION_DAYS || 90));
+  const retentionDays = boundedInteger(process.env.ANALYTICS_RETENTION_DAYS, { min: 7, max: 3_650, fallback: 90 });
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
   let deleted = 0;
+  const expiredSessions = await prisma.authSession.deleteMany({
+    // Keep revoked rows until the original token expires. Legacy-session tombstones
+    // must remain present for their full 30-day lifetime or an old copied cookie could
+    // enrol itself again after an early cleanup pass.
+    where: { expiresAt: { lt: new Date() } }
+  });
   const expiredEmailTokens = await prisma.emailVerificationToken.deleteMany({
     where: {
       OR: [
@@ -78,6 +85,7 @@ async function run() {
   }
   return {
     deleted,
+    expiredSessions: expiredSessions.count,
     expiredEmailTokens: expiredEmailTokens.count,
     reminders,
     retentionDays,

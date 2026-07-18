@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { isPaymentProviderAvailable, type PaymentProvider } from "@/lib/payment-readiness";
+import { readTextWithLimit } from "@/lib/request-json";
 
 type PaymentInput = {
   amountCents: number;
@@ -14,6 +15,21 @@ function publicBaseUrl() {
 
 function rubAmount(cents: number) {
   return (cents / 100).toFixed(2);
+}
+
+async function providerJson(response: Response) {
+  const text = await readTextWithLimit(response, 256_000);
+  return JSON.parse(text || "{}");
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal, cache: "no-store" });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function createStripeCheckout(input: PaymentInput) {
@@ -32,7 +48,7 @@ async function createStripeCheckout(input: PaymentInput) {
   params.set("line_items[0][price_data][unit_amount]", String(input.amountCents));
   params.set("line_items[0][quantity]", "1");
 
-  const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+  const response = await fetchWithTimeout("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
@@ -40,7 +56,7 @@ async function createStripeCheckout(input: PaymentInput) {
     },
     body: params
   });
-  const data = await response.json();
+  const data = await providerJson(response);
   if (!response.ok) throw new Error(data?.error?.message || `Stripe failed: ${response.status}`);
 
   return {
@@ -58,7 +74,7 @@ async function createYooKassaPayment(input: PaymentInput) {
   const secret = process.env.YOOKASSA_SECRET_KEY;
   if (!shopId || !secret) return null;
 
-  const response = await fetch("https://api.yookassa.ru/v3/payments", {
+  const response = await fetchWithTimeout("https://api.yookassa.ru/v3/payments", {
     method: "POST",
     headers: {
       Authorization: `Basic ${Buffer.from(`${shopId}:${secret}`).toString("base64")}`,
@@ -73,7 +89,7 @@ async function createYooKassaPayment(input: PaymentInput) {
       metadata: { userId: input.userId, source: "wallet_deposit" }
     })
   });
-  const data = await response.json();
+  const data = await providerJson(response);
   if (!response.ok) throw new Error(data?.description || `YooKassa failed: ${response.status}`);
 
   return {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
+import { safeHttpsUrl } from "@/lib/safe-https-url";
 
 const allowedSources = new Set(["card", "qr", "leaderboard"]);
 
@@ -23,13 +24,11 @@ export async function GET(
     return NextResponse.redirect(new URL("/store?tab=partners&offer=unavailable", request.url), 302);
   }
 
-  let destination: URL;
-  try {
-    destination = new URL(offer.url);
-    if (destination.protocol !== "https:") throw new Error("Unsupported protocol");
-  } catch {
+  const safeDestination = safeHttpsUrl(offer.url);
+  if (!safeDestination) {
     return NextResponse.redirect(new URL("/store?tab=partners&offer=invalid", request.url), 302);
   }
+  const destination = new URL(safeDestination);
 
   const user = await getCurrentUser();
   await trackEvent({

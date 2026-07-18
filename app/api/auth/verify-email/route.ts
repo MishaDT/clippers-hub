@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { consumeEmailVerification, sendEmailVerification } from "@/lib/email-verification";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { sameOrigin } from "@/lib/security";
+import { strictSameOrigin } from "@/lib/security";
 import { safeReturnTo } from "@/lib/navigation";
+import { readFormDataWithLimit } from "@/lib/request-json";
 
 function redirectUrl(path: string, request: Request) {
   const url = new URL(path, request.url);
@@ -27,10 +28,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) {
+  if (!strictSameOrigin(request)) {
     return NextResponse.redirect(redirectUrl("/verify-email?status=invalid", request), 303);
   }
-  const formData = await request.formData();
+  const formData = await readFormDataWithLimit(request, 8_000).catch(() => null);
+  if (!formData) return NextResponse.redirect(redirectUrl("/verify-email?status=invalid", request), 303);
   const returnTo = safeReturnTo(formData.get("returnTo"), "/profile");
   const resultPath = (status: string) => `/verify-email?${new URLSearchParams({ status, returnTo })}`;
   const user = await getCurrentUser();

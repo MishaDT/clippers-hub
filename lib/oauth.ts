@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
+import { readTextWithLimit } from "@/lib/request-json";
 
 export type ProviderId = "google" | "vk" | "yandex";
 
@@ -109,7 +110,7 @@ export function buildAuthorizeUrl(
 }
 
 async function readJson(response: Response) {
-  const text = await response.text();
+  const text = await readTextWithLimit(response, 256_000);
   try {
     return JSON.parse(text);
   } catch {
@@ -142,7 +143,9 @@ export async function exchangeAndFetchProfile(
       client_id: clientId,
       client_secret: clientSecret,
       code_verifier: opts.verifier
-    })
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000)
   });
   const tokens = await readJson(tokenRes);
   const accessToken: string | undefined = tokens.access_token;
@@ -150,7 +153,9 @@ export async function exchangeAndFetchProfile(
 
   if (id === "google") {
     const res = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000)
     });
     const u = await readJson(res);
     if (!res.ok || !u.sub) throw new Error("google_userinfo_failed");
@@ -165,7 +170,9 @@ export async function exchangeAndFetchProfile(
 
   // Yandex
   const res = await fetch("https://login.yandex.ru/info?format=json", {
-    headers: { Authorization: `OAuth ${accessToken}` }
+    headers: { Authorization: `OAuth ${accessToken}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000)
   });
   const u = await readJson(res);
   if (!res.ok || !u.id) throw new Error("yandex_userinfo_failed");
@@ -205,7 +212,9 @@ async function vkProfile(opts: {
   const tokenRes = await fetch("https://id.vk.com/oauth2/auth", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: tokenBody
+    body: tokenBody,
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000)
   });
   const tokens = await readJson(tokenRes);
   const accessToken: string | undefined = tokens.access_token;
@@ -214,7 +223,9 @@ async function vkProfile(opts: {
   const infoRes = await fetch("https://id.vk.com/oauth2/user_info", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ access_token: accessToken, client_id: opts.clientId })
+    body: new URLSearchParams({ access_token: accessToken, client_id: opts.clientId }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000)
   });
   const info = await readJson(infoRes);
   const user = info.user ?? {};

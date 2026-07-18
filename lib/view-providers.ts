@@ -1,3 +1,5 @@
+import { readTextWithLimit } from "./request-json.ts";
+
 export type ViewPlatform = "YOUTUBE" | "VK" | "TIKTOK" | "INSTAGRAM";
 
 export type ViewSnapshot = {
@@ -39,6 +41,10 @@ function requireEnv(name: string) {
   return value;
 }
 
+async function readProviderJson<T>(response: Response): Promise<T> {
+  return JSON.parse(await readTextWithLimit(response, 1_000_000)) as T;
+}
+
 type YouTubeVideo = {
   id?: string;
   snippet?: {
@@ -55,6 +61,29 @@ type YouTubeVideo = {
 };
 
 const youtubeCache = new Map<string, { expiresAt: number; request: Promise<YouTubeVideo> }>();
+
+async function fetchVkVideo(postId: string) {
+  const body = new URLSearchParams({
+    v: "5.199",
+    videos: postId,
+    access_token: requireEnv("VK_SERVICE_TOKEN")
+  });
+  // Keep the service token out of request URLs, proxy logs and exception messages.
+  const response = await fetch("https://api.vk.com/method/video.get", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000)
+  });
+  if (!response.ok) throw new Error(`VK API failed: ${response.status}`);
+  const data = await readProviderJson<{
+    response?: { items?: Array<Record<string, unknown>> };
+    error?: { error_code?: number };
+  }>(response);
+  if (data.error) throw new Error(`VK API error: ${Number(data.error.error_code) || 0}`);
+  return { data, video: data.response?.items?.[0] || {} };
+}
 
 export function parseYouTubeVideoId(url: string) {
   let parsed: URL;
@@ -88,12 +117,13 @@ async function fetchYouTubeVideo(postId: string) {
       `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${encodeURIComponent(postId)}`,
       {
         headers: { "X-Goog-Api-Key": requireEnv("YOUTUBE_DATA_API_KEY") },
-        cache: "no-store"
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000)
       }
     );
     if (!response.ok) throw new Error(`YouTube API failed: ${response.status}`);
 
-    const data = await response.json();
+    const data = await readProviderJson<{ items?: YouTubeVideo[] }>(response);
     const video = data.items?.[0] as YouTubeVideo | undefined;
     if (!video) throw new Error("YouTube video is unavailable or private");
     return video;
@@ -154,16 +184,12 @@ export const vkProvider: ViewProvider = {
   async fetchSnapshot(postUrl) {
     const postId = this.parsePostId(postUrl);
     if (!postId) throw new Error("Cannot parse VK video id");
-    const token = requireEnv("VK_SERVICE_TOKEN");
-    const response = await fetch(`https://api.vk.com/method/video.get?v=5.199&videos=${postId}&access_token=${token}`);
-    if (!response.ok) throw new Error(`VK API failed: ${response.status}`);
-    const data = await response.json();
-    const video = data.response?.items?.[0] || {};
+    const { data, video } = await fetchVkVideo(postId);
     return {
       platform: "VK",
       postId,
       views: readNumber(video.views),
-      likes: readNumber(video.likes?.count),
+      likes: readNumber((video.likes as { count?: unknown } | undefined)?.count),
       comments: readNumber(video.comments),
       fetchedAt: new Date(),
       raw: data
@@ -172,11 +198,7 @@ export const vkProvider: ViewProvider = {
   async fetchMeta(postUrl) {
     const postId = this.parsePostId(postUrl);
     if (!postId) throw new Error("Cannot parse VK video id");
-    const token = requireEnv("VK_SERVICE_TOKEN");
-    const response = await fetch(`https://api.vk.com/method/video.get?v=5.199&videos=${postId}&access_token=${token}`);
-    if (!response.ok) throw new Error(`VK API failed: ${response.status}`);
-    const data = await response.json();
-    const video = data.response?.items?.[0] || {};
+    const { data, video } = await fetchVkVideo(postId);
     return {
       platform: "VK",
       postId,

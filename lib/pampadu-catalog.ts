@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { stringify } from "@/lib/json";
+import { readTextWithLimit } from "@/lib/request-json";
 
 export const PAMPADU_WIDGET_ID = "2f0f0fbc-775f-471a-8cc3-783b3e50b904";
 
@@ -87,9 +88,7 @@ async function fetchPublicJson(url: string) {
       }
     });
     if (!response.ok) throw new Error(`PAMPADU_${response.status}`);
-    const body = new Uint8Array(await response.arrayBuffer());
-    if (body.byteLength > 2_000_000) throw new Error("PAMPADU_TOO_LARGE");
-    return JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
+    return JSON.parse(await readTextWithLimit(response, 2_000_000)) as Record<string, unknown>;
   } finally {
     clearTimeout(timer);
   }

@@ -13,6 +13,8 @@ import { parseRubToCents } from "@/lib/money";
 import { notificationGroup, notify } from "@/lib/notifications";
 import { appendOwnershipEvidence } from "@/lib/ownership-evidence";
 import { syncViews } from "@/lib/social-sync";
+import { boundedInteger } from "@/lib/numbers";
+import { safeHttpsUrl } from "@/lib/safe-https-url";
 
 const roles = ["ADMIN", "CLIENT", "WORKER", "BOTH"] as const;
 const ranks = ["BRONZE", "SILVER", "GOLD", "DIAMOND", "LEGENDARY"] as const;
@@ -74,7 +76,7 @@ export async function adminUpdateUserAction(formData: FormData) {
   const roleInput = clean(formData.get("role"));
   const rankInput = clean(formData.get("rank"));
   const kycInput = clean(formData.get("kycStatus"));
-  const trustScore = Math.min(100, Math.max(0, Number(formData.get("trustScore") || 100)));
+  const trustScore = boundedInteger(formData.get("trustScore"), { min: 0, max: 100, fallback: 100 });
   if (!userId) redirect("/admin/users");
 
   const data = {
@@ -102,25 +104,41 @@ export async function adminAdjustBalanceAction(formData: FormData) {
   if (!target) redirect("/admin/users?error=missing_user");
 
   const signed = direction === "minus" ? -amountCents : amountCents;
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { balanceCents: { increment: signed } } }),
-    prisma.transaction.create({
-      data: {
-        userId,
-        amountCents: signed,
-        feeCents: 0,
-        netCents: signed,
-        type: "ADJUSTMENT",
-        status: "COMPLETED",
-        isDemo: target.isDemo,
-        provider: "admin",
-        providerData: stringify({ reason, adminId: admin.id })
-      }
-    }),
-    prisma.auditLog.create({
-      data: { userId: admin.id, action: "ADMIN_BALANCE_ADJUST", entity: "User", entityId: userId, metadata: stringify({ amountCents: signed, reason }) }
-    })
-  ]);
+  try {
+    await prisma.$transaction(async (db) => {
+      const changed = signed < 0
+        ? await db.user.updateMany({
+            where: { id: userId, balanceCents: { gte: amountCents } },
+            data: { balanceCents: { decrement: amountCents } }
+          })
+        : await db.user.updateMany({
+            where: { id: userId },
+            data: { balanceCents: { increment: amountCents } }
+          });
+      if (changed.count !== 1) throw new Error("INSUFFICIENT_BALANCE");
+      await db.transaction.create({
+        data: {
+          userId,
+          amountCents: signed,
+          feeCents: 0,
+          netCents: signed,
+          type: "ADJUSTMENT",
+          status: "COMPLETED",
+          isDemo: target.isDemo,
+          provider: "admin",
+          providerData: stringify({ reason, adminId: admin.id })
+        }
+      });
+      await db.auditLog.create({
+        data: { userId: admin.id, action: "ADMIN_BALANCE_ADJUST", entity: "User", entityId: userId, metadata: stringify({ amountCents: signed, reason }) }
+      });
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+      redirect(`/admin/users/${userId}?error=insufficient_balance`);
+    }
+    throw error;
+  }
   revalidatePath(`/admin/users/${userId}`);
   redirect(`/admin/users/${userId}?balance=1`);
 }
@@ -134,13 +152,8 @@ export async function adminUpdateTransactionAction(formData: FormData) {
   const receiptInput = clean(formData.get("receiptUrl")).slice(0, 500);
   let receiptUrl = "";
   if (receiptInput) {
-    try {
-      const parsed = new URL(receiptInput);
-      if (parsed.protocol !== "https:") redirect("/admin/finance?error=receipt_url");
-      receiptUrl = parsed.toString();
-    } catch {
-      redirect("/admin/finance?error=receipt_url");
-    }
+    receiptUrl = safeHttpsUrl(receiptInput) || "";
+    if (!receiptUrl) redirect("/admin/finance?error=receipt_url");
   }
   if (status === "COMPLETED" && externalReference.length < 3) {
     redirect("/admin/finance?error=transfer_reference");

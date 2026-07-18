@@ -5,6 +5,11 @@ import { activeSocialEncryptionKeyId, decryptSecret, encryptSecret, socialTokenE
 import type { ViewSnapshot } from "@/lib/view-providers";
 import { viewProviders } from "@/lib/view-providers";
 import type { OwnershipResult } from "@/lib/antifraud";
+import { readTextWithLimit } from "@/lib/request-json";
+
+async function readProviderJson<T>(response: Response): Promise<T> {
+  return JSON.parse(await readTextWithLimit(response, 512_000)) as T;
+}
 
 export type ConnectableSocialPlatform = "YOUTUBE" | "TIKTOK" | "INSTAGRAM";
 
@@ -100,7 +105,7 @@ async function requestTikTokToken(body: URLSearchParams) {
     cache: "no-store",
     signal: AbortSignal.timeout(10_000)
   });
-  const data = await response.json() as TikTokTokenResponse;
+  const data = await readProviderJson<TikTokTokenResponse>(response);
   if (!response.ok || data.error || !data.access_token || !data.open_id) {
     throw new Error(data.error_description || data.error || `TikTok token exchange failed: ${response.status}`);
   }
@@ -135,10 +140,10 @@ export async function fetchTikTokProfile(accessToken: string) {
       signal: AbortSignal.timeout(10_000)
     }
   );
-  const data = await response.json() as {
+  const data = await readProviderJson<{
     data?: { user?: { open_id?: string; display_name?: string; username?: string } };
     error?: { code?: string; message?: string };
-  };
+  }>(response);
   if (!response.ok || (data.error?.code && data.error.code !== "ok")) {
     throw new Error(data.error?.message || `TikTok profile request failed: ${response.status}`);
   }
@@ -178,7 +183,7 @@ async function requestYouTubeToken(body: URLSearchParams) {
     cache: "no-store",
     signal: AbortSignal.timeout(10_000)
   });
-  const data = await response.json() as YouTubeTokenResponse;
+  const data = await readProviderJson<YouTubeTokenResponse>(response);
   if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "YouTube token exchange failed");
   return data;
 }
@@ -209,7 +214,7 @@ export async function fetchYouTubeChannel(accessToken: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(10_000)
   });
-  const data = await response.json() as { items?: Array<{ id: string; snippet?: { title?: string; customUrl?: string } }> };
+  const data = await readProviderJson<{ items?: Array<{ id: string; snippet?: { title?: string; customUrl?: string } }> }>(response);
   const channel = data.items?.[0];
   if (!response.ok || !channel?.id) throw new Error("YouTube channel is unavailable");
   return channel;
@@ -251,8 +256,19 @@ async function usableTikTokAccessToken(userId: string, socialAccountId?: string 
     where: { id: credential.id, refreshVersion: credential.refreshVersion },
     data: { ...tokenData, refreshVersion: { increment: 1 } }
   });
-  if (updated.count !== 1) throw new Error("Token refresh is already in progress");
+  if (updated.count !== 1) {
+    const current = await prisma.socialCredential.findUnique({ where: { id: credential.id } });
+    if (current?.accessTokenEncrypted && (!current.tokenExpiresAt || current.tokenExpiresAt.getTime() > Date.now() + 60_000)) {
+      return decryptSecret(current.accessTokenEncrypted, "social:TIKTOK");
+    }
+    throw new Error("Token refresh is already in progress");
+  }
   return refreshed.access_token!;
+}
+
+function shouldRequireReconnect(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return /expired|invalid_grant|unauthori[sz]ed|account mismatch|invalid token|access token.*invalid/i.test(message);
 }
 
 export async function fetchTikTokSnapshotForUser(userId: string, postUrl: string, socialAccountId?: string | null): Promise<ViewSnapshot> {
@@ -272,10 +288,10 @@ export async function fetchTikTokSnapshotForUser(userId: string, postUrl: string
       signal: AbortSignal.timeout(10_000)
     }
   );
-  const data = await response.json() as {
+  const data = await readProviderJson<{
     data?: { videos?: TikTokVideo[] };
     error?: { code?: string; message?: string };
-  };
+  }>(response);
   const video = data.data?.videos?.find((item) => item.id === postId);
   if (!response.ok || (data.error?.code && data.error.code !== "ok") || !video) {
     throw new Error(data.error?.message || "TikTok video is unavailable or does not belong to the connected account");
@@ -308,11 +324,19 @@ export async function verifySocialAccountConnection(userId: string, socialAccoun
         if (!account.credential.refreshTokenEncrypted) throw new Error("YouTube authorization expired");
         const refreshed = await refreshYouTubeToken(decryptSecret(account.credential.refreshTokenEncrypted, "social:YOUTUBE"));
         const tokenData = encryptedYouTubeTokenData({ ...refreshed, refresh_token: undefined });
-        await prisma.socialCredential.update({
-          where: { id: account.credential.id },
+        const updated = await prisma.socialCredential.updateMany({
+          where: { id: account.credential.id, refreshVersion: account.credential.refreshVersion },
           data: { ...tokenData, refreshTokenEncrypted: account.credential.refreshTokenEncrypted, refreshVersion: { increment: 1 } }
         });
-        accessToken = refreshed.access_token!;
+        if (updated.count === 1) {
+          accessToken = refreshed.access_token!;
+        } else {
+          const current = await prisma.socialCredential.findUnique({ where: { id: account.credential.id } });
+          if (!current?.accessTokenEncrypted || (current.tokenExpiresAt && current.tokenExpiresAt.getTime() <= Date.now() + 60_000)) {
+            throw new Error("Token refresh is already in progress");
+          }
+          accessToken = decryptSecret(current.accessTokenEncrypted, "social:YOUTUBE");
+        }
       }
       const channel = await fetchYouTubeChannel(accessToken);
       if (channel.id !== account.externalId) throw new Error("Account mismatch");
@@ -322,7 +346,12 @@ export async function verifySocialAccountConnection(userId: string, socialAccoun
     await prisma.socialAccount.update({ where: { id: account.id }, data: { connectionStatus: "CONNECTED", reconnectReason: null, lastCheckedAt: new Date(), verifiedAt: new Date() } });
     return true;
   } catch (error) {
-    await prisma.socialAccount.update({ where: { id: account.id }, data: { connectionStatus: "RECONNECT_REQUIRED", reconnectReason: "authorization_failed", lastCheckedAt: new Date() } });
+    await prisma.socialAccount.update({
+      where: { id: account.id },
+      data: shouldRequireReconnect(error)
+        ? { connectionStatus: "RECONNECT_REQUIRED", reconnectReason: "authorization_failed", lastCheckedAt: new Date() }
+        : { lastCheckedAt: new Date() }
+    });
     throw error;
   }
 }

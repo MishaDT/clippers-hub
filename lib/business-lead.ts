@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeHttpsUrl } from "./safe-https-url.ts";
 
 const shortText = (max: number) => z.string().trim().min(2).max(max);
 
@@ -8,14 +9,10 @@ export const businessLeadSchema = z.object({
     (value) => value.includes("@") || value.replace(/\D/g, "").length >= 10,
     "Укажите email, Telegram или телефон"
   ),
-  contentUrl: z.string().trim().max(500).optional().default("").refine((value) => {
-    if (!value) return true;
-    try {
-      return new URL(value).protocol === "https:";
-    } catch {
-      return false;
-    }
-  }, "Ссылка должна начинаться с https://"),
+  contentUrl: z.string().trim().max(500).optional().default("").refine(
+    (value) => !value || Boolean(safeHttpsUrl(value)),
+    "Ссылка должна начинаться с https://"
+  ),
   budgetRub: z.coerce.number().int().min(15_000).max(10_000_000),
   goal: shortText(500),
   utmSource: z.string().trim().max(80).optional().default(""),

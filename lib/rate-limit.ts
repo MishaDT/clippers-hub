@@ -1,4 +1,5 @@
 import "server-only";
+import { readTextWithLimit } from "@/lib/request-json";
 
 const buckets = new Map<string, { count: number; reset: number }>();
 
@@ -47,7 +48,7 @@ export async function rateLimit(key: string, limit = 8, windowMs = 60_000) {
       cache: "no-store"
     });
     if (!res.ok) return memoryLimit(key, limit, windowMs);
-    const data = (await res.json()) as Array<{ result?: unknown }>;
+    const data = JSON.parse(await readTextWithLimit(res, 64_000)) as Array<{ result?: unknown }>;
     const count = Number(data?.[0]?.result ?? 0);
     if (!Number.isFinite(count) || count <= 0) return memoryLimit(key, limit, windowMs);
     return count <= limit;

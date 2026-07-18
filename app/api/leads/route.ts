@@ -5,8 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { trackEvent } from "@/lib/analytics";
 import { LEAD_CONSENT_VERSION } from "@/lib/legal";
+import { readJsonWithLimit } from "@/lib/request-json";
+import { strictSameOrigin } from "@/lib/security";
 
 export async function POST(request: Request) {
+  if (!strictSameOrigin(request)) {
+    return NextResponse.json({ ok: false, error: "Недопустимый источник запроса." }, { status: 403 });
+  }
   if (!(await rateLimit(`business-lead:${clientIp(request)}`, 3, 60 * 60 * 1000))) {
     return NextResponse.json({ ok: false, error: "Слишком много заявок. Попробуйте позже." }, { status: 429 });
   }
@@ -16,7 +21,7 @@ export async function POST(request: Request) {
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = await readJsonWithLimit(request, 12_000);
   } catch {
     return NextResponse.json({ ok: false, error: "Проверьте данные формы." }, { status: 400 });
   }

@@ -19,7 +19,7 @@ function allowDemoSync() {
 }
 
 // One OWNERSHIP VideoCheck row per submission, upserted to reflect the latest result.
-async function recordOwnershipCheck(submissionId: string, status: "PASS" | "FAIL", proof: OwnershipResult, socialAccountId?: string | null) {
+async function recordOwnershipCheck(submissionId: string, status: "PASS" | "FAIL" | "PENDING", proof: OwnershipResult, socialAccountId?: string | null) {
   const data = {
     checkType: "OWNERSHIP",
     status,
@@ -73,19 +73,6 @@ async function settlePendingEarnings() {
   for (const tx of pending) {
     if (!tx.submission || tx.submission.fraudScore >= 70 || tx.submission.status === "REJECTED") continue;
     if (tx.submission.campaign.strictVerification && !tx.submission.visualProofConfirmedAt) continue;
-    // Final ownership gate before money actually leaves hold: never release if the
-    // latest tracking-code check on this clip failed.
-    const blockingCheck = await prisma.videoCheck.findFirst({
-      where: {
-        submissionId: tx.submission.id,
-        OR: [
-          { checkType: "OWNERSHIP", status: { in: ["FAIL", "FAILED"] } },
-          { checkType: "METRICS_RISK", status: { in: ["NEEDS_REVIEW", "FAILED"] } }
-        ]
-      },
-      select: { id: true }
-    });
-    if (blockingCheck) continue;
     const submissionId = tx.submission.id;
     const campaignId = tx.submission.campaignId;
     // Atomic claim: only the run that flips this earning PENDING -> COMPLETED moves the
@@ -95,11 +82,40 @@ async function settlePendingEarnings() {
       await db.$queryRaw(Prisma.sql`
         SELECT "id" FROM "Submission" WHERE "id" = ${submissionId} FOR UPDATE
       `);
+      const lockedSubmission = await db.submission.findUnique({
+        where: { id: submissionId },
+        select: {
+          status: true,
+          fraudScore: true,
+          visualProofConfirmedAt: true,
+          campaign: { select: { strictVerification: true } }
+        }
+      });
+      if (
+        !lockedSubmission
+        || lockedSubmission.status === "REJECTED"
+        || lockedSubmission.fraudScore >= 70
+        || (lockedSubmission.campaign.strictVerification && !lockedSubmission.visualProofConfirmedAt)
+      ) return false;
       const openDispute = await db.disputeCase.findFirst({
         where: { submissionId, status: "OPEN" },
         select: { id: true }
       });
       if (openDispute) return false;
+      const [latestOwnership, latestRisk] = await Promise.all([
+        db.videoCheck.findFirst({
+          where: { submissionId, checkType: "OWNERSHIP" },
+          orderBy: { updatedAt: "desc" },
+          select: { status: true }
+        }),
+        db.videoCheck.findFirst({
+          where: { submissionId, checkType: "METRICS_RISK" },
+          orderBy: { updatedAt: "desc" },
+          select: { status: true }
+        })
+      ]);
+      if (!latestOwnership || !["PASS", "PASSED"].includes(latestOwnership.status)) return false;
+      if (latestRisk && ["NEEDS_REVIEW", "FAIL", "FAILED"].includes(latestRisk.status)) return false;
       const claim = await db.transaction.updateMany({
         where: { id: tx.id, status: "PENDING" },
         data: { status: "COMPLETED" }
@@ -211,7 +227,7 @@ export async function syncViews() {
     if (
       providerMode !== "api"
       && !allowDemoSync()
-      && submission.status !== "THRESHOLD_MET"
+      && !["THRESHOLD_MET", "SETTLING"].includes(submission.status)
       && !guaranteeCandidate
     ) {
       skipped += 1;
@@ -259,6 +275,7 @@ export async function syncViews() {
           await recordOwnershipCheck(submission.id, "PASS", proof, submission.socialAccountId);
         } else if (proof.reason.startsWith("fetch_failed")) {
           ownershipNote = proof.reason; // transient (quota/private/deleted) — hold, no penalty
+          await recordOwnershipCheck(submission.id, "PENDING", proof, submission.socialAccountId);
         } else {
           ownershipNote = "code_missing"; // genuinely absent — flag, block earning, allow recovery
           await recordOwnershipCheck(submission.id, "FAIL", proof, submission.socialAccountId);

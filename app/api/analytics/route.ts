@@ -5,6 +5,8 @@ import { trackEvent } from "@/lib/analytics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { cookies } from "next/headers";
 import { analyticsAllowed, CONSENT_COOKIE } from "@/lib/cookie-preferences";
+import { readJsonWithLimit } from "@/lib/request-json";
+import { strictSameOrigin } from "@/lib/security";
 
 const schema = z.object({
   type: z.string().max(40).default("PAGE_VIEW"),
@@ -13,6 +15,9 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!strictSameOrigin(request)) {
+    return NextResponse.json({ ok: false }, { status: 403 });
+  }
   if (!analyticsAllowed((await cookies()).get(CONSENT_COOKIE)?.value)) {
     return new NextResponse(null, { status: 204 });
   }
@@ -27,7 +32,7 @@ export async function POST(request: Request) {
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = await readJsonWithLimit(request, 16_000);
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
   }

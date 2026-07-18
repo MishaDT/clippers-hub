@@ -13,6 +13,15 @@ export function sameOrigin(request: Request) {
   }
 }
 
+/**
+ * Destructive browser-only endpoints must carry Origin or Referer. This prevents a
+ * cross-site form POST from forcing a logout / Clear-Site-Data operation.
+ */
+export function strictSameOrigin(request: Request) {
+  if (!request.headers.get("origin") && !request.headers.get("referer")) return false;
+  return sameOrigin(request);
+}
+
 const COMMON_PASSWORDS = new Set(
   [
     "123456",

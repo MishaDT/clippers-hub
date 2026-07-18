@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { boundedInteger } from "@/lib/numbers";
 import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isPortfolioEligible } from "@/lib/profile-rules";
+import { strictSameOrigin } from "@/lib/security";
+import { readJsonWithLimit } from "@/lib/request-json";
 
 const PAGE_SIZE = 12;
 
@@ -10,7 +13,7 @@ export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   const url = new URL(request.url);
-  const page = Math.max(1, Math.min(1000, Number(url.searchParams.get("page") || 1)));
+  const page = boundedInteger(url.searchParams.get("page"), { min: 1, max: 1_000, fallback: 1 });
   const query = String(url.searchParams.get("q") || "").trim().slice(0, 80);
   const where: Prisma.SubmissionWhereInput = {
     workerId: user.id,
@@ -38,9 +41,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!strictSameOrigin(request)) return NextResponse.json({ error: "INVALID_ORIGIN" }, { status: 403 });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { action?: string; submissionId?: string; pinId?: string; direction?: string };
+  const body = await readJsonWithLimit(request, 4_000).catch(() => ({})) as { action?: string; submissionId?: string; pinId?: string; direction?: string };
 
   if (body.action === "pin" && body.submissionId) {
     const submission = await prisma.submission.findFirst({

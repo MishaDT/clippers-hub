@@ -39,6 +39,7 @@ import { CampaignReservationError, releaseSubmissionReservation, reserveCampaign
 import { initialDraftDecision, nextDraftRevision, validateDraftUrl } from "@/lib/draft-workflow";
 import { normalizeTrackingTarget } from "@/lib/tracking-links";
 import { ratingParties } from "@/lib/rating-rules";
+import { boundedInteger } from "@/lib/numbers";
 
 function safeCheckoutUrl(url: string | undefined) {
   if (!url) return "/wallet?deposit=ok";
@@ -196,7 +197,6 @@ export async function deleteAccountAction(formData: FormData) {
   const confirmation = String(formData.get("confirmation") || "").trim().toUpperCase();
   if (confirmation !== "УДАЛИТЬ" && confirmation !== "DELETE") redirect("/profile?error=delete_confirm");
 
-  await prisma.auditLog.deleteMany({ where: { userId: user.id } });
   await prisma.user.delete({ where: { id: user.id } });
   await destroySession();
   redirect("/?account=deleted");
@@ -253,14 +253,14 @@ export async function createCampaignAction(formData: FormData) {
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
   const platforms = formData.getAll("platforms").map(String).filter((item) => ["TIKTOK", "YOUTUBE", "VK"].includes(item));
-  const deadlineDays = Math.max(1, Number(formData.get("deadlineDays") || 7));
+  const deadlineDays = boundedInteger(formData.get("deadlineDays"), { min: 1, max: 90, fallback: 7 });
   const sourcePlatform = String(formData.get("sourcePlatform") || "TWITCH");
   const requestedVisibility = String(formData.get("visibility") || "PUBLIC");
   const requestedReviewMode = String(formData.get("reviewMode") || "STANDARD");
   const reviewMode = (["FAST", "STANDARD", "STRICT"].includes(requestedReviewMode)
     ? requestedReviewMode
     : "STANDARD") as "FAST" | "STANDARD" | "STRICT";
-  const maxRevisionRounds = Math.max(1, Math.min(3, Number(formData.get("maxRevisionRounds") || 2)));
+  const maxRevisionRounds = boundedInteger(formData.get("maxRevisionRounds"), { min: 1, max: 3, fallback: 2 });
   const visibility = user.role === "ADMIN" && requestedVisibility === "FEATURED" ? "FEATURED" : "PUBLIC";
   const cleanSourcePlatform = (["YOUTUBE", "TIKTOK", "INSTAGRAM", "VK", "TWITCH"].includes(sourcePlatform) ? sourcePlatform : "TWITCH") as "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "VK" | "TWITCH";
   const sourceUrlCheck = validatePublicMediaUrl(String(formData.get("sourceUrl") || ""), cleanSourcePlatform);
@@ -271,12 +271,20 @@ export async function createCampaignAction(formData: FormData) {
     .slice(0, 8) || "CPV";
   const trackingPrefix = `ch_${trackingBase}_${randomBytes(5).toString("hex").toUpperCase()}`;
 
+  const title = String(formData.get("title") || "").trim().slice(0, 160);
+  const description = String(formData.get("description") || "").trim().slice(0, 4_000);
+  const requiredTags = String(formData.get("requiredTags") || "").trim().slice(0, 1_000);
+  const bans = String(formData.get("bans") || "").trim().slice(0, 1_000);
+  if (title.length < 3 || description.length < 10 || budget <= 0 || cpm <= 0) {
+    redirect("/campaigns/new?error=invalid_input");
+  }
+
   const campaignPolicy = await moderateText({
     text: [
-      formData.get("title"),
-      formData.get("description"),
-      formData.get("requiredTags"),
-      formData.get("bans")
+      title,
+      description,
+      requiredTags,
+      bans
     ].map((value) => String(value || "")).join("\n"),
     contentType: "CAMPAIGN",
     authorId: user.id,
@@ -284,10 +292,11 @@ export async function createCampaignAction(formData: FormData) {
   });
   if (campaignPolicy.action === "BLOCK" || campaignPolicy.action === "REVIEW") redirect("/campaigns/new?error=moderation");
 
-  const totalBudgetCents = budget || 5000000;
-  const maxPaidResults = Math.max(1, Math.min(20, Number(formData.get("deliverableCount") || 1)));
-  const viewThreshold = Number(formData.get("viewThreshold") || 10000);
-  const targetPayoutCents = grossPayout(viewThreshold, cpm || 4500);
+  const totalBudgetCents = budget;
+  const maxPaidResults = boundedInteger(formData.get("deliverableCount"), { min: 1, max: 20, fallback: 1 });
+  const viewThreshold = boundedInteger(formData.get("viewThreshold"), { min: 1_000, max: 10_000_000, fallback: 10_000 });
+  const targetPayoutCents = grossPayout(viewThreshold, cpm);
+  if (targetPayoutCents <= 0) redirect("/campaigns/new?error=invalid_input");
   const minimumGuaranteeCents = Math.min(
     targetPayoutCents,
     parseRubToCents(formData.get("minimumGuarantee"))
@@ -321,14 +330,14 @@ export async function createCampaignAction(formData: FormData) {
       const created = await db.campaign.create({
         data: {
           ownerId: user.id,
-          title: String(formData.get("title") || "Новая CPV-кампания"),
-          description: String(formData.get("description") || ""),
+          title,
+          description,
           sourceUrl: sourceUrlCheck.normalizedUrl,
           sourcePlatform: cleanSourcePlatform,
           allowedPlatformsJson: stringify(platforms.length ? platforms : ["TIKTOK", "YOUTUBE", "VK"]),
           rulesJson: stringify({
-            requiredTags: String(formData.get("requiredTags") || "").split(",").map((item) => item.trim()).filter(Boolean),
-            bans: String(formData.get("bans") || "").split(",").map((item) => item.trim()).filter(Boolean),
+            requiredTags: requiredTags.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 30),
+            bans: bans.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 30),
             watermarkBonus: formData.get("watermarkBonus") === "on",
             watermarkAsset: "/watermark/reelpay-watermark.svg",
             safety: {
@@ -352,7 +361,7 @@ export async function createCampaignAction(formData: FormData) {
             briefAcceptedAt: new Date().toISOString(),
             briefVersion: 1
           }),
-          cpmRateCents: cpm || 4500,
+          cpmRateCents: cpm,
           viewThreshold,
           minimumGuaranteeCents,
           reviewMode,
@@ -967,7 +976,8 @@ export async function boostCampaignWithRpAction(formData: FormData) {
 export async function convertRubToRpAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
-  const amount = Math.max(1, Math.min(1_000_000, Number(formData.get("amount") || 0)));
+  const amount = boundedInteger(formData.get("amount"), { min: 1, max: 1_000_000, fallback: 0 });
+  if (amount <= 0) redirect("/wallet?tab=rp&error=invalid_amount");
   try {
     await prisma.$transaction(async (tx) => {
       const result = await tx.user.updateMany({
@@ -1000,7 +1010,8 @@ export async function convertRubToRpAction(formData: FormData) {
 export async function convertRpToRubAction(formData: FormData) {
   const user = await requireUser();
   await assertAccountActive(user);
-  const amount = Math.max(1, Math.min(1_000_000, Number(formData.get("amount") || 0)));
+  const amount = boundedInteger(formData.get("amount"), { min: 1, max: 1_000_000, fallback: 0 });
+  if (amount <= 0) redirect("/wallet?tab=rp&error=invalid_amount");
   try {
     await prisma.$transaction(async (tx) => {
       const result = await tx.user.updateMany({
@@ -1366,9 +1377,12 @@ export async function submitClipAction(formData: FormData) {
   await assertAccountActive(user);
   if (!canWork(user.role) || await getActiveRoleMode(user) !== "worker") redirect("/campaigns");
   const submissionId = String(formData.get("submissionId"));
-  const postUrl = String(formData.get("postUrl") || "").trim();
+  const rawPostUrl = String(formData.get("postUrl") || "").trim();
   const platformInput = String(formData.get("platform") || "TIKTOK");
   const platform = (["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"].includes(platformInput) ? platformInput : "TIKTOK") as "TIKTOK" | "YOUTUBE" | "INSTAGRAM" | "VK";
+  const postUrlCheck = validatePublicMediaUrl(rawPostUrl, platform);
+  if (!postUrlCheck.ok) redirect("/upload?error=post_url");
+  const postUrl = postUrlCheck.normalizedUrl;
   const watermarkConfirmed = formData.get("watermarkConfirmed") === "on";
   const socialAccountIdInput = String(formData.get("socialAccountId") || "").trim();
 
@@ -1419,7 +1433,7 @@ export async function submitClipAction(formData: FormData) {
       data: {
         postUrl,
         platform,
-        platformPostId: extractPlatformPostId(postUrl),
+        platformPostId: extractPlatformPostId(postUrl, platform)!,
         status,
         fraudScore,
         socialAccountId: selectedSocialAccount?.id || null,
@@ -1580,6 +1594,9 @@ export async function depositAction(formData: FormData) {
   const user = await requireUser();
   requireVerifiedEmail(user);
   if (!canManageClient(user.role) || await getActiveRoleMode(user) !== "client") redirect("/wallet");
+  if (!(await rateLimit(`deposit-intent:${user.id}`, 10, 60 * 60 * 1000))) {
+    redirect("/wallet?error=too_many");
+  }
   const amountCents = parseRubToCents(formData.get("amount"));
   if (amountCents <= 0) redirect("/wallet?error=amount");
   const provider = String(formData.get("provider") || "");
