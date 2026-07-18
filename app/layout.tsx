@@ -4,6 +4,8 @@ import "./globals.css";
 import { Suspense } from "react";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { CookieConsent } from "@/components/cookie-consent";
+import { DeploymentRefresh } from "@/components/deployment-refresh";
+import { resolveDeploymentVersion } from "@/lib/deployment-version";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -45,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru" data-scroll-behavior="smooth">
       <body>
+        <DeploymentRefresh version={resolveDeploymentVersion()} />
         {children}
         <Suspense fallback={null}>
           <AnalyticsTracker />
