@@ -1715,3 +1715,196 @@
 .order-check input:checked+span:before{border-color:#c9f31d;background:#c9f31d;box-shadow:inset 0 0 0 5px #151519}
 .campaign-create-back{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;padding:8px 12px;border:1px solid #2c2c32;border-radius:9px;color:#b8b9bf;font-size:13px;font-weight:750;background:rgba(255,255,255,.03)}
 .campaign-create-back:hover{color:#fff;border-color:rgba(201,243,29,.3)}
+
+/* Mobile campaign detail: one visual rhythm, fewer nested frames. */
+@media (max-width: 640px) {
+  .od {
+    width: 100%;
+  }
+
+  .od-grid,
+  .od-hero,
+  .od-body {
+    gap: 18px;
+  }
+
+  .od-brief,
+  .od-apply,
+  .od-block {
+    width: 100%;
+    border-radius: 18px;
+  }
+
+  .od-brief {
+    padding: 22px 18px;
+  }
+
+  .od-brief h1 {
+    margin-bottom: 12px;
+    font-size: clamp(28px, 8.5vw, 36px);
+    line-height: 1.08;
+  }
+
+  .od-brief p {
+    margin-bottom: 18px;
+    font-size: 15px;
+    line-height: 1.58;
+  }
+
+  .od-chips {
+    gap: 8px;
+  }
+
+  .od-chip {
+    min-height: 36px;
+    padding: 7px 11px;
+    font-size: 12px;
+  }
+
+  .od-ad-mark {
+    padding: 12px 0 12px 13px;
+    border: 0;
+    border-left: 2px solid rgba(201, 243, 29, .4);
+    border-radius: 0;
+    background: transparent;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .od-apply {
+    gap: 18px;
+    padding: 22px 18px;
+  }
+
+  .od-apply-label {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .od-apply-sum {
+    font-size: 38px;
+  }
+
+  .od-apply-metrics {
+    gap: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .035);
+  }
+
+  .od-apply-metrics > div {
+    min-height: 84px;
+    padding: 14px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .od-apply-metrics > div:nth-child(even) {
+    border-left: 1px solid rgba(255, 255, 255, .07);
+  }
+
+  .od-apply-metrics > div:nth-child(n + 3) {
+    border-top: 1px solid rgba(255, 255, 255, .07);
+  }
+
+  .od-apply-metrics b {
+    font-size: 20px;
+  }
+
+  .od-apply-metrics em {
+    margin-top: 5px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .od-budget {
+    gap: 10px;
+    margin: 0;
+  }
+
+  .od-budget-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px 10px;
+    font-size: 11px;
+  }
+
+  .od-apply .safe-note {
+    align-items: start;
+    margin: 0;
+    padding: 15px 0 0;
+    border-top: 1px solid rgba(201, 243, 29, .16);
+    border-radius: 0;
+    background: transparent;
+    color: #c8cfbf;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .od-apply-notes {
+    gap: 11px;
+    padding-top: 2px;
+  }
+
+  .od-apply-notes li {
+    gap: 9px;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .od-block {
+    padding: 21px 18px;
+  }
+
+  .od-client-block {
+    padding: 16px 18px;
+  }
+
+  .od-h2 {
+    margin-bottom: 10px;
+    font-size: 21px;
+  }
+
+  .od-description {
+    margin-bottom: 5px;
+    color: #c8ccc5;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .od-rules {
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, .07);
+  }
+
+  .od-rules > div {
+    padding: 15px 0;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .od-rules b {
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  .od-rules span {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .od-callout {
+    margin-top: 14px;
+    padding: 13px 0 13px 13px;
+    border: 0;
+    border-left: 2px solid rgba(201, 243, 29, .45);
+    border-radius: 0;
+    background: transparent;
+    line-height: 1.5;
+  }
+}

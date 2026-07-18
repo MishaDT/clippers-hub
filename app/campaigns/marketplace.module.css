@@ -324,11 +324,24 @@
   }
 
   .marketplace :global(.mk-leaders) {
-    width: fit-content;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: #d7ddcb;
+    justify-content: center;
+    width: 100%;
+    min-height: 46px;
+    padding: 0 15px;
+    border: 1px solid rgba(201, 243, 29, .22);
+    border-radius: 12px;
+    background: rgba(201, 243, 29, .075);
+    color: #e8f6bd;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .marketplace :global(.mk-leaders)::after {
+    content: "\2192";
+    margin-left: auto;
+    color: #c9f31d;
+    font-size: 18px;
+    line-height: 1;
   }
 
   .marketplace :global(.fs-card) {

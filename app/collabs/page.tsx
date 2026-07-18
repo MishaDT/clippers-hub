@@ -202,15 +202,25 @@ export default async function CollabsPage({
               <Handshake size={28} />
               <strong>Здесь пока пусто</strong>
               <p>{tab === "incoming" ? "Новые приглашения появятся здесь." : tab === "outgoing" ? "Выберите исполнителя на доске лидеров." : "Завершённые коллабы появятся в архиве."}</p>
-              {tab === "outgoing" ? <Link href="/leaderboard">Выбрать исполнителя <Send size={15} /></Link> : null}
+              {tab !== "archive" ? (
+                <Link href="/leaderboard">
+                  {tab === "outgoing" ? "Выбрать исполнителя" : "Открыть доску лидеров"} <Send size={15} />
+                </Link>
+              ) : null}
             </div>
           )}
         </section>
 
-        <section className={styles.how}>
-          <span>1<strong>Заказчик приглашает</strong><small>Выбирает клиппера на доске лидеров.</small></span>
-          <span>2<strong>Стороны уточняют условия</strong><small>Кампания, срок и требования остаются в чате.</small></span>
-          <span>3<strong>Клиппер выполняет заказ</strong><small>Публикация и проверка проходят через ReelPay.</small></span>
+        <section className={styles.how} aria-labelledby="collab-how-title">
+          <header>
+            <small>Три понятных шага</small>
+            <h2 id="collab-how-title">Как проходит коллаборация</h2>
+          </header>
+          <ol>
+            <li><b>1</b><span><strong>Заказчик приглашает</strong><small>Выбирает клиппера на доске лидеров.</small></span></li>
+            <li><b>2</b><span><strong>Стороны уточняют условия</strong><small>Кампания, срок и требования остаются в чате.</small></span></li>
+            <li><b>3</b><span><strong>Клиппер выполняет заказ</strong><small>Публикация и проверка проходят через ReelPay.</small></span></li>
+          </ol>
         </section>
       </section>
     </AppShell>
