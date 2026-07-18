@@ -211,7 +211,9 @@ export function MarketplaceBrowser({
         </div>
       )}
 
-      {visible.some((card) => card.platforms.includes("INSTAGRAM")) ? <MetaProductsNotice compact /> : null}
+      {visible.some((card) => card.platforms.includes("INSTAGRAM")) ? (
+        <div className="mk-legal-notice"><MetaProductsNotice compact /></div>
+      ) : null}
 
       {totalPages > 1 ? (
         <nav className="mk-pages" aria-label="Страницы заказов">

@@ -79,6 +79,10 @@
   gap: 16px;
 }
 
+.marketplace :global(.mk-legal-notice) {
+  margin: 22px 0 8px;
+}
+
 .marketplace :global(.mk-card) {
   min-height: 286px;
   gap: 14px;
