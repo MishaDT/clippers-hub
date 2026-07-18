@@ -158,6 +158,16 @@
 .marketplace :global(.mk-platform--vk) { background: #2787f5; }
 .marketplace :global(.mk-platform--tiktok) { background: #050505; }
 .marketplace :global(.mk-platform--instagram) { background: radial-gradient(circle at 68% 72%, #ffd36b 0 18%, #f94c7a 39%, #b23cbb 67%, #515bd4 100%); }
+.marketplace :global(.mk-platform--instagram::after) {
+  content: "*";
+  position: absolute;
+  top: -5px;
+  right: -3px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  text-shadow: 0 1px 4px #000;
+}
 .marketplace :global(.mk-platform--twitch) { background: #9146ff; }
 
 .marketplace :global(.mk-card-footer .mk-client) {

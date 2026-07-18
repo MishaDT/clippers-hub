@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Landmark, Link2, Mail, ShieldCheck, Trash2, Video } from "lucide-react";
 import { deleteAccountAction } from "@/app/actions";
 import { AppShell, Card } from "@/components/ui";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 import { requireUser } from "@/lib/auth";
 import { isConfigured, type ProviderId } from "@/lib/oauth";
 import { prisma } from "@/lib/prisma";
@@ -172,7 +173,7 @@ export default async function AccountSettingsPage({
             {(["YOUTUBE", "VK", "TIKTOK", "INSTAGRAM"] as const).map((platform) => {
               const accountsForPlatform = socialAccounts.filter((item) => item.platform === platform);
               const configured = (platform === "YOUTUBE" || platform === "TIKTOK") && socialPlatformConfigured(platform);
-              const label = platform === "YOUTUBE" ? "YouTube Shorts" : platform === "VK" ? "VK Клипы" : platform === "TIKTOK" ? "TikTok" : "Instagram Reels";
+              const label = platform === "YOUTUBE" ? "YouTube Shorts" : platform === "VK" ? "VK Клипы" : platform === "TIKTOK" ? "TikTok" : "Instagram Reels*";
               return (
                 <div className={styles.provider} key={platform}>
                   <div>
@@ -183,7 +184,7 @@ export default async function AccountSettingsPage({
                         : configured
                           ? "Можно подключить безопасно"
                           : platform === "INSTAGRAM"
-                            ? "Будет доступно после проверки приложения Meta"
+                            ? "Будет доступно после проверки приложения Meta*"
                             : platform === "VK" ? "Пока доступна проверка ключом" : "Нужны ключи приложения"}
                     </span>
                     {accountsForPlatform.map((account) => (
@@ -207,6 +208,7 @@ export default async function AccountSettingsPage({
               );
             })}
           </div>
+          <MetaProductsNotice compact />
           <p className={styles.note}>
             Токены хранятся на сервере в зашифрованном виде. ReelPay не получает пароль и не публикует ролики от вашего имени.
           </p>

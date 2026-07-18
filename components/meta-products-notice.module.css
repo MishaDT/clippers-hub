@@ -1,0 +1,17 @@
+.notice {
+  margin: 0;
+  color: #777e78;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.notice span {
+  margin-right: 3px;
+  color: #a7c917;
+  font-weight: 900;
+}
+
+.compact {
+  max-width: 760px;
+  font-size: 10px;
+}

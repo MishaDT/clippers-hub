@@ -36,7 +36,7 @@ const PLATFORM_NAMES: Record<string, string> = {
   YOUTUBE: "YouTube",
   VK: "VK Клипы",
   TIKTOK: "TikTok",
-  INSTAGRAM: "Instagram",
+  INSTAGRAM: "Instagram*",
   TWITCH: "Twitch"
 };
 

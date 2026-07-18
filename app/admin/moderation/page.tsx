@@ -101,7 +101,7 @@ export default async function ModerationPage({ searchParams }: {
       </div>
     </Card> : null}
     {manualQueue.length ? <Card className="admin-panel">
-      <div className="section-head compact"><div><span className="eyebrow">Ручная проверка</span><h2>Просмотры TikTok / Instagram</h2></div><span>{manualQueue.length}</span></div>
+      <div className="section-head compact"><div><span className="eyebrow">Ручная проверка</span><h2>Просмотры TikTok / Instagram*</h2></div><span>{manualQueue.length}</span></div>
       <p className="muted">У этих площадок нет метрик-API — подтвердите просмотры из публичного поста. При достижении цели выплата уйдёт через резерв кампании.</p>
       <div className="manual-verify-list">
         {manualQueue.map((item) => <form className="manual-verify-row" action={adminVerifyResultAction} key={item.id}>

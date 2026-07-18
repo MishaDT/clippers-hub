@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Link2, RefreshCw } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 import { adminRecheckIntegrationsAction } from "@/app/admin/actions";
 import { prisma } from "@/lib/prisma";
 import { socialPlatformConfigured } from "@/lib/social-platforms";
@@ -38,10 +39,11 @@ export default async function AdminIntegrationsPage() {
             <div className="admin-list">
               {platforms.map((platform) => {
                 const configured = (platform === "YOUTUBE" || platform === "TIKTOK") && socialPlatformConfigured(platform);
-                return <div className="admin-event" key={platform}>{configured ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}<div><strong>{platform}</strong><span>{platform === "VK" ? "Автопроверка ключом" : platform === "INSTAGRAM" ? "Ключ + модерация до Meta Review" : configured ? "OAuth read-only настроен" : "Нужны ключи приложения"}</span></div><Tag tone={configured || platform === "VK" ? "good" : "warn"}>{configured || platform === "VK" ? "Готово" : "Ожидает"}</Tag></div>;
+                return <div className="admin-event" key={platform}>{configured ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}<div><strong>{platform === "INSTAGRAM" ? "INSTAGRAM*" : platform}</strong><span>{platform === "VK" ? "Автопроверка ключом" : platform === "INSTAGRAM" ? "Ключ + модерация до Meta* Review" : configured ? "OAuth read-only настроен" : "Нужны ключи приложения"}</span></div><Tag tone={configured || platform === "VK" ? "good" : "warn"}>{configured || platform === "VK" ? "Готово" : "Ожидает"}</Tag></div>;
               })}
               <div className="admin-event"><CheckCircle2 size={16} /><div><strong>Шифрование токенов</strong><span>AES-256-GCM, версия ключа и AAD</span></div><Tag tone={socialTokenEncryptionReady() ? "good" : "warn"}>{socialTokenEncryptionReady() ? "OK" : "Нет ключа"}</Tag></div>
             </div>
+            <MetaProductsNotice compact />
           </Card>
           <Card className="admin-panel">
             <div className="section-head compact"><h2>Последние ошибки OAuth</h2></div>

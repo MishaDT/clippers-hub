@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 import styles from "./site-footer.module.css";
 
 const primaryLinks = [
@@ -36,6 +37,7 @@ export function SiteFooter() {
         </details>
       </nav>
       <span className={styles.copy}>© {new Date().getFullYear()}</span>
+      <div className={styles.legalNotice}><MetaProductsNotice compact /></div>
     </footer>
   );
 }

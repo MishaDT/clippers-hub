@@ -56,7 +56,7 @@ export default async function ProfileSettingsPage({
         <fieldset><legend>Специализации, максимум 5</legend><div className="settings-checks">
           {SPECIALTIES.map((item) => <label key={item}><input type="checkbox" name="specialties" value={item} defaultChecked={selected.includes(item)} /> {item}</label>)}
         </div></fieldset>
-        <label>Социальные сети<textarea name="socialLinks" defaultValue={socialLinks.join("\n")} rows={5} placeholder="По одной HTTPS-ссылке на строку" /><small>YouTube, TikTok, Instagram, VK, Twitch или Telegram. Максимум 5.</small></label>
+        <label>Социальные сети<textarea name="socialLinks" defaultValue={socialLinks.join("\n")} rows={5} placeholder="По одной HTTPS-ссылке на строку" /><small>YouTube, TikTok, Instagram*, VK, Twitch или Telegram. Максимум 5. *Продукт Meta Platforms Inc., признанной экстремистской организацией; её деятельность по реализации Instagram запрещена в РФ.</small></label>
         <label>Кто может предложить коллаб
           <select name="collabAvailability" defaultValue={user.collabAvailability}>
             <option value="ACTIVE_ROLE">Только противоположная активная роль</option>

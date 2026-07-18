@@ -50,6 +50,11 @@
   white-space: nowrap;
 }
 
+.legalNotice {
+  grid-column: 1 / -1;
+  max-width: 900px;
+}
+
 @media (max-width: 760px) {
   .footer {
     grid-template-columns: 1fr auto;
@@ -124,5 +129,9 @@
   .copy {
     grid-column: 2;
     justify-self: end;
+  }
+
+  .legalNotice {
+    grid-column: 1 / -1;
   }
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LEGAL } from "@/lib/legal";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 
 export const metadata: Metadata = {
   title: "Политика конфиденциальности",
@@ -55,6 +56,8 @@ export default function PrivacyPage() {
           <li><b>Google, VK и Yandex</b> — только во время выбранного пользователем социального входа;</li>
           <li><b>провайдер выплаты и оператор рекламных данных</b> — после подключения и только для выплаты либо обязательной маркировки рекламы.</li>
         </ul>
+        <p>При переходе на внешний ресурс его владелец обрабатывает данные по собственным правилам. ReelPay не передаёт данные продуктам Meta без отдельного действия пользователя.</p>
+        <MetaProductsNotice />
       </section>
 
       <section>

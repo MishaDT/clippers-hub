@@ -30,7 +30,7 @@ import ratingStyles from "./profile-ratings.module.css";
 const PLATFORM_LABEL: Record<string, string> = {
   TIKTOK: "TikTok",
   YOUTUBE: "YouTube",
-  INSTAGRAM: "Instagram",
+  INSTAGRAM: "Instagram*",
   VK: "VK",
   TWITCH: "Twitch"
 };

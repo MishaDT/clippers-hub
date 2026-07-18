@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LEGAL } from "@/lib/legal";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 
 export const metadata: Metadata = {
   title: "Пользовательское соглашение",
@@ -83,7 +84,9 @@ export default function TermsPage() {
           <li>Взлом, нагрузочные атаки, обход защит и попытки получить чужие данные.</li>
           <li>Автоматический сбор данных без разрешения.</li>
           <li>Использование сервиса для незаконной деятельности.</li>
+          <li>Размещение рекламы на информационных ресурсах организаций, деятельность которых запрещена или признана экстремистской в Российской Федерации, а также иные запрещённые законом рекламные размещения.</li>
         </ul>
+        <MetaProductsNotice />
       </section>
 
       <section>

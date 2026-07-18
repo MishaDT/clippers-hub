@@ -33,7 +33,7 @@ type Order = {
 };
 
 const labels: Record<string, string> = {
-  TIKTOK: "TikTok", YOUTUBE: "YouTube", INSTAGRAM: "Instagram", VK: "VK"
+  TIKTOK: "TikTok", YOUTUBE: "YouTube", INSTAGRAM: "Instagram*", VK: "VK"
 };
 
 function inspectUrl(value: string) {
@@ -286,7 +286,7 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
               <input name="postUrl" type="url" inputMode="url" autoComplete="off" placeholder="https://youtube.com/shorts/..." value={postUrl} onChange={(event) => setPostUrl(event.target.value)} required disabled={!canPublish} />
               {platform ? <CheckCircle2 size={18} color="#22c55e" /> : null}
             </div>
-            <small className="up-hint">{!canPublish ? selected.strictVerification && !selected.visualProofConfirmed ? "Ссылка станет доступна после проверки индивидуального QR на черновике." : "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram и VK"}</small>
+            <small className="up-hint">{!canPublish ? selected.strictVerification && !selected.visualProofConfirmed ? "Ссылка станет доступна после проверки индивидуального QR на черновике." : "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram* и VK"}</small>
             {platform && selected.socialAccounts.some((account) => account.platform === platform) ? (
               <label className="field">
                 Аккаунт для автоматической проверки

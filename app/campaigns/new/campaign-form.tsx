@@ -18,13 +18,13 @@ import {
   WalletCards
 } from "lucide-react";
 import { createCampaignAction } from "@/app/actions";
+import { MetaProductsNotice } from "@/components/meta-products-notice";
 import { compactNumber, grossPayout, rub } from "@/lib/money";
 import styles from "./campaign-form.module.css";
 
 const platformOptions = [
   ["TIKTOK", "TikTok"],
   ["YOUTUBE", "Shorts"],
-  ["INSTAGRAM", "Reels"],
   ["VK", "VK Clips"]
 ] as const;
 
@@ -64,7 +64,7 @@ export function CampaignForm({
   const [niche, setNiche] = useState(initial?.niche || "Gaming");
   const [requiredTags, setRequiredTags] = useState(initial?.requiredTags || "#reelpay, #clips");
   const [bans, setBans] = useState(initial?.bans || "NSFW, политика, оскорбления, чужие логотипы крупным планом");
-  const [platforms, setPlatforms] = useState<string[]>(initial?.platforms?.length ? initial.platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM"]);
+  const [platforms, setPlatforms] = useState<string[]>(initial?.platforms?.filter((platform) => platform !== "INSTAGRAM").length ? initial.platforms.filter((platform) => platform !== "INSTAGRAM") : ["TIKTOK", "YOUTUBE", "VK"]);
   const [watermarkBonus, setWatermarkBonus] = useState(initial?.watermarkBonus ?? true);
   const [isAdvertising, setIsAdvertising] = useState(true);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -233,9 +233,10 @@ export function CampaignForm({
                 <option value="YOUTUBE">YouTube</option>
                 <option value="VK">VK Видео</option>
                 <option value="TIKTOK">TikTok</option>
-                <option value="INSTAGRAM">Instagram</option>
+                <option value="INSTAGRAM">Instagram*</option>
               </select>
             </label>
+            {sourcePlatform === "INSTAGRAM" ? <MetaProductsNotice compact /> : null}
 
           </div>
 

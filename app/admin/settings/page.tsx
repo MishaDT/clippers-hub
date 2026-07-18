@@ -123,9 +123,9 @@ export default async function AdminSettingsPage() {
                 detail={`Автопроверка роликов и просмотров. Callback: ${socialCallbackUri(requestUrl, "TIKTOK")}`}
               />
               <StatusRow
-                label="Instagram OAuth"
+                label="Instagram* OAuth"
                 ok={false}
-                detail={`Ожидает проверку приложения Meta. Callback: ${socialCallbackUri(requestUrl, "INSTAGRAM")}`}
+                detail={`Ожидает проверку приложения Meta*. Callback: ${socialCallbackUri(requestUrl, "INSTAGRAM")}`}
               />
             </div>
           </Card>

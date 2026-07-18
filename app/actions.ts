@@ -252,7 +252,7 @@ export async function createCampaignAction(formData: FormData) {
 
   const budget = parseRubToCents(formData.get("budget"));
   const cpm = parseRubToCents(formData.get("cpm"));
-  const platforms = formData.getAll("platforms").map(String).filter((item) => ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"].includes(item));
+  const platforms = formData.getAll("platforms").map(String).filter((item) => ["TIKTOK", "YOUTUBE", "VK"].includes(item));
   const deadlineDays = Math.max(1, Number(formData.get("deadlineDays") || 7));
   const sourcePlatform = String(formData.get("sourcePlatform") || "TWITCH");
   const requestedVisibility = String(formData.get("visibility") || "PUBLIC");
@@ -325,7 +325,7 @@ export async function createCampaignAction(formData: FormData) {
           description: String(formData.get("description") || ""),
           sourceUrl: sourceUrlCheck.normalizedUrl,
           sourcePlatform: cleanSourcePlatform,
-          allowedPlatformsJson: stringify(platforms.length ? platforms : ["TIKTOK", "YOUTUBE", "INSTAGRAM", "VK"]),
+          allowedPlatformsJson: stringify(platforms.length ? platforms : ["TIKTOK", "YOUTUBE", "VK"]),
           rulesJson: stringify({
             requiredTags: String(formData.get("requiredTags") || "").split(",").map((item) => item.trim()).filter(Boolean),
             bans: String(formData.get("bans") || "").split(",").map((item) => item.trim()).filter(Boolean),

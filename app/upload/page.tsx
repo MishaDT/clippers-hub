@@ -8,7 +8,7 @@ import { compactNumber, expectedPayout, minimumGuaranteedPayout, rub } from "@/l
 import { getActiveRoleMode } from "@/lib/role-mode";
 import { UploadForm } from "./upload-form";
 
-const PLATFORM_LABEL: Record<string, string> = { TIKTOK: "TikTok", YOUTUBE: "YouTube", INSTAGRAM: "Instagram", VK: "VK", TWITCH: "Twitch" };
+const PLATFORM_LABEL: Record<string, string> = { TIKTOK: "TikTok", YOUTUBE: "YouTube", INSTAGRAM: "Instagram*", VK: "VK", TWITCH: "Twitch" };
 
 function parseRules(value: string) {
   try {
