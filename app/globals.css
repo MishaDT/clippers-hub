@@ -4150,3 +4150,11 @@ body{min-height:100dvh}.content:not(.content-immersive){min-height:calc(100dvh -
     padding-bottom: 24px;
   }
 }
+
+/* The floating bottom navigation is hidden on desktop, so reserving its
+   mobile safe area here only creates a large empty tail below the footer. */
+@media (min-width: 1181px) {
+  .content:not(.content-immersive) {
+    padding-bottom: 0;
+  }
+}
