@@ -161,7 +161,7 @@
     background: transparent;
   }
   .wizardTop { align-items: flex-start; }
-  .labels { margin-inline: -4px; }
+  .labels { display: none; }
   .reviewModes { grid-template-columns: 1fr; }
   .reviewModes span { min-height: 0; padding: 14px 15px; }
   .nav { gap: 8px; }

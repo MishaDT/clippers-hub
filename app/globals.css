@@ -4158,3 +4158,18 @@ body{min-height:100dvh}.content:not(.content-immersive){min-height:calc(100dvh -
     padding-bottom: 0;
   }
 }
+
+/* Mobile workspace: keep fixed controls clear of content and remove duplicate chrome. */
+@media (max-width: 760px) {
+  body:has(.bottom-nav) .site-footer {
+    display: none!important;
+  }
+
+  body:has(.bottom-nav) .content:not(.content-immersive) {
+    padding-bottom: calc(116px + var(--safe-b));
+  }
+
+  .mascot {
+    display: none!important;
+  }
+}

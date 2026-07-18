@@ -350,6 +350,24 @@ body:has(.wallet-screen) {
   .wallet-action-card { min-height: 0; padding: 20px 16px!important; border-radius: 17px!important; }
   .wallet-action-head h2 { font-size: 23px; }
   .wallet-history { padding: 17px 13px!important; border-radius: 17px!important; }
+  .wallet-history .section-head {
+    display: flex!important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .wallet-history .section-head h2 {
+    min-width: 0;
+    font-size: 23px;
+    line-height: 1.08;
+  }
+  .wallet-history .section-head > .tag {
+    width: auto!important;
+    min-width: 30px;
+    flex: none;
+    justify-self: auto;
+    padding-inline: 9px;
+  }
   .wallet-row { grid-template-columns: 38px minmax(0,1fr) auto!important; gap: 9px!important; padding-inline: 3px!important; }
   .wallet-row > div:last-child { justify-items: end; }
 }

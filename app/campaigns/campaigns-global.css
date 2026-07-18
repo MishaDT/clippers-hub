@@ -1619,6 +1619,7 @@
 .client-campaign-boost button{border:1px solid #60751a;border-radius:6px;padding:8px 10px;background:#202710;color:#d9ff52;font-size:12px;font-weight:800;white-space:nowrap}
 .client-campaign-boost button:disabled{opacity:.4}
 .order-mobile-submit{display:none}
+.order-mobile-submit[hidden]{display:none!important}
 .order-builder [hidden]{display:none!important}
 @media(max-width:760px){
   .client-campaigns{width:100%;padding:12px 12px calc(96px + var(--safe-b))!important;overflow-x:hidden}
@@ -1647,7 +1648,7 @@
 }
 @media(max-width:760px){.client-campaign-row>div{grid-column:1/4}
 }
-@media(max-width:760px){.client-campaign-row>div strong{font-size:16px}
+@media(max-width:760px){.client-campaign-row>div strong{display:-webkit-box;min-height:38px;overflow:hidden;font-size:16px;line-height:1.2;white-space:normal;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 }
 @media(max-width:760px){.client-campaign-row>svg{grid-column:4;grid-row:1}
 }
