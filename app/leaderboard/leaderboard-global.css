@@ -1449,7 +1449,7 @@
 /* 2026 podium refresh: calmer award stage and clearer hierarchy. */
 .leaderboard-hero{min-height:390px;padding:76px 22px 22px;border:1px solid rgba(201,243,29,.22);border-radius:28px;background:radial-gradient(48% 58% at 50% 15%,rgba(255,211,71,.12),transparent 72%),radial-gradient(55% 70% at 10% 100%,rgba(130,196,45,.09),transparent 76%),radial-gradient(55% 70% at 90% 100%,rgba(192,127,52,.08),transparent 76%),linear-gradient(155deg,#0c120c 0%,#070a08 56%,#050706 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 24px 70px rgba(0,0,0,.34)}
 .leaderboard-hero>.lb-fire-canvas,.leaderboard-hero>.tree-glow,.leaderboard-hero>.root-lines,.leaderboard-hero>.tree-svg,.leaderboard-hero>.embers,.podium-flame-canvas{display:none!important}
-.leaderboard-hero::before{content:"ТРОЙКА ЛИДЕРОВ";position:absolute;top:20px;left:50%;z-index:2;padding:7px 12px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.035);color:rgba(255,255,255,.56);font-size:10px;font-weight:850;letter-spacing:.13em;transform:translateX(-50%)}
+.leaderboard-hero::before{content:none}
 .podium{min-height:288px;grid-template-columns:minmax(0,.94fr) minmax(0,1.12fr) minmax(0,.94fr);gap:12px;align-items:end}
 .podium::after{display:none}
 .podium-card{--podium-h:226px;min-height:var(--podium-h);padding:66px 16px 18px;gap:5px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 18px 36px rgba(0,0,0,.22);transform:none}
@@ -1473,7 +1473,6 @@
 .podium-card:hover{border-color:rgba(201,243,29,.3);transform:translateY(-3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 22px 44px rgba(0,0,0,.3)}
 @media(max-width:760px){
  .leaderboard-hero{min-height:0;margin:12px 0 16px;padding:72px 8px 10px;border-radius:22px}
- .leaderboard-hero::before{top:16px}
  .podium{min-height:218px;gap:5px}
  .podium-card,.podium-card--first{--podium-h:178px;min-height:var(--podium-h);padding:48px 5px 12px;gap:3px;border-radius:15px}
  .podium-card--first{--podium-h:202px;padding-top:58px}
