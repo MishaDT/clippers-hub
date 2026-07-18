@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
-import { BriefcaseBusiness, Eye, Search, ShieldAlert, WalletCards } from "lucide-react";
+import { BriefcaseBusiness, Eye, Search, ShieldAlert } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";
 import { prisma } from "@/lib/prisma";

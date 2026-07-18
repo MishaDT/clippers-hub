@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Clock3, ShieldCheck, WalletCards, X } from "lucide-react";
 import { joinCampaignAction } from "@/app/actions";
 import styles from "./take-order-button.module.css";
+import { useModalFocus } from "./use-modal-focus";
 
 export function TakeOrderButton({
   campaignId,
@@ -19,14 +20,15 @@ export function TakeOrderButton({
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const dialogRef = useModalFocus<HTMLElement>(open, () => setOpen(false));
   return (
     <>
-      <button className="btn btn-primary od-apply-btn" type="button" disabled={disabled} onClick={() => setOpen(true)}>
+      <button className="btn btn-primary od-apply-btn" type="button" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
         Взять заказ
       </button>
       {open ? (
         <div className={styles.overlay} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-          <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="take-order-title">
+          <section ref={dialogRef} tabIndex={-1} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="take-order-title">
             <header>
               <div><span>Подтверждение</span><h2 id="take-order-title">Взять заказ?</h2></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Закрыть"><X size={18} /></button>

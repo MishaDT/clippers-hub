@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Archive, Check, Clock3, Handshake, Inbox, MessageCircle, RotateCcw, Send, Sparkles, Square, X } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -49,7 +50,7 @@ function CollabCard({ item, viewerId, campaigns }: { item: CardItem; viewerId: s
   return (
     <article className={styles.card}>
       <Link className={styles.person} href={`/clippers/${item.partner.handle}?returnTo=%2Fcollabs`}>
-        <img src={avatarFor(item.partner.handle, item.partner.avatar)} alt="" loading="lazy" />
+        <Image src={avatarFor(item.partner.handle, item.partner.avatar)} alt="" width={48} height={48} loading="lazy" unoptimized />
         <span>
           <strong>{item.partner.name}</strong>
           <small>@{item.partner.handle} · {relativeDate(item.createdAt)}</small>
@@ -201,6 +202,7 @@ export default async function CollabsPage({
               <Handshake size={28} />
               <strong>Здесь пока пусто</strong>
               <p>{tab === "incoming" ? "Новые приглашения появятся здесь." : tab === "outgoing" ? "Выберите исполнителя на доске лидеров." : "Завершённые коллабы появятся в архиве."}</p>
+              {tab === "outgoing" ? <Link href="/leaderboard">Выбрать исполнителя <Send size={15} /></Link> : null}
             </div>
           )}
         </section>

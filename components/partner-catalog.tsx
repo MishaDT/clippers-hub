@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { ArrowLeft, Building2, CreditCard, ExternalLink, Landmark, QrCode, Search } from "lucide-react";
 
 export type PartnerCatalogOffer = {
@@ -89,7 +90,7 @@ export function PartnerCatalog({ offers }: { offers: PartnerCatalogOffer[] }) {
                 <div className="partner-card-face partner-card-front" aria-hidden={flippedId === offer.id} inert={flippedId === offer.id ? true : undefined}>
                   <header>
                     <span className="partner-product-logo">
-                      {offer.imageUrl ? <img src={offer.imageUrl} alt="" loading="lazy" /> : <Landmark size={26} />}
+                      {offer.imageUrl ? <Image src={offer.imageUrl} alt="" width={64} height={64} loading="lazy" unoptimized /> : <Landmark size={26} />}
                     </span>
                     <div>
                       <small>{categoryNames[offer.category || ""] || "Предложение партнёра"}</small>
@@ -121,7 +122,7 @@ export function PartnerCatalog({ offers }: { offers: PartnerCatalogOffer[] }) {
                   <button type="button" className="partner-card-back-button" onClick={() => setFlippedId(null)}>
                     <ArrowLeft size={16} /> К предложению
                   </button>
-                  <img src={`/api/store/partner-qr/${offer.id}`} alt={`QR-код для перехода: ${offer.title}`} loading="lazy" width={180} height={180} />
+                  <Image src={`/api/store/partner-qr/${offer.id}`} alt={`QR-код для перехода: ${offer.title}`} loading="lazy" width={180} height={180} unoptimized />
                   <div>
                     <small>{offer.provider || "Партнёр ReelPay"}</small>
                     <strong>{offer.title}</strong>

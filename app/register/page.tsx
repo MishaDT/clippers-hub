@@ -31,7 +31,7 @@ export default async function RegisterPage({
 
         <span className="eyebrow">Новый аккаунт</span>
         <h1>Начать в ReelPay</h1>
-        <p className="muted">Создайте аккаунт за минуту. Роль клиппера или заказчика можно поменять позже в профиле.</p>
+        <p className="muted">Создайте аккаунт и сразу откройте нужный раздел. Роль клиппера или заказчика можно поменять позже в профиле.</p>
 
         {errorText ? (
           <div className="auth-error" role="alert">
@@ -82,8 +82,8 @@ export default async function RegisterPage({
           </div>
           <div className="motion-card card-b">
             <span><UserPlus size={18} /></span>
-            <strong>1 мин</strong>
-            <small>до старта</small>
+            <strong>1 аккаунт</strong>
+            <small>для обеих ролей</small>
           </div>
           <div className="auth-phone">
             <div className="auth-video-strip"><i /><i /><i /></div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Eye, Heart, Play } from "lucide-react";
 import styles from "./landing-phone.module.css";
 
@@ -43,15 +44,17 @@ export function LandingPhone() {
         <span className={styles.notch} />
         <div className={styles.screen}>
           <span className={styles.example}>пример</span>
-          {clips.map((item, index) => (
-            <img
+          {visible ? clips.map((item, index) => (
+            <Image
               key={item.poster}
-              src={visible ? item.poster : undefined}
+              src={item.poster}
               alt=""
+              width={360}
+              height={640}
               loading="lazy"
               className={index === active ? styles.slideActive : styles.slide}
             />
-          ))}
+          )) : null}
           <span className={styles.play}><Play size={26} fill="currentColor" /></span>
           <div className={styles.overlay}>
             <b>{clip.label}</b>

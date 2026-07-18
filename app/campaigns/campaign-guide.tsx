@@ -49,7 +49,7 @@ const generalScenes = [
   {
     label: "Заказчик",
     kicker: "Путь заказчика",
-    title: "Создай заказ за несколько минут",
+    title: "Создай заказ по понятным шагам",
     text: "Добавь исходник, правила, цель по просмотрам и бюджет. Деньги резервируются до результата.",
     duration: 4000
   },
@@ -98,7 +98,7 @@ const clientScenes = [
   { label: "Ролики", kicker: "Всё перед глазами", title: "Смотрите опубликованные работы", text: "Ссылки, превью и показатели не теряются в переписках.", duration: 3400 },
   { label: "Проверка", kicker: "Защита бюджета", title: "Платите только после проверки", text: "Платформа сверяет публикацию, watermark, просмотры и подозрительную активность.", duration: 3800 },
   { label: "Аналитика", kicker: "Результат в цифрах", title: "Контролируйте просмотры и расходы", text: "Видно, какие ролики работают и сколько бюджета осталось.", duration: 3600 },
-  { label: "Готово", kicker: "Запуск за несколько минут", title: "Создайте первую кампанию", text: "Добавьте исходник и получите первые короткие ролики от исполнителей.", duration: 3200 }
+  { label: "Готово", kicker: "Условия собраны", title: "Создайте первую кампанию", text: "Добавьте исходник, проверьте бюджет и откройте заказ исполнителям.", duration: 3200 }
 ] as const;
 
 const workerScenes = [
@@ -288,6 +288,7 @@ export function CampaignGuide({ variant = "general", initiallyCollapsed = false,
   const [muted, setMuted] = useState(false);
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
   const [playbackRun, setPlaybackRun] = useState(0);
   const [orientationPrompt, setOrientationPrompt] = useState(false);
   const [orientationChosen, setOrientationChosen] = useState(false);
@@ -298,9 +299,13 @@ export function CampaignGuide({ variant = "general", initiallyCollapsed = false,
   }, [initiallyCollapsed, storageKey]);
 
   useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
+
+  useEffect(() => {
     if (!playing) return;
     const duration = scenes[active].duration;
-    const startedAt = performance.now() - progress * duration;
+    const startedAt = performance.now() - progressRef.current * duration;
     let frame = 0;
 
     const tick = (now: number) => {
@@ -320,7 +325,7 @@ export function CampaignGuide({ variant = "general", initiallyCollapsed = false,
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [active, playing, playbackRun]);
+  }, [active, playing, playbackRun, scenes]);
 
   useEffect(() => {
     const audio = audioRef.current;

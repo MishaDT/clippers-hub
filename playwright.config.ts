@@ -19,6 +19,7 @@ process.env.E2E_TEST = "1";
 export default defineConfig({
   testDir: "./tests/e2e",
   globalSetup: "./tests/e2e/global-setup.ts",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
@@ -28,17 +29,6 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure"
-  },
-  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: `${JSON.stringify(process.execPath)} scripts/start-e2e-server.js`,
-    url: "http://127.0.0.1:3000/icon.svg",
-    reuseExistingServer: true,
-    timeout: 60_000,
-    env: {
-      DATABASE_URL: e2eDatabaseUrl,
-      DIRECT_URL: e2eDatabaseUrl,
-      E2E_TEST: "1"
-    }
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 950 } } },

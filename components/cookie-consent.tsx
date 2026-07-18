@@ -48,7 +48,7 @@ export function CookieConsent() {
       <div className="cookie-text">
         <b>Cookie — только по делу</b>
         <p>
-          Обязательные cookie обеспечивают вход и безопасность. Аналитику можно разрешить отдельно; рекламных cookie нет.{" "}
+          Нужны для входа и безопасности. Аналитика включается только с вашего согласия; рекламных cookie нет.{" "}
           <Link href="/legal/cookies">Подробнее</Link>.
         </p>
         {details ? (
@@ -67,10 +67,10 @@ export function CookieConsent() {
           {details ? "Скрыть" : "Настроить"}
         </button>
         <button className="btn btn-ghost btn-small" type="button" onClick={() => choose(CONSENT_NECESSARY)}>
-          Без аналитики
+          Только нужные
         </button>
         <button className="btn btn-primary btn-small" type="button" onClick={() => choose(CONSENT_ANALYTICS)}>
-          Разрешить аналитику
+          Разрешить
         </button>
       </div>
     </div>

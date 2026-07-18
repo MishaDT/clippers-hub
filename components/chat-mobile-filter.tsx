@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import styles from "./chat-mobile-filter.module.css";
+import { useModalFocus } from "./use-modal-focus";
 
 type Item = { label: string; href: string; active: boolean; count?: number };
 
@@ -24,6 +25,7 @@ export function ChatMobileFilter({
     if (history.state?.reelpayChatFilters) history.back();
     else setOpen(false);
   }, []);
+  const dialogRef = useModalFocus<HTMLDivElement>(open, close);
 
   useEffect(() => {
     const onPopState = () => {
@@ -32,15 +34,6 @@ export function ChatMobileFilter({
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [router]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [close, open]);
 
   function toggle() {
     if (open) return close();
@@ -76,7 +69,7 @@ export function ChatMobileFilter({
         <div className="chat-filter-layer" role="presentation" onPointerDown={(event) => {
           if (event.target === event.currentTarget) close();
         }}>
-          <div className="chat-mobile-filter-sheet" role="dialog" aria-modal="true" aria-label="Фильтры чатов">
+          <div ref={dialogRef} tabIndex={-1} className="chat-mobile-filter-sheet" role="dialog" aria-modal="true" aria-label="Фильтры чатов">
             <header><b>Фильтры</b><button type="button" onClick={close} aria-label="Закрыть"><X size={20} /></button></header>
             {section("Тип", typeItems)}
             {section("Моя роль", roleItems)}

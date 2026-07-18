@@ -2,6 +2,7 @@
 
 import { PointerEvent, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Archive } from "lucide-react";
 import { archiveThreadAction } from "@/app/actions";
 import { ChatThreadMenu } from "@/components/chat-thread-menu";
@@ -67,7 +68,7 @@ export function SwipeChatRow({
         onPointerCancel={finish}
       >
         <Link className="thread-rowlink" href={href} aria-label={`Открыть чат с ${name}`} prefetch />
-        <img className="thread-avatar" src={avatar} alt="" loading="lazy" />
+        <Image className="thread-avatar" src={avatar} alt="" width={44} height={44} loading="lazy" unoptimized />
         <span className="thread-main">
           <span className="thread-name-line"><b>{name}</b><time>{time}</time></span>
           <em>{kind === "COLLAB" ? <i>Коллаб</i> : null}{context}</em>

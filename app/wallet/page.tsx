@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowDownToLine, ArrowLeft, ArrowUpRight, Coins, CreditCard, ShieldCheck, WalletCards } from "lucide-react";
 import { convertRpToRubAction, convertRubToRpAction, depositAction, withdrawAction } from "@/app/actions";
-import { AppShell, Card, Stat, Tag } from "@/components/ui";
+import { AppShell, Card, Tag } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { rub } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -38,7 +38,7 @@ export default async function WalletPage({
   const transactionWhere = { userId: user.id, isDemo: user.isDemo, type: { in: [...visibleTypes] } };
   const payoutReady = hasCompletePayoutDetails(user);
 
-  const [transactions, totalTransactions, totalAggregate, campaignBudget, campaignExpenses, rpTransactions] = await Promise.all([
+  const [transactions, totalTransactions, campaignBudget, campaignExpenses, rpTransactions] = await Promise.all([
     prisma.transaction.findMany({
       where: transactionWhere,
       select: { id: true, type: true, netCents: true, status: true, createdAt: true },
@@ -47,10 +47,6 @@ export default async function WalletPage({
       take: pageSize
     }),
     prisma.transaction.count({ where: transactionWhere }),
-    prisma.transaction.aggregate({
-      where: { userId: user.id, isDemo: user.isDemo, type: mode === "client" ? "DEPOSIT" : "EARNING" },
-      _sum: { netCents: true }
-    }),
     mode === "client"
       ? prisma.campaign.aggregate({
           where: { ownerId: user.id, isDemo: user.isDemo },
@@ -72,9 +68,7 @@ export default async function WalletPage({
     })
   ]);
 
-  const totalMoney = totalAggregate._sum.netCents || 0;
   const reserved = (campaignBudget?._sum.remainingBudgetCents || 0) + (campaignBudget?._sum.reservedBudgetCents || 0);
-  const spent = Math.max(0, (campaignBudget?._sum.totalBudgetCents || 0) - reserved);
   const totalPages = Math.max(1, Math.ceil(totalTransactions / pageSize));
   const transactionGroups = transactions.reduce<Array<{ date: string; items: typeof transactions }>>((groups, item) => {
     const date = item.createdAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
@@ -120,6 +114,9 @@ export default async function WalletPage({
             {mode !== "client" && user.holdBalanceCents > 0 ? (
               <small className="wallet-hold-hint">Начисления проходят защитную проверку 48 часов, затем автоматически становятся доступны к выводу.</small>
             ) : null}
+            <Link className="wallet-balance-cta" href={`/wallet?tab=operations#${mode === "client" ? "wallet-deposit" : "wallet-withdraw"}`}>
+              {mode === "client" ? "Пополнить баланс" : payoutReady ? "Вывести средства" : "Настроить вывод"}
+            </Link>
           </Card>
           <Card className="wallet-balance-card wallet-rp-card">
             <Coins />
@@ -138,7 +135,7 @@ export default async function WalletPage({
 
         {tab === "operations" ? <section className="wallet-actions-grid">
           {mode === "client" ? (
-            <Card className="wallet-action-card">
+            <Card className="wallet-action-card" id="wallet-deposit">
               <div className="wallet-action-head"><CreditCard /><h2>Пополнить баланс</h2></div>
               {paymentProviders.length ? (
                 <form className="form" action={depositAction}>
@@ -165,7 +162,7 @@ export default async function WalletPage({
               )}
             </Card>
           ) : (
-            <Card className="wallet-action-card">
+            <Card className="wallet-action-card" id="wallet-withdraw">
               <div className="wallet-action-head"><ArrowUpRight /><h2>Вывести средства</h2></div>
               {payoutReady ? (
                 <form className="form" action={withdrawAction}>

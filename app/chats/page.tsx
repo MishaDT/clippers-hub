@@ -162,14 +162,12 @@ export default async function ChatsPage({
     : Promise.resolve(null);
 
   const typeWhere: Prisma.ChatThreadWhereInput = typeFilter === "orders" ? { kind: "CAMPAIGN" } : typeFilter === "collabs" ? { kind: "COLLAB" } : {};
-  const [totalThreads, threads, selectedThread, clientCount, workerCount, orderCount, collabCount, unreadSummary] = await Promise.all([
+  const [totalThreads, threads, selectedThread, clientCount, workerCount, unreadSummary] = await Promise.all([
     prisma.chatThread.count({ where }),
     threadsQuery,
     selectedThreadQuery,
     prisma.chatThread.count({ where: { AND: [clientSide, typeWhere] } }),
     prisma.chatThread.count({ where: { AND: [workerSide, typeWhere] } }),
-    prisma.chatThread.count({ where: { AND: [participant, { kind: "CAMPAIGN" }] } }),
-    prisma.chatThread.count({ where: { AND: [participant, { kind: "COLLAB" }] } }),
     getUnreadSummary(user.id)
   ]);
   const unreadRows = threads.length ? await prisma.$queryRaw<Array<{ threadId: string; count: bigint }>>(Prisma.sql`

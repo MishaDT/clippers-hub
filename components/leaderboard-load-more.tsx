@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { BadgeCheck, ChevronDown, Handshake, Play } from "lucide-react";
 import { LeagueBadge } from "@/components/league-badge";
@@ -19,11 +20,11 @@ export function LeaderboardLoadMore({ rows, clientMode, currentUserId, returnTo 
           <li className={styles.row} key={row.id}>
             <Link className={styles.overlay} href={`/clippers/${row.handle}?returnTo=${encodeURIComponent(returnTo)}`} aria-label={`Открыть профиль ${row.name}`} />
             <span className={styles.rank}>{row.rank}</span>
-            <span className={styles.avatar}><img src={row.avatar} alt="" loading="lazy" /></span>
+            <span className={styles.avatar}><Image src={row.avatar} alt="" width={48} height={48} loading="lazy" unoptimized /></span>
             <div className={styles.identity}><strong>{row.id === currentUserId ? "Я" : row.name}</strong>{row.verified ? <BadgeCheck size={14} className="verified" /> : null}{row.demo ? <span className={styles.demo}>Демо</span> : null}<LeagueBadge views={row.lifetimeViews} size="sm" /></div>
             <div className={`${styles.metric} ${styles.views}`}><b>{compactNumber(row.views)}</b><em>просмотров</em></div>
             <div className={`${styles.metric} ${styles.clips}`}><b>{row.clips}</b><em>клипов</em></div>
-            <span className={styles.cover}><img src={row.cover} alt="" loading="lazy" /><span className="lr-clip-play"><Play size={12} fill="#fff" /></span></span>
+            <span className={styles.cover}><Image src={row.cover} alt="" width={80} height={120} loading="lazy" unoptimized /><span className="lr-clip-play"><Play size={12} fill="#fff" /></span></span>
             {clientMode && row.id !== currentUserId ? (
               <div className={styles.actions}>
                 <Link

@@ -283,6 +283,19 @@
   margin: 0;
 }
 
+.empty a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  background: #c9f31d;
+  color: #0b0d08;
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .how {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

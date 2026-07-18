@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, ChevronLeft, ChevronRight, QrCode, ShoppingBag, X } from "lucide-react";
 
@@ -70,7 +71,7 @@ export function LeaderboardStoreCarousel({ offers }: { offers: LeaderboardStoreO
         <div className="leaderboard-store-front">
           <div className="leaderboard-store-brand">
             <span>
-              {offer.imageUrl ? <img src={offer.imageUrl} alt="" loading="lazy" /> : <ShoppingBag size={24} />}
+              {offer.imageUrl ? <Image src={offer.imageUrl} alt="" width={56} height={56} loading="lazy" unoptimized /> : <ShoppingBag size={24} />}
             </span>
             <div><small>{offer.category}</small><b>{offer.provider}</b></div>
           </div>
@@ -85,7 +86,7 @@ export function LeaderboardStoreCarousel({ offers }: { offers: LeaderboardStoreO
         </div>
         <div className="leaderboard-store-qr" aria-hidden={!qrOpen}>
           <button type="button" onClick={() => setQrOpen(false)} aria-label="Закрыть QR-код"><X size={15} /></button>
-          <img src={`/api/store/partner-qr/${offer.id}`} alt={`QR-код: ${offer.title}`} loading="lazy" width={126} height={126} />
+          <Image src={`/api/store/partner-qr/${offer.id}`} alt={`QR-код: ${offer.title}`} loading="lazy" width={126} height={126} unoptimized />
           <b>Откройте камерой телефона</b>
           <small>{offer.provider}</small>
         </div>

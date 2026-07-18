@@ -48,6 +48,7 @@ async function loadActiveOrder() {
   });
   if (!sub) return null;
   const threshold = Math.max(1, sub.campaign.viewThreshold);
+  const goalReached = sub.currentViews >= threshold || ["THRESHOLD_MET", "SETTLING"].includes(sub.status);
   const draftMeta = sub.status === "ACCEPTED" && sub.campaign.draftRequired
     ? sub.draftStatus === "APPROVED"
       ? { label: "Черновик принят — опубликуй ролик", cta: "Опубликовать", href: () => "/upload" }
@@ -57,7 +58,9 @@ async function loadActiveOrder() {
           ? { label: "Нужны изменения в черновике", cta: "Исправить", href: () => "/upload" }
           : { label: "Заказ взят — отправь черновик", cta: "Отправить черновик", href: () => "/upload" }
     : null;
-  const meta = draftMeta ?? ACTIVE_META[sub.status] ?? ACTIVE_META.POSTED;
+  const meta = goalReached
+    ? { label: "Цель достигнута — идёт проверка", cta: "Открыть статус", href: (id: string) => `/campaigns/${id}?returnTo=%2Fcampaigns` }
+    : draftMeta ?? ACTIVE_META[sub.status] ?? ACTIVE_META.POSTED;
   return {
     status: sub.status,
     statusKey: sub.status.toLowerCase(),
@@ -409,7 +412,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
       <section className={`section market-screen ${styles.marketplace}`}>
         {user && !user.emailVerifiedAt ? (
           <a className="verify-nudge" href="/verify-email" role="status">
-            Подтвердите почту, чтобы брать заказы и получать выплаты — это займёт минуту →
+            Подтвердите почту, чтобы брать заказы и получать выплаты →
           </a>
         ) : null}
         {user && completedExperience.length === 0 ? (

@@ -2,6 +2,7 @@
 
 import { Camera, Trash2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { UserAvatar } from "@/components/user-avatar";
 import { removeAvatarAction, updateAvatarAction } from "./actions";
 import styles from "./settings.module.css";
@@ -39,7 +40,7 @@ export function AvatarUpload({ avatar, name, handle }: AvatarUploadProps) {
     <div className={styles.avatarEditor}>
       <div className={styles.avatarPreview}>
         {preview
-          ? <img src={preview} alt="Предпросмотр нового логотипа" />
+          ? <Image src={preview} alt="Предпросмотр нового логотипа" width={84} height={84} unoptimized />
           : <UserAvatar avatar={avatar} name={name} handle={handle} size={84} />}
         <span><Camera size={15} /></span>
       </div>

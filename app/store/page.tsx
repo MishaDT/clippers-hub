@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { CheckCircle2, Coins, Package, ShoppingBag, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { PartnerCatalog } from "@/components/partner-catalog";
@@ -88,7 +89,7 @@ export default async function StorePage({
                 return (
                   <article className={`store-offer ${offer.featured ? "featured" : ""}`} key={offer.id}>
                     <div className="store-offer-art">
-                      {offer.imageUrl ? <img src={offer.imageUrl} alt="" loading="lazy" /> : <Package size={36} />}
+                      {offer.imageUrl ? <Image src={offer.imageUrl} alt="" width={640} height={420} loading="lazy" unoptimized /> : <Package size={36} />}
                       {offer.featured ? <span>Рекомендуем</span> : null}
                     </div>
                     <div className="store-offer-copy">

@@ -61,7 +61,7 @@ export function PilotLeadForm() {
       </div>
       <div className={styles.formColumn}>
         <button className={styles.formToggle} type="button" aria-expanded={formOpen} onClick={() => setFormOpen((value) => !value)}>
-          <span><b>Оставить заявку</b><small>5 полей · около 2 минут</small></span>
+          <span><b>Оставить заявку</b><small>5 коротких полей</small></span>
           <ChevronDown size={19} />
         </button>
         <div className={styles.formPanel} data-open={formOpen || state === "done"}>

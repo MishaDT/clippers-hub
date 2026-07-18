@@ -38,8 +38,15 @@ export default async function AdminIntegrationsPage() {
             <div className="section-head compact"><h2>Готовность площадок</h2></div>
             <div className="admin-list">
               {platforms.map((platform) => {
-                const configured = (platform === "YOUTUBE" || platform === "TIKTOK") && socialPlatformConfigured(platform);
-                return <div className="admin-event" key={platform}>{configured ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}<div><strong>{platform === "INSTAGRAM" ? "INSTAGRAM*" : platform}</strong><span>{platform === "VK" ? "Автопроверка ключом" : platform === "INSTAGRAM" ? "Ключ + модерация до Meta* Review" : configured ? "OAuth read-only настроен" : "Нужны ключи приложения"}</span></div><Tag tone={configured || platform === "VK" ? "good" : "warn"}>{configured || platform === "VK" ? "Готово" : "Ожидает"}</Tag></div>;
+                const configured = platform === "VK"
+                  ? Boolean(process.env.VK_SERVICE_TOKEN?.trim())
+                  : (platform === "YOUTUBE" || platform === "TIKTOK") && socialPlatformConfigured(platform);
+                const detail = platform === "VK"
+                  ? configured ? "Автопроверка ключом настроена" : "Нужен VK_SERVICE_TOKEN"
+                  : platform === "INSTAGRAM"
+                    ? "Ключ + модерация до Meta* Review"
+                    : configured ? "OAuth read-only настроен" : "Нужны ключи приложения";
+                return <div className="admin-event" key={platform}>{configured ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}<div><strong>{platform === "INSTAGRAM" ? "INSTAGRAM*" : platform}</strong><span>{detail}</span></div><Tag tone={configured ? "good" : "warn"}>{configured ? "Готово" : "Ожидает"}</Tag></div>;
               })}
               <div className="admin-event"><CheckCircle2 size={16} /><div><strong>Шифрование токенов</strong><span>AES-256-GCM, версия ключа и AAD</span></div><Tag tone={socialTokenEncryptionReady() ? "good" : "warn"}>{socialTokenEncryptionReady() ? "OK" : "Нет ключа"}</Tag></div>
             </div>

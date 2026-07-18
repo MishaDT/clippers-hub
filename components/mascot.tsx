@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BriefcaseBusiness, CircleHelp, MessageCircle, Upload, WalletCards, X } from "lucide-react";
 import styles from "./mascot.module.css";
+import { useModalFocus } from "./use-modal-focus";
 
 type Action = { label: string; href: string; hint: string; icon: "work" | "chat" | "upload" | "wallet" | "help" };
 type SmartAction = Action & { id: string; priority: number };
@@ -71,6 +72,7 @@ export function Mascot() {
   const [mounted, setMounted] = useState(false);
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
   const blocked = pathname === "/login" || pathname === "/register" || pathname === "/chats";
+  const dialogRef = useModalFocus<HTMLElement>(open, () => setOpen(false));
 
   useEffect(() => {
     setMounted(true);
@@ -89,18 +91,11 @@ export function Mascot() {
     return () => controller.abort();
   }, [open, pathname]);
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [open]);
-
   if (blocked) return null;
   const actions = smartActions.length ? smartActions : actionsFor(pathname, mode);
   const sheet = open && mounted ? createPortal(
     <div className="ridzi-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-      <section className="ridzi-sheet" role="dialog" aria-modal="true" aria-label="Помощник Ридзи">
+      <section ref={dialogRef} tabIndex={-1} className="ridzi-sheet" role="dialog" aria-modal="true" aria-label="Помощник Ридзи">
         <header>
           <div><span className="ridzi-mini">R</span><div><b>Ридзи</b><small>{mode === "client" ? "Помощник заказчика" : "Помощник исполнителя"}</small></div></div>
           <button type="button" onClick={() => setOpen(false)} aria-label="Закрыть"><X size={19} /></button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Check, Copy, Share2 } from "lucide-react";
 
 export function ReferralShare({ link, qrDataUrl }: { link: string; qrDataUrl: string }) {
@@ -30,7 +31,7 @@ export function ReferralShare({ link, qrDataUrl }: { link: string; qrDataUrl: st
         <button type="button" onClick={copy} aria-label="Скопировать реферальную ссылку">{copied ? <Check size={18} /> : <Copy size={18} />}</button>
       </div>
       <button className="btn btn-primary" type="button" onClick={share}><Share2 size={17} /> Поделиться</button>
-      <img src={qrDataUrl} alt="QR-код реферальной ссылки" width={152} height={152} />
+      <Image src={qrDataUrl} alt="QR-код реферальной ссылки" width={152} height={152} unoptimized />
     </div>
   );
 }

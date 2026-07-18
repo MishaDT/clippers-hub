@@ -94,8 +94,8 @@ export function Stat({ value, label, tone }: { value: React.ReactNode; label: st
   );
 }
 
-export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <section className={clsx("card", className)}>{children}</section>;
+export function Card({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
+  return <section id={id} className={clsx("card", className)}>{children}</section>;
 }
 
 export function Tag({ children, tone }: { children: React.ReactNode; tone?: "good" | "warn" | "live" | "soft" }) {

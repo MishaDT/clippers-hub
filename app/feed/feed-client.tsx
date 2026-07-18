@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Flame, Play } from "lucide-react";
 import { compactNumber, expectedPayout, minimumGuaranteedPayout, rub } from "@/lib/money";
@@ -138,7 +139,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
 
               <div className="reel-info">
                 <div className="reel-creator-row">
-                  <img src={campaign.ownerAvatar} alt="" loading="lazy" decoding="async" />
+                  <Image src={campaign.ownerAvatar} alt="" width={44} height={44} loading="lazy" unoptimized />
                   <div className="reel-creator-meta">
                     <strong>{campaign.ownerName}</strong>
                     <span>{compactNumber(campaign.views)} просмотров в кампании</span>

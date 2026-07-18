@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import Image from "next/image";
 import styles from "./user-avatar.module.css";
 
 type UserAvatarProps = {
@@ -48,7 +49,7 @@ export function UserAvatar({ avatar, name, handle = "", size = 40, className = "
       role="img"
       aria-label={name}
     >
-      {source ? <img src={source} alt="" loading="lazy" decoding="async" /> : initials(name, handle)}
+      {source ? <Image src={source} alt="" width={size} height={size} loading="lazy" unoptimized /> : initials(name, handle)}
     </span>
   );
 }

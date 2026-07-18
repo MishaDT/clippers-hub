@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeft,
   Award,
@@ -249,7 +250,7 @@ export default async function ClipperPortfolioPage({
             <div className="cp-ava fire-orb">
               <span className="fire-ring" aria-hidden="true" />
               <span className="flame" aria-hidden="true" />
-              <img src={avatar} alt="" />
+              <Image src={avatar} alt="" width={128} height={128} priority unoptimized />
             </div>
             <div className="cp-id">
               <h1>
@@ -425,7 +426,7 @@ export default async function ClipperPortfolioPage({
                 return (
                 <a className="cp-clip" href={sub.postUrl} target="_blank" rel="noreferrer" key={sub.id}>
                   {thumb
-                    ? <img className="cp-clip-thumb" src={thumb} alt="" loading="lazy" />
+                    ? <Image className="cp-clip-thumb" src={thumb} alt="" width={360} height={640} loading="lazy" unoptimized />
                     : <span className="cp-clip-neutral">{PLATFORM_LABEL[sub.platform] || sub.platform}</span>}
                   <span className="cp-clip-plat">{PLATFORM_LABEL[sub.platform] || sub.platform}</span>
                   <span className="cp-clip-play"><Play size={16} fill="#fff" /></span>
@@ -444,7 +445,7 @@ export default async function ClipperPortfolioPage({
               {endorsements.map((e) => (
                 <div className="cp-endorse" key={e.id}>
                   <div className="cp-endorse-by">
-                    <img src={dicebear(e.client.handle, e.client.avatar)} alt="" loading="lazy" />
+                    <Image src={dicebear(e.client.handle, e.client.avatar)} alt="" width={40} height={40} loading="lazy" unoptimized />
                     <div>
                       <strong>{e.client.name}</strong>
                       <span><Award size={12} /> рекомендует</span>

@@ -4,6 +4,7 @@ import { Bookmark, Check, ChevronDown, Search, SlidersHorizontal, Trash2, X } fr
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import styles from "./campaign-filters.module.css";
+import { useModalFocus } from "@/components/use-modal-focus";
 
 const CATEGORIES = [
   ["all", "Все"],
@@ -56,6 +57,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
   const [draft, setDraft] = useState({ category, deadline, sort });
   const draftRef = useRef(draft);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+  const dialogRef = useModalFocus<HTMLElement>(open, () => setOpen(false));
 
   function updateDraft(next: typeof draft) {
     draftRef.current = next;
@@ -76,13 +78,6 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
     draftRef.current = next;
     setDraft(next);
   }, [category, deadline, sort]);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [open]);
 
   function urlWith(values: Partial<typeof draft> & { q?: string }) {
     const next = new URLSearchParams();
@@ -156,6 +151,8 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
           className={activeFilters.length ? "has-filters" : ""}
           type="button"
           onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
           aria-label={activeFilters.length ? `Фильтры, выбрано: ${activeFilters.length}` : "Фильтры"}
           title="Фильтры"
         >
@@ -181,7 +178,7 @@ export function CampaignFilters({ query, category, deadline, sort, resultCount }
       {open ? (
         <>
           <button className="campaign-filter-backdrop" type="button" onClick={() => setOpen(false)} aria-label="Закрыть фильтры" />
-          <section className="campaign-filter-panel" role="dialog" aria-modal="true" aria-label="Фильтры заказов">
+          <section ref={dialogRef} tabIndex={-1} className="campaign-filter-panel" role="dialog" aria-modal="true" aria-label="Фильтры заказов">
             <header>
               <div>
                 <span>Подбор заказов</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ArrowUpRight, ChevronLeft, ChevronRight, Landmark } from "lucide-react";
 
 export type AffiliateOffer = {
@@ -49,7 +50,7 @@ export function AffiliateCarousel({ offers }: { offers: AffiliateOffer[] }) {
             <span className="affiliate-eyebrow"><Landmark size={14} /> {offer.eyebrow}</span>
             <h3>{offer.title}</h3>
             <p>{offer.description}</p>
-            {offer.qrDataUrl ? <img src={offer.qrDataUrl} alt={`QR-код: ${offer.title}`} width={104} height={104} /> : null}
+            {offer.qrDataUrl ? <Image src={offer.qrDataUrl} alt={`QR-код: ${offer.title}`} width={104} height={104} unoptimized /> : null}
             {offer.href && offer.ctaLabel ? (
               <a href={offer.href} target="_blank" rel="noopener noreferrer sponsored nofollow" tabIndex={active === index ? 0 : -1}>
                 {offer.ctaLabel} <ArrowUpRight size={15} />

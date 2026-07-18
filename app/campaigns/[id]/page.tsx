@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, BadgeCheck, Check, CircleAlert, Clock3, Megaphone, MessageCircle, ShieldCheck, Sparkles, Star, Target, UserRoundSearch, Users, WalletCards } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BadgeCheck, Check, CircleAlert, Clock3, Megaphone, ShieldCheck, Sparkles, Star, Target, UserRoundSearch, Users, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
 import { CampaignChat } from "@/components/campaign-chat";
@@ -379,7 +379,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
     ["Субтитры", brief.subtitles || null]
   ].filter((row): row is [string, string] => Boolean(row[1]));
   const urgent = daysLeft <= 2;
-  const signal = campaign.visibility === "FEATURED"
+  const marketSignal = campaign.visibility === "FEATURED"
     ? { cls: "hot", Icon: Megaphone, text: "Продвижение" }
     : campaign.remainingBudgetCents < gross || slotsLeft <= 0
       ? { cls: "urgent", Icon: CircleAlert, text: "Мало бюджета" }
@@ -389,9 +389,38 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         ? { cls: "easy", Icon: Sparkles, text: "Новый заказ" }
         : null;
   const videoCheck = submission?.videoChecks[0];
-  const trackingActive = ["VERIFIED", "POSTED"].includes(submission?.status || "");
   const linkDone = ["POSTED", "VERIFIED", "THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || "");
+  const goalReached = Boolean(submission && linkDone && (
+    submission.currentViews >= campaign.viewThreshold || ["THRESHOLD_MET", "SETTLING", "PAID"].includes(submission.status)
+  ));
+  const payoutComplete = submission?.status === "PAID";
+  const trackingActive = ["VERIFIED", "POSTED"].includes(submission?.status || "") && !goalReached;
   const draftDone = !campaign.draftRequired || submission?.draftStatus === "APPROVED";
+  const effectiveSubmissionStatus = payoutComplete
+    ? "Оплачено"
+    : goalReached
+      ? "Цель достигнута — идёт проверка выплаты"
+      : trackingActive
+        ? "Просмотры считаются автоматически"
+        : submissionStatus(submission?.status);
+  const signal = mode === "worker" && submission
+    ? payoutComplete
+      ? { cls: "easy", Icon: BadgeCheck, text: "Выплата зачислена" }
+      : goalReached
+        ? { cls: "easy", Icon: BadgeCheck, text: "Цель достигнута" }
+        : trackingActive
+          ? { cls: "hot", Icon: Clock3, text: "Идёт трекинг" }
+          : { cls: "easy", Icon: Check, text: "Ваш заказ" }
+    : marketSignal;
+  const workerAction = !submission
+    ? null
+    : payoutComplete
+      ? { href: "/wallet", label: "Открыть кошелёк" }
+      : goalReached
+        ? { href: "#campaign-report-title", label: "Открыть статус проверки" }
+        : submission.status === "ACCEPTED"
+          ? { href: "/upload", label: campaign.draftRequired && !draftDone ? "Отправить черновик" : "Добавить ссылку на ролик" }
+          : { href: "#campaign-workspace", label: "Смотреть прогресс" };
   const progressSteps = [
     { key: "accepted", title: "Заказ взят", done: Boolean(submission), active: false, detail: "Условия доступны" },
     ...(campaign.draftRequired ? [{
@@ -410,8 +439,8 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       metric: `Режим: ${campaign.reviewMode === "FAST" ? "быстрый" : campaign.reviewMode === "STRICT" ? "строгий" : "стандартный"}`
     }] : []),
     { key: "link", title: "Ссылка", done: linkDone, active: Boolean(submission?.status === "ACCEPTED" && draftDone), detail: submission?.status === "ACCEPTED" ? draftDone ? "Опубликуйте ролик" : "После принятия черновика" : "Ссылка принята", href: "/upload", metric: `Watermark: ${videoCheckStatus(videoCheck?.status)}` },
-    { key: "tracking", title: "Трекинг", done: ["THRESHOLD_MET", "SETTLING", "PAID"].includes(submission?.status || ""), active: trackingActive, detail: trackingActive ? "Считаем просмотры" : "После проверки ссылки", metric: linkDone ? `${compactNumber(submission?.currentViews || 0)} просмотров · ${compactNumber(submission?.currentLikes || 0)} лайков` : "Трекинг начнётся после ссылки" },
-    { key: "payout", title: "Выплата", done: submission?.status === "PAID", active: ["THRESHOLD_MET", "SETTLING"].includes(submission?.status || ""), detail: submission?.status === "PAID" ? "Деньги зачислены" : "После цели и проверки", metric: submission ? `Риск проверки ${submission.fraudScore}%` : undefined }
+    { key: "tracking", title: "Трекинг", done: goalReached, active: trackingActive, detail: goalReached ? "Цель по просмотрам достигнута" : trackingActive ? "Считаем просмотры автоматически" : "После проверки ссылки", metric: linkDone ? `${compactNumber(submission?.currentViews || 0)} / ${compactNumber(campaign.viewThreshold)} просмотров · ${compactNumber(submission?.currentLikes || 0)} лайков` : "Трекинг начнётся после ссылки" },
+    { key: "payout", title: "Выплата", done: payoutComplete, active: goalReached && !payoutComplete, detail: payoutComplete ? "Деньги зачислены" : goalReached ? "Идёт проверка перед выплатой" : "После цели и проверки", metric: submission ? `Риск проверки ${submission.fraudScore}%` : undefined }
   ];
 
   const seoIndexable =
@@ -447,7 +476,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           />
         ) : null}
         {query.published === "1" ? (
-          <div className="od-flash" role="status"><BadgeCheck size={16} /> Кампания опубликована! Бюджет в резерве — клипперы уже видят задание в ленте. Первые отклики обычно приходят в течение суток.</div>
+          <div className="od-flash" role="status"><BadgeCheck size={16} /> Кампания опубликована. Бюджет в резерве, а задание уже доступно клипперам. Новые отклики появятся здесь.</div>
         ) : null}
         {query.dispute === "opened" ? (
           <div className="od-flash" role="status"><ShieldCheck size={16} /> Спор открыт. Выплата по работе приостановлена, администратор рассмотрит обращение — решение придёт в уведомления.</div>
@@ -475,7 +504,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                 <p className="od-ad-mark">
                   {campaign.erid
                     ? `Реклама.${campaign.advertiserName ? ` ${campaign.advertiserName}.` : ""} erid: ${campaign.erid}`
-                    : "Рекламная кампания ожидает erid. Взять заказ и публиковать ролик до маркировки нельзя."}
+                    : linkDone
+                      ? "Данные маркировки не указаны в карточке кампании."
+                      : mode === "client"
+                        ? "Маркировка не заполнена. До публикации добавьте erid."
+                        : "Рекламная кампания ожидает erid. Взять заказ и публиковать ролик до маркировки нельзя."}
                 </p>
               ) : null}
             </div>
@@ -483,7 +516,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
 
           <aside className="od-aside">
             <div className="od-apply">
-              <span className="od-apply-label"><WalletCards size={15} /> {mode === "client" ? "Максимальная стоимость" : "Максимальная чистая выплата"}</span>
+              <span className="od-apply-label"><WalletCards size={15} /> {mode === "client" ? "Максимум за одну публикацию" : "Максимальная чистая выплата"}</span>
               <strong className="od-apply-sum">{rub(expected)}</strong>
               <div className="od-apply-metrics">
                 <div><b>{compactNumber(campaign.viewThreshold)}</b><em>цель просмотров</em></div>
@@ -506,9 +539,9 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                       <span className="od-budget-reserved" style={{ width: `${pct(reserved)}%` }} />
                     </div>
                     <div className="od-budget-legend">
-                      <span><i className="is-paid" /> Выплачено {pct(paid)}%</span>
-                      <span><i className="is-reserved" /> В резерве {pct(reserved)}%</span>
-                      <span><i className="is-free" /> Свободно {pct(free)}%</span>
+                      <span><i className="is-paid" /> Выплачено {rub(paid)} · {pct(paid)}%</span>
+                      <span><i className="is-reserved" /> В резерве {rub(reserved)} · {pct(reserved)}%</span>
+                      <span><i className="is-free" /> Свободно {rub(free)} · {pct(free)}%</span>
                     </div>
                     <small>Бюджет кампании {rub(total)}</small>
                   </div>
@@ -525,14 +558,14 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                         {campaign.status !== "COMPLETED" ? (
                           <form action={closeCampaignAction}>
                             <input type="hidden" name="campaignId" value={campaign.id} />
-                            <button className="btn od-apply-btn" type="submit">Завершить и вернуть остаток ({rub(campaign.remainingBudgetCents)})</button>
+                            <button className="btn od-apply-btn" type="submit">Завершить и вернуть свободные {rub(campaign.remainingBudgetCents)}</button>
                           </form>
                         ) : null}
                       </>
                     )
                   : <span className="od-apply-muted">Кампания другого заказчика</span>
-              ) : submission ? (
-                <Link className="btn btn-primary od-apply-btn" href="/upload">Выложить работу</Link>
+              ) : submission && workerAction ? (
+                <Link className="btn btn-primary od-apply-btn" href={workerAction.href}>{workerAction.label}</Link>
               ) : (
                 <TakeOrderButton
                   campaignId={campaign.id}
@@ -560,7 +593,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                         : "После взятия заказа максимальная выплата резервируется под вас."
                 }</li>
                 <li><Clock3 size={14} /> Статистика обновляется автоматически.</li>
-                <li><BadgeCheck size={14} /> {mode === "client" ? "Черновики проверяются обычно в течение 24 часов." : "Проверка черновика — обычно до 24 часов."}</li>
+                <li><BadgeCheck size={14} /> Статус проверки появится в рабочей зоне и уведомлениях.</li>
               </ul>
             </div>
           </aside>
@@ -620,6 +653,9 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         </div>
 
         {isOwner ? (
+          <details className={styles.secondaryTools}>
+            <summary>Дополнительные инструменты кампании</summary>
+            <p className={styles.secondaryHint}>Диагностика, короткие ссылки и подбор исполнителей.</p>
           <section className={styles.diagnostics} aria-labelledby="campaign-diagnostics-title">
             <div className={styles.diagnosticsHead}>
               <span><Sparkles size={15} /> Диагностика без ИИ</span>
@@ -638,9 +674,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               ))}
             </div>
           </section>
-        ) : null}
 
-        {isOwner ? (
           <section className={styles.tracking} aria-labelledby="campaign-tracking-title">
             <div>
               <span className="eyebrow">Переходы без слежки</span>
@@ -671,9 +705,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               {!campaign.trackingLinks.length ? <p className="muted">Ссылок пока нет.</p> : null}
             </div>
           </section>
-        ) : null}
 
-        {isOwner ? (
           <section className={styles.workerMatches} aria-labelledby="worker-matches-title">
             <div className={styles.workerMatchesHead}>
               <div>
@@ -716,12 +748,13 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               </div>
             )}
           </section>
+          </details>
         ) : null}
 
         {submission && (mode === "worker" || isOwner) ? (
           <WorkspaceJourney
             submissionId={submission.id}
-            status={submissionStatus(submission.status)}
+            status={effectiveSubmissionStatus}
             steps={progressSteps}
           />
         ) : null}
@@ -735,11 +768,17 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             <div className="od-report-grid">
               {reports.map((report) => {
                 const post = buildSafePreview(report.postUrl);
+                const reportGoalReached = report.currentViews >= campaign.viewThreshold || ["THRESHOLD_MET", "SETTLING", "PAID"].includes(report.status);
+                const reportStatus = report.status === "PAID"
+                  ? "Оплачено"
+                  : reportGoalReached
+                    ? "Цель достигнута — проверка выплаты"
+                    : submissionStatus(report.status);
                 return (
                   <article className="od-report-card" data-submission-id={report.id} key={report.id}>
                     <header>
                       <div><strong>{report.worker.name}</strong><span>@{report.worker.handle}</span></div>
-                      <b>{submissionStatus(report.status)}</b>
+                      <b>{reportStatus}</b>
                     </header>
                     {campaign.draftRequired ? (
                       <div className={styles.draftReview} data-status={report.draftStatus.toLowerCase()}>

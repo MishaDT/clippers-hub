@@ -270,6 +270,7 @@ body:has(.wallet-screen) {
 .wallet-balance-card small { position: relative; z-index: 1; color: #3d5310!important; }
 
 .wallet-balance-card strong { position: relative; z-index: 1; color: #080d05; font-size: 35px!important; line-height: 1.02; }
+.wallet-balance-cta { position:relative;z-index:2;width:fit-content;margin-top:7px;padding:7px 11px;border-radius:9px;background:#0b1107;color:#e7ff9c;font-size:12px;font-weight:850; }
 
 .wallet-rp-card { background: linear-gradient(145deg,#131a0e,#0b0f09)!important; color: #fff!important; }
 

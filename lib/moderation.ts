@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma, User } from "@prisma/client";
+import type { User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { scanContent } from "@/lib/content-policy";
 import { stringify } from "@/lib/json";

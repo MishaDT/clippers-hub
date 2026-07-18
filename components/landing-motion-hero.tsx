@@ -101,6 +101,9 @@ export function LandingMotionHero({
           <Link className={styles.primary} href={active.primaryHref}>{active.primary} <ArrowRight size={18} /></Link>
           <a className={styles.secondary} href={active.secondaryHref}>{active.secondary}</a>
         </div>
+        <Link className={styles.proofLink} href="/campaigns">
+          <BadgeCheck size={15} /> Открыть реальные заказы без регистрации
+        </Link>
       </div>
 
       <div className={styles.stage} aria-label={`Демонстрация пути: ${active.stages.join(", ")}`}>

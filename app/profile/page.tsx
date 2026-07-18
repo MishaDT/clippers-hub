@@ -22,7 +22,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { ProfileAchievements } from "@/components/profile-achievements";
 import { requireUser } from "@/lib/auth";
 import { compactNumber, rub } from "@/lib/money";
-import { ACHIEVEMENTS, achievementProgress, formatRp } from "@/lib/achievements";
+import { ACHIEVEMENTS, achievementProgress } from "@/lib/achievements";
 import { loadAchievementStats } from "@/lib/achievement-stats";
 import { prisma } from "@/lib/prisma";
 import { getActiveRoleMode } from "@/lib/role-mode";

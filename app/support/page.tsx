@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Headphones, MessageCircle, Plus } from "lucide-react";
+import { Headphones, Plus } from "lucide-react";
 import { createSupportThreadAction } from "@/app/support/actions";
 import { AppShell } from "@/components/ui";
 import { SupportMessageForm } from "@/components/support-message-form";
@@ -124,4 +124,3 @@ export default async function SupportPage({
     </AppShell>
   );
 }
-

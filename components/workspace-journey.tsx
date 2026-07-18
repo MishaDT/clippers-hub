@@ -36,7 +36,7 @@ export function WorkspaceJourney({
   }, [steps, submissionId]);
 
   return (
-    <section className="workspace-card workspace-journey">
+    <section id="campaign-workspace" className="workspace-card workspace-journey">
       <div className="workspace-head">
         <div><span>Рабочая зона</span><h2>{status}</h2></div>
         <Link className="btn btn-small" href="/chats">Все чаты</Link>

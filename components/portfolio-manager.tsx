@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowUp, Search, Settings2, Trash2, X } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { useModalFocus } from "./use-modal-focus";
 
 type Work = { id: string; currentViews: number; campaign: { title: string } };
 type Pin = { id: string; submissionId: string; position: number; submission: Work };
@@ -14,6 +15,7 @@ export function PortfolioManager({ initialPins, automatic }: { initialPins: Pin[
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pending, startTransition] = useTransition();
+  const dialogRef = useModalFocus<HTMLElement>(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
@@ -47,14 +49,14 @@ export function PortfolioManager({ initialPins, automatic }: { initialPins: Pin[
     <section className="portfolio-console">
       <div className="portfolio-summary">
         <div><h2>Витрина работ</h2><p>По умолчанию показываем лучшие работы. Здесь можно заменить их вручную.</p></div>
-        <button className="btn btn-small" type="button" onClick={() => setOpen(true)}><Settings2 size={16} /> Настроить</button>
+        <button className="btn btn-small" type="button" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><Settings2 size={16} /> Настроить</button>
       </div>
       <div className="portfolio-preview">
         {preview.map((item, index) => <article key={item.id}><span>{index + 1}</span><div><b>{item.campaign.title}</b><small>{item.currentViews.toLocaleString("ru-RU")} просмотров</small></div></article>)}
         {!preview.length ? <p className="muted">Подтверждённые работы появятся здесь автоматически.</p> : null}
       </div>
       {open ? <div className="portfolio-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-        <section className="portfolio-modal" role="dialog" aria-modal="true" aria-label="Настройка витрины">
+        <section ref={dialogRef} tabIndex={-1} className="portfolio-modal" role="dialog" aria-modal="true" aria-label="Настройка витрины">
           <header><div><h2>Настройка витрины</h2><p>{pins.length}/6 закреплено вручную</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Закрыть"><X /></button></header>
           {pins.length ? <div className="portfolio-pins">{pins.map((pin, index) => <article key={pin.id}><span>{index + 1}</span><div><b>{pin.submission.campaign.title}</b><small>{pin.submission.currentViews.toLocaleString("ru-RU")} просмотров</small></div><button onClick={() => mutate({ action: "move", pinId: pin.id, direction: "up" })} disabled={pending || index === 0} aria-label="Поднять"><ArrowUp size={16} /></button><button onClick={() => mutate({ action: "move", pinId: pin.id, direction: "down" })} disabled={pending || index === pins.length - 1} aria-label="Опустить"><ArrowDown size={16} /></button><button onClick={() => mutate({ action: "remove", pinId: pin.id })} disabled={pending} aria-label="Убрать"><Trash2 size={16} /></button></article>)}</div> : <p className="portfolio-auto-note">Сейчас витрина заполняется автоматически.</p>}
           <label className="portfolio-search"><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Найти подтверждённую работу" /></label>

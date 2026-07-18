@@ -178,6 +178,13 @@
     font-size: 14px;
   }
 
+  .calculator header span,
+  .calculator > p,
+  .fields label,
+  .result small {
+    font-size: 12px;
+  }
+
   .calculator {
     padding: 14px;
   }

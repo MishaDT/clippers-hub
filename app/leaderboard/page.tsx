@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { unstable_cache } from "next/cache";
 import { BadgeCheck, ChevronRight, Crown, Flame, Handshake, Scissors, Sparkles, Star, Trophy } from "lucide-react";
 import { AppShell } from "@/components/ui";
@@ -155,13 +156,13 @@ function Avatar({ row, podium }: { row: Row; podium?: boolean }) {
     return (
       <div className="podium-avatar fire-orb">
         <PodiumFlameCanvas tone={tone} jet={row.rank === 1} />
-        <img src={row.avatar} alt="" loading="lazy" />
+        <Image src={row.avatar} alt="" width={80} height={80} loading="lazy" unoptimized />
       </div>
     );
   }
   return (
     <div className="lr-ava-wrap">
-      <img src={row.avatar} alt="" loading="lazy" />
+      <Image src={row.avatar} alt="" width={64} height={64} loading="lazy" unoptimized />
     </div>
   );
 }

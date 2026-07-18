@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Prisma, SupportPriority, SupportStatus } from "@prisma/client";
+import type { Prisma, SupportStatus } from "@prisma/client";
 import { Headphones, Inbox } from "lucide-react";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { SupportMessageForm } from "@/components/support-message-form";
@@ -198,4 +198,3 @@ export default async function AdminSupportPage({
     </AdminShell>
   );
 }
-

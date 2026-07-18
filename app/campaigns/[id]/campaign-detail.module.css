@@ -161,6 +161,31 @@
     #0b0e0b;
 }
 
+.secondaryTools {
+  order: 3;
+  margin-top: 8px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.secondaryTools > summary {
+  cursor: pointer;
+  color: #dce3d8;
+  font-weight: 850;
+}
+
+.secondaryHint {
+  margin: 7px 0 0;
+  color: #8f978d;
+  font-size: 12px;
+}
+
+.secondaryTools[open] > summary {
+  color: #baff00;
+}
+
 .diagnostics {
   margin-top: 24px;
 }

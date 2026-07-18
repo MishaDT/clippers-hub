@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Check, CheckCircle2, ChevronDown, Clock3, Copy, Download,
   Eye, FileCheck2, Link2, RotateCcw, Send, ShieldCheck, WalletCards
@@ -267,7 +268,7 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
             </div>
             <div className="up-materials">
               <div className="up-material">
-                <div className="up-material-ico"><img src="/watermark/reelpay-watermark.svg" alt="" /></div>
+                <div className="up-material-ico"><Image src="/watermark/reelpay-watermark.svg" alt="" width={56} height={56} /></div>
                 <div className="up-material-body">
                   <strong>{selected.strictVerification ? "Уникальный QR ReelPay обязателен" : `Watermark ReelPay ${selected.watermarkRequired ? "обязателен" : "по желанию"}`}</strong>
                   <span>{selected.strictVerification ? "Этот QR подписан для конкретной работы и не подходит к другому заказу." : "Поместите в угол ролика: 12–18% ширины, прозрачность 80–90%."}</span>

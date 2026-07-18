@@ -20,7 +20,7 @@ export function FirstSteps({ profileDone, orderTaken }: { profileDone: boolean; 
     {
       done: false,
       title: "Сдай первый клип",
-      hint: "Смонтируй, опубликуй и отправь ссылку — проверка обычно до 24 часов",
+      hint: "Смонтируй, опубликуй и отправь ссылку — статус проверки появится в рабочей зоне",
       href: "/upload"
     }
   ];

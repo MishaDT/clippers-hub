@@ -3,6 +3,7 @@
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { ArrowUpRight, Ban, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Link2, Pencil, RefreshCw, Send, ShieldAlert, Trash2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import styles from "./campaign-chat.module.css";
 import { advanceCollabStageAction, deleteChatMessageAction, editChatMessageAction, sendChatMessageAction } from "@/app/actions";
@@ -141,7 +142,7 @@ export function CampaignChat({
     <section className="chat-card-v2" id="chat">
       <div className="chat-card-head">
         <div className="chat-peer">
-          {peerAvatar ? <img src={peerAvatar} alt="" /> : <span className="chat-peer-fallback">{peerName.slice(0, 2).toUpperCase()}</span>}
+          {peerAvatar ? <Image src={peerAvatar} alt="" width={44} height={44} unoptimized /> : <span className="chat-peer-fallback">{peerName.slice(0, 2).toUpperCase()}</span>}
           <span>
             <h2>{peerName}</h2>
             <em>{peerRole ? `${peerRole} · ${peerHandle || ""}` : peerHandle || "Участник заказа"}</em>

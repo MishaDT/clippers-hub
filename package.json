@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test \"tests/*.test.mts\"",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test \"tests/*.test.mts\"",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:init": "node scripts/init-db.js",
@@ -22,18 +22,18 @@
     "db:cleanup-notifications:apply": "node scripts/cleanup-notification-duplicates.js --apply",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "test:providers": "node --experimental-strip-types --test tests/view-providers.test.mts",
-    "test:avatar": "node --experimental-strip-types --test tests/avatar-image.test.mts",
-    "test:policy": "node --experimental-strip-types --test tests/content-policy.test.mts",
-    "test:profile": "node --experimental-strip-types --test tests/profile-rules.test.mts",
-    "test:rp": "node --experimental-strip-types --test tests/rp-rewards.test.mts",
-    "test:auth-intent": "node --experimental-strip-types --test tests/auth-intent.test.mts",
-    "test:reports": "node --experimental-strip-types --test tests/report-reasons.test.mts",
-    "test:notifications": "node --experimental-strip-types --test tests/notifications.test.mts",
-    "test:money": "node --experimental-strip-types --test tests/financial-model.test.mts",
-    "test:drafts": "node --experimental-strip-types --test tests/draft-workflow.test.mts",
-    "test:matching": "node --experimental-strip-types --test tests/campaign-matching.test.mts",
-    "test:referrals": "node --experimental-strip-types --test tests/referrals.test.mts tests/referral-attribution.test.mts"
+    "test:providers": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/view-providers.test.mts",
+    "test:avatar": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/avatar-image.test.mts",
+    "test:policy": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/content-policy.test.mts",
+    "test:profile": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/profile-rules.test.mts",
+    "test:rp": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/rp-rewards.test.mts",
+    "test:auth-intent": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/auth-intent.test.mts",
+    "test:reports": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/report-reasons.test.mts",
+    "test:notifications": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/notifications.test.mts",
+    "test:money": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/financial-model.test.mts",
+    "test:drafts": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/draft-workflow.test.mts",
+    "test:matching": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/campaign-matching.test.mts",
+    "test:referrals": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/referrals.test.mts tests/referral-attribution.test.mts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
@@ -65,8 +65,5 @@
   },
   "overrides": {
     "postcss": "^8.5.10"
-  },
-  "prisma": {
-    "seed": "node prisma/seed.js"
   }
 }

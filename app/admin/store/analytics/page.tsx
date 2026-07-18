@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, BarChart3, ExternalLink, MousePointerClick, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, BarChart3, MousePointerClick, ShieldCheck, UserRound } from "lucide-react";
 import { AdminBarChart } from "@/components/admin-charts";
 import { AdminPageHeader, AdminShell } from "@/components/admin-shell";
 import { Card, Tag } from "@/components/ui";

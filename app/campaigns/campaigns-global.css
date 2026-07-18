@@ -1538,6 +1538,7 @@
 .od-apply-notes li { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
 .od-apply-notes li svg { flex: none; margin-top: 1px; color: var(--muted); }
 .od-report-block {
+  order: 2;
   display: grid;
   gap: 12px;
   padding: 18px 20px;
@@ -1545,6 +1546,7 @@
   border-radius: 18px;
   background: #0b0f09;
 }
+.workspace-journey { order: 1; }
 .od-report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .od-report-card { display: grid; gap: 10px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.025); }
 .od-report-card > header,
@@ -1617,6 +1619,7 @@
 .client-campaign-boost button{border:1px solid #60751a;border-radius:6px;padding:8px 10px;background:#202710;color:#d9ff52;font-size:12px;font-weight:800;white-space:nowrap}
 .client-campaign-boost button:disabled{opacity:.4}
 .order-mobile-submit{display:none}
+.order-builder [hidden]{display:none!important}
 @media(max-width:760px){
   .client-campaigns{width:100%;padding:12px 12px calc(96px + var(--safe-b))!important;overflow-x:hidden}
 }
@@ -1681,7 +1684,7 @@
 }
 @media(max-width:760px){.order-mobile-submit span{display:grid}
 }
-@media(max-width:760px){.order-mobile-submit small{color:var(--muted);font-size:10px}
+@media(max-width:760px){.order-mobile-submit small{color:var(--muted);font-size:12px}
 }
 @media(max-width:760px){.order-mobile-submit b{font-size:17px}
 }

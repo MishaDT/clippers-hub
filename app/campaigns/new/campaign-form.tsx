@@ -505,7 +505,7 @@ export function CampaignForm({
       </div>
 
       <div className="order-mobile-submit" hidden={step !== 7}>
-        <span><small>Стоимость результата</small><b>{rub(estimate.payout)}</b></span>
+        <span><small>Резерв кампании</small><b>{rub(budget * 100)}</b></span>
         <SubmitButton />
       </div>
 
@@ -513,7 +513,7 @@ export function CampaignForm({
         <div className="summary-card">
           <span className="summary-kicker">Прогноз заказа</span>
           <h2>{rub(estimate.payout)}</h2>
-          <p>максимальная стоимость одной успешной публикации до комиссии платформы</p>
+          <p>максимальная стоимость одной успешной публикации; общий резерв кампании — {rub(budget * 100)}</p>
           <p><b>Гарантия: {rub(estimate.guarantee)}</b> за проверенный ролик к дедлайну</p>
 
           <div className="summary-metrics">
