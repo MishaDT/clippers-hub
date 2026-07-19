@@ -4,6 +4,13 @@
   margin: 28px auto 110px;
 }
 
+@media (max-width: 760px) {
+  .layout{min-height:0!important;overflow:visible!important;border:0!important;border-radius:0!important;background:transparent!important}
+  .sidebar{padding:18px 0!important;border:0!important;background:transparent!important}
+  .createForm{gap:16px;margin:0;padding:0;border:0}.createForm input,.createForm select{height:48px;border-radius:11px}.createForm textarea{min-height:130px;padding:13px;border-radius:11px}.primaryButton{min-height:48px;border-radius:11px}
+  .threadList{margin-top:24px;border-top:1px solid rgba(255,255,255,.08)}.thread{padding:16px 2px;border:0;border-bottom:1px solid rgba(255,255,255,.08);border-radius:0}.conversation{margin-top:18px;border-top:1px solid rgba(255,255,255,.08)}
+}
+
 .heading {
   display: flex;
   align-items: flex-end;
@@ -67,10 +74,11 @@
   display: grid;
   gap: 10px;
   margin-bottom: 16px;
-  padding: 14px;
-  border: 1px solid rgba(200, 239, 75, 0.22);
-  border-radius: 10px;
-  background: rgba(200, 239, 75, 0.04);
+  padding: 6px 0 18px;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-radius: 0;
+  background: transparent;
 }
 
 .createForm label,

@@ -154,24 +154,24 @@
 
 @media (max-width: 760px) {
   .hero {
-    grid-template-columns: 1fr;
-    gap: 13px;
+    grid-template-columns: minmax(0,1fr) 40px;
+    gap: 10px;
     min-height: 0;
-    padding: 16px;
+    padding: 16px 14px;
     border-radius: 18px;
   }
 
   .person {
     display: grid;
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
     align-items: start;
     gap: 13px;
   }
 
   .avatar {
-    width: 76px;
-    height: 76px;
-    flex-basis: 76px;
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
     border-width: 2px;
   }
 
@@ -202,19 +202,21 @@
 
   .stats {
     grid-column: 1 / -1;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
     gap: 7px;
     margin-top: 4px;
   }
 
   .stats .role {
-    grid-column: 1 / -1;
-    min-height: 42px;
+    display: none;
   }
 
   .stats > span {
-    min-height: 48px;
-    padding: 7px 9px;
+    min-height: 0;
+    padding: 0 12px 0 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .stats b {
@@ -222,7 +224,7 @@
   }
 
   .actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 40px;
   }
 
   .actions a {
@@ -230,19 +232,15 @@
     align-items: center;
     justify-content: center;
     gap: 7px;
-    width: auto;
-    min-height: 44px;
+    width: 40px;
+    min-height: 40px;
     border-radius: 10px;
     font-size: 12px;
     font-weight: 800;
   }
 
   .actions a span {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
+    position: absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
   }
 }
 
@@ -282,15 +280,13 @@
 
 .orderGroups {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .orderGroup {
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 16px;
+  gap: 0;
 }
 
 .orderGroup > h3 {
@@ -301,10 +297,11 @@
 .orderCard {
   display: grid;
   gap: 11px;
-  padding: 14px;
-  border: 1px solid rgba(201, 243, 29, .16);
-  border-radius: 14px;
-  background: #0d110b;
+  padding: 18px 2px;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+  border-radius: 0;
+  background: transparent;
   color: inherit;
 }
 
@@ -328,27 +325,32 @@
 }
 
 .orderMetrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  margin: 0;
+  color: #8f968d;
+  font-size: 12px;
 }
 
 .orderMetrics span {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  padding: 8px;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, .035);
+  white-space: nowrap;
 }
 
 .orderMetrics b {
   overflow: hidden;
   color: #f7f8f3;
-  font-size: 13px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.orderProgress { height:4px; overflow:hidden; border-radius:999px; background:#20251d; }
+.orderProgress i { display:block; height:100%; border-radius:inherit; background:var(--primary); }
+.completedOrders { border-top:1px solid rgba(255,255,255,.08); }
+.completedOrders summary { display:flex; justify-content:space-between; padding:15px 2px; color:#b8bdb6; cursor:pointer; font-weight:800; }
+.completedOrders summary span { color:var(--primary); }
+.completedOrders summary::marker { content:""; }
 
 .orderMetrics small {
   color: #81877f;
@@ -400,11 +402,5 @@
     border-radius: 15px;
   }
 
-  .orderMetrics {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .orderMetrics span:last-child {
-    grid-column: 1 / -1;
-  }
+  .orderCard { padding:16px 0; }
 }

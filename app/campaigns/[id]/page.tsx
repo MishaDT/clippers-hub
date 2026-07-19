@@ -9,6 +9,7 @@ import { WorkspaceJourney } from "@/components/workspace-journey";
 import { TakeOrderButton } from "@/components/take-order-button";
 import { SubmissionDispute } from "@/components/submission-dispute";
 import { ClipReport } from "@/components/clip-report";
+import { PlatformIcon } from "@/components/marketplace-browser";
 import { closeCampaignAction, createCampaignTrackingLinkAction, createClipShareAction, disableCampaignTrackingLinkAction, rateCompletedSubmissionAction, revokeClipShareAction, reviewDraftAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/admin";
@@ -493,7 +494,6 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               <h1>{campaign.title}</h1>
               <p>{campaign.description}</p>
               <div className="od-chips">
-                {campaign.isDemo ? <span className="od-chip od-chip--demo">Демо-кампания</span> : null}
                 {campaign.isPlatformOrganized ? <span className="od-chip od-chip--seed"><BadgeCheck size={13} /> Организовано ReelPay</span> : null}
                 {signal ? <span className={`od-chip od-chip--${signal.cls}`}><signal.Icon size={13} /> {signal.text}</span> : null}
                 <span className="od-chip"><Clock3 size={13} /> {daysLeft} дн</span>
@@ -632,7 +632,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             <section className="od-block">
               <h2 className="od-h2">Правила</h2>
               <div className="od-rules">
-                <div><b>Площадки</b><span>{platforms.length ? platforms.join(", ") : "TikTok, Shorts, Reels, VK"}</span></div>
+                <div><b>Площадки</b><span className="od-platform-icons">{(platforms.length ? platforms : ["TIKTOK","YOUTUBE","INSTAGRAM","VK"]).map((platform) => <i title={platform} aria-label={platform} key={platform}><PlatformIcon platform={platform} /></i>)}</span></div>
                 <div><b>Теги</b><span>{rules.requiredTags?.length ? rules.requiredTags.join(", ") : "#reelpay"}</span></div>
                 <div><b>Нельзя</b><span>{rules.bans?.slice(0, 3).join(", ") || "NSFW, оскорбления, политика"}</span></div>
                 <div><b>Watermark</b><span>{rules.watermarkBonus ? "Нужен ReelPay watermark" : "Не обязателен"}</span></div>
@@ -762,7 +762,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         {reports.length ? (
           <section className="od-report-block" aria-labelledby="campaign-report-title">
             <div className="section-head compact">
-              <div><span className="eyebrow">Контроль результата</span><h2 id="campaign-report-title">Отчёт по публикациям</h2></div>
+              <div><h2 id="campaign-report-title">Результаты</h2><p className="muted">Публикации, просмотры и выплаты в одном месте</p></div>
               <span>{reports.length} {reports.length === 1 ? "ролик" : "роликов"}</span>
             </div>
             <div className="od-report-grid">

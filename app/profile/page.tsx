@@ -261,6 +261,8 @@ export default async function ProfilePage() {
         </section>
 
         {canSwitchMode ? (
+          <section className="profile-role-control" aria-label="Режим профиля">
+          <div><b>Режим профиля</b><small>{mode === "client" ? "Сейчас вы управляете заказами" : "Сейчас вы выполняете заказы"}</small></div>
           <form className="role-switch" action={switchRoleAction}>
             <input type="hidden" name="returnTo" value="/profile" />
             <button className={mode === "worker" ? "active" : ""} name="mode" value="worker" type="submit">
@@ -270,6 +272,7 @@ export default async function ProfilePage() {
               <BriefcaseBusiness size={18} /> Заказчик
             </button>
           </form>
+          </section>
         ) : null}
 
         <ProfileDisclosure storageKey="rewards" title="Достижения и задания" summary={achievementSummary}>
@@ -367,37 +370,29 @@ export default async function ProfilePage() {
             </section>
 
             <section className="section-list">
-              <div className="section-head compact"><h2>Мои заказы</h2><Link href="/campaigns/new">Создать</Link></div>
+              <div className="section-head compact"><div><h2>Мои заказы</h2><p className="muted">Текущие кампании и их ближайшее действие</p></div><Link className="btn btn-primary btn-small" href="/campaigns/new"><Plus size={15} /> Создать</Link></div>
               <div className={styles.orderGroups}>
-              <Card className={styles.orderGroup}><h3>Активные</h3>
+              <div className={styles.orderGroup}>
                 {data.activeCampaigns.length ? data.activeCampaigns.map((campaign) => (
                   <Link className={styles.orderCard} href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`} key={campaign.id}>
                     <div className={styles.orderTitle}>
                       <strong>{campaign.title}</strong>
                       <Tag tone={campaign.status === "LOW_BUDGET" ? "warn" : "good"}>{campaignLabels[campaign.status] || campaign.status}</Tag>
                     </div>
-                    <div className={styles.orderMetrics}>
-                      <span><b>{campaign._count.submissions}/{campaign.maxPaidResults}</b><small>публикаций</small></span>
-                      <span><b>{compactNumber(campaign.views)}</b><small>просмотров</small></span>
-                      <span><b>{rub(campaign.reservedBudgetCents)}</b><small>под клипперов</small></span>
-                    </div>
+                    <div className={styles.orderProgress}><i style={{width: `${Math.min(100, campaign.maxPaidResults ? campaign._count.submissions / campaign.maxPaidResults * 100 : 0)}%`}} /></div>
+                    <p className={styles.orderMetrics}><span><b>{campaign._count.submissions}/{campaign.maxPaidResults}</b> публикаций</span><span><b>{compactNumber(campaign.views)}</b> просмотров</span><span><b>{rub(campaign.reservedBudgetCents)}</b> зарезервировано</span></p>
                     <em>{campaign.status === "LOW_BUDGET" ? "Пополнить бюджет" : campaign._count.submissions ? "Открыть результаты" : "Ждём исполнителей"} <ArrowRight size={15} /></em>
                   </Link>
-                )) : <p className={styles.compactEmpty}>Активных заказов нет.</p>}
-              </Card>
-              <Card className={styles.orderGroup}><h3>Завершённые</h3>
+                )) : <div className={styles.compactEmpty}><p>Активных заказов пока нет.</p><Link href="/campaigns/new">Создать первый заказ</Link></div>}
+              </div>
+              {data.completedCampaigns.length ? <details className={styles.completedOrders}><summary>Завершённые <span>{data.completedCampaigns.length}</span></summary><div>
                 {data.completedCampaigns.length ? data.completedCampaigns.map((campaign) => (
                   <Link className={`${styles.orderCard} ${styles.completed}`} href={`/campaigns/${campaign.id}?returnTo=${encodeURIComponent("/profile")}`} key={campaign.id}>
                     <div className={styles.orderTitle}><strong>{campaign.title}</strong><Tag>{campaignLabels[campaign.status]}</Tag></div>
-                    <div className={styles.orderMetrics}>
-                      <span><b>{campaign._count.submissions}</b><small>публикаций</small></span>
-                      <span><b>{compactNumber(campaign.views)}</b><small>просмотров</small></span>
-                      <span><b>{rub(Math.max(0, campaign.totalBudgetCents - campaign.remainingBudgetCents - campaign.reservedBudgetCents))}</b><small>использовано</small></span>
-                    </div>
+                    <p className={styles.orderMetrics}><span><b>{campaign._count.submissions}</b> публикаций</span><span><b>{compactNumber(campaign.views)}</b> просмотров</span><span><b>{rub(Math.max(0, campaign.totalBudgetCents - campaign.remainingBudgetCents - campaign.reservedBudgetCents))}</b> использовано</span></p>
                     <em>Посмотреть итог <ArrowRight size={15} /></em>
                   </Link>
-                )) : <p className={styles.compactEmpty}>Завершённых заказов нет.</p>}
-              </Card>
+                )) : null}</div></details> : null}
               </div>
             </section>
 

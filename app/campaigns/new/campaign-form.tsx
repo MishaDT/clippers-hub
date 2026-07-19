@@ -72,7 +72,6 @@ function CampaignForecast({
   return (
     <>
       <header className="summary-head">
-        <span className="summary-kicker"><Sparkles size={14} /> Обновляется сразу</span>
         <h2>{rub(payout)}</h2>
         <p>максимум за один ролик при выполненной цели</p>
       </header>

@@ -574,3 +574,6 @@ body:has(.profile-screen) {
   .pay-status-icon { width:30px;height:30px; }
   .profile-payments .pay-row>b { grid-column:2;justify-self:start;margin-top:-3px; }
 }
+.profile-role-control{display:grid;grid-template-columns:minmax(190px,.55fr) minmax(320px,1fr);align-items:center;gap:22px;padding:17px 20px;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)}
+.profile-role-control>div{display:grid;gap:3px}.profile-role-control small{color:#899087}.profile-role-control .role-switch{margin:0}
+@media(max-width:760px){.profile-screen{padding-inline:12px!important}.profile-role-control{grid-template-columns:1fr;gap:11px;padding:14px 0}.profile-role-control .role-switch button{min-height:44px}}

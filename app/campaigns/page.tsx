@@ -5,7 +5,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   BriefcaseBusiness,
-  Sparkles,
   Trophy
 } from "lucide-react";
 import { AppShell } from "@/components/ui";
@@ -339,10 +338,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
     <Fragment key="page-one-top">
       {active ? (
         <Link className={`active-order ao-${active.statusKey}`} href={active.href}>
-          <span className="ao-glow" aria-hidden="true" />
-          <span className="ao-flicker" aria-hidden="true" />
           <div className="ao-head">
-            <span className="ao-eyebrow"><Sparkles size={14} /> Твой активный заказ</span>
+            <span className="ao-eyebrow">Продолжить заказ</span>
             <span className="ao-status">{active.label}</span>
           </div>
           <h2 className="ao-title">{active.title}</h2>
@@ -350,7 +347,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
             <div className="ao-bar"><i style={{ width: `${active.pct}%` }} /></div>
             <span>
               {active.status === "ACCEPTED"
-                ? active.nextStep
+                ? `Следующий шаг: ${active.nextStep}`
                 : `${compactNumber(active.views)} / ${compactNumber(active.threshold)} просмотров`}
             </span>
           </div>
@@ -368,9 +365,9 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
     <Fragment key="orders-full-top">
       <header className="mk-head">
         <div>
-          <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>
-          <h1>Найди заказ, который сделаешь сегодня</h1>
-          <p>Выбери площадку и задачу. Срок и чистая выплата известны заранее.</p>
+          {user ? null : <span className="mk-eyebrow"><BriefcaseBusiness size={14} /> Биржа заказов</span>}
+          <h1>{user ? "Заказы для вас" : "Найди заказ, который сделаешь сегодня"}</h1>
+          {user ? <p>Сначала показываем самые подходящие и выгодные.</p> : <p>Выбери площадку и задачу. Срок и чистая выплата известны заранее.</p>}
         </div>
         <Link className="mk-leaders" href="/leaderboard"><Trophy size={16} /> Доска лидеров <ArrowRight size={15} /></Link>
       </header>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowRight, BadgeCheck, CheckCircle2, CircleAlert, Clock3, Eye, Megaphone, Sparkles, TrendingUp, Users, Zap } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, CircleAlert, Clock3, Eye, Sparkles, TrendingUp, Users, Zap } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { compactNumber, rub } from "@/lib/money";
 import { MetaProductsNotice } from "@/components/meta-products-notice";
@@ -41,7 +41,7 @@ const PLATFORM_NAMES: Record<string, string> = {
   TWITCH: "Twitch"
 };
 
-function PlatformIcon({ platform }: { platform: string }) {
+export function PlatformIcon({ platform }: { platform: string }) {
   if (platform === "YOUTUBE") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8.2 6.7 5.4 3.3-5.4 3.3V6.7Z" fill="#fff" /></svg>;
   if (platform === "INSTAGRAM") return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="4" fill="none" stroke="currentColor" strokeWidth="1.8"/><circle cx="10" cy="10" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8"/><circle cx="14.6" cy="5.6" r="1" fill="currentColor"/></svg>;
   if (platform === "TIKTOK") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.2 4.1v8a3.1 3.1 0 1 1-2.7-3.1v1.7a1.4 1.4 0 1 0 1 1.4v-8h1.7Zm0 0c.4 1.5 1.3 2.3 2.8 2.7v1.7a5.2 5.2 0 0 1-2.8-1" fill="none" stroke="#25f4ee" strokeWidth="2.2"/><path d="M12.2 3.5v8a3.1 3.1 0 1 1-2.7-3.1v1.7a1.4 1.4 0 1 0 1 1.4v-8h1.7Zm0 0c.4 1.5 1.3 2.3 2.8 2.7v1.7a5.2 5.2 0 0 1-2.8-1" fill="none" stroke="#fe2c55" strokeWidth="2.2"/><path d="M11.7 3.8v8a3.1 3.1 0 1 1-2.7-3.1v1.7a1.4 1.4 0 1 0 1 1.4v-8h1.7Zm0 0c.4 1.5 1.3 2.3 2.8 2.7v1.7a5.2 5.2 0 0 1-2.8-1" fill="none" stroke="#fff" strokeWidth="1.25"/></svg>;
@@ -119,9 +119,7 @@ export function MarketplaceBrowser({
             const urgent = daysLeft <= 2;
             const fresh = Date.now() - card.createdAtMs <= 2 * DAY;
             const rateDelta = medianRate > 0 ? Math.round((card.cpmRateCents / medianRate - 1) * 100) : 0;
-            const signal = card.featured
-              ? { cls: "hot", Icon: Megaphone, text: "Продвижение", title: "Заказ поднят в выдаче через продвижение" }
-              : card.remainingBudgetCents < payout
+            const signal = card.remainingBudgetCents < payout
                 ? { cls: "urgent", Icon: CircleAlert, text: "Мало бюджета", title: "Остатка бюджета может не хватить на полную выплату" }
                 : urgent
                   ? { cls: "urgent", Icon: Clock3, text: `${daysLeft} дн.`, title: "Короткий срок до дедлайна" }
@@ -169,7 +167,6 @@ export function MarketplaceBrowser({
                         <Sparkles size={12} /> Подходит вам
                       </span>
                     ) : null}
-                    {card.demo ? <span className="mk-demo">Демо</span> : null}
                     {card.platformOrganized ? <span className="mk-seed" title="Кампанию запускает ReelPay"><BadgeCheck size={12} /> Организовано ReelPay</span> : null}
                     {card.reviewMode === "FAST" ? <span className="mk-fast" title="Публикация сразу после проверки платформы"><Zap size={12} /> Быстрая публикация</span> : null}
                     {signal && SignalIcon ? (
