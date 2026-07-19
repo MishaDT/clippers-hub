@@ -61,7 +61,7 @@ test.describe("public experience", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: /Запускайте короткие ролики/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Посмотреть пример расчёта/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Как проходит кампания/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /От исходного видео до проверенного результата/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Запустим первые ролики вместе/i })).toBeVisible();
     await page.getByRole("tab", { name: "Клипперам" }).click();
