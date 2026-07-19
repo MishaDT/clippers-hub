@@ -61,25 +61,23 @@ export function SocialAuth({ mode = "login", intent, returnTo, referralCode }: {
   const enabled = enabledProviders();
   const verb = mode === "register" ? "регистрация" : "вход";
 
+  if (!enabled.length) return null;
+
   return (
     <div className="social-auth">
       <div className="social-sep"><span>или {verb} через</span></div>
       <div className="social-grid">
-        {ALL.map((id) => {
+        {ALL.filter((id) => enabled.includes(id)).map((id) => {
           const inner = (
             <>
               {META[id].mark}
               <span>{META[id].label}</span>
             </>
           );
-          return enabled.includes(id) ? (
+          return (
             <a className={`social-btn social-${id}`} href={`/api/auth/oauth/${id}?${new URLSearchParams({ ...(intent ? { intent } : {}), ...(returnTo ? { returnTo } : {}), ...(referralCode ? { ref: referralCode } : {}) })}`} key={id}>
               {inner}
             </a>
-          ) : (
-            <span className="social-btn social-off" key={id} aria-disabled="true" title="Нужны OAuth-ключи в Vercel">
-              {inner}
-            </span>
           );
         })}
       </div>

@@ -189,7 +189,6 @@ async function ClientCampaignsView({ user }: { user: { id: string; rpBalance: nu
         <CampaignGuide variant="client" initiallyCollapsed={Boolean(user.marketGuideSeenAt)} persistSeen />
         <div className="market-head">
           <div>
-            <span className="eyebrow">Работа заказчика</span>
             <h1>Мои кампании</h1>
             <p>Здесь только ваши заказы, полученные ролики и оставшийся бюджет.</p>
           </div>
@@ -373,7 +372,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           <h1>Найди заказ, который сделаешь сегодня</h1>
           <p>Выбери площадку и задачу. Срок и чистая выплата известны заранее.</p>
         </div>
-        <Link className="mk-leaders" href="/leaderboard"><Trophy size={16} /> Доска лидеров</Link>
+        <Link className="mk-leaders" href="/leaderboard"><Trophy size={16} /> Доска лидеров <ArrowRight size={15} /></Link>
       </header>
 
       <div className="mk-stats" aria-label="Статистика заказов">

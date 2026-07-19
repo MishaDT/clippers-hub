@@ -11,15 +11,24 @@ import { useModalFocus } from "./use-modal-focus";
 type Action = { label: string; href: string; hint: string; icon: "work" | "chat" | "upload" | "wallet" | "help" };
 type SmartAction = Action & { id: string; priority: number };
 
-function actionsFor(pathname: string, mode: "worker" | "client"): Action[] {
+function supportHref(authenticated: boolean) {
+  return authenticated ? "/support?new=1" : "/login?returnTo=%2Fsupport%3Fnew%3D1";
+}
+
+function actionsFor(pathname: string, mode: "worker" | "client", authenticated: boolean): Action[] {
+  if (pathname === "/" || pathname === "/business" || pathname.startsWith("/safety") || pathname === "/about" || pathname.startsWith("/help")) return [
+    { label: "Задать вопрос", href: supportHref(authenticated), hint: authenticated ? "Написать поддержке ReelPay" : "Войдите — и мы всё поясним", icon: "chat" },
+    { label: "Как работает ReelPay", href: "/#how", hint: "Коротко о пути и оплате", icon: "help" }
+  ];
   if (pathname === "/wallet") return [
     { label: "Операции", href: "/wallet?tab=operations", hint: "История денег", icon: "wallet" },
     { label: "Резерв", href: "/wallet?tab=reserved", hint: "Замороженные средства", icon: "wallet" },
     { label: "Как работают RP", href: "/help/rp", hint: "Бонусы и конвертация", icon: "help" }
   ];
   if (pathname === "/campaigns/new") return [
-    { label: "Проверить исходник", href: "#source", hint: "Ссылка и права", icon: "work" },
-    { label: "Бюджет заказа", href: "#budget", hint: "Ставка и выплата", icon: "wallet" }
+    { label: "Исходник — шаг 2", href: "#order-progress", hint: "Ссылка и права", icon: "work" },
+    { label: "Бюджет — шаг 6", href: "#order-progress", hint: "Ставка и выплата", icon: "wallet" },
+    { label: "Задать вопрос", href: supportHref(authenticated), hint: "Поможем заполнить кампанию", icon: "chat" }
   ];
   if (/^\/campaigns\/[^/]+$/.test(pathname)) return [
     { label: mode === "client" ? "Обсуждение" : "Продолжить заказ", href: "/chats", hint: "Чат и статус", icon: "chat" },
@@ -65,9 +74,9 @@ function trackSuggestion(type: "RIDZI_SUGGESTION_CLICK" | "RIDZI_SUGGESTION_DISM
   });
 }
 
-export function Mascot() {
+export function Mascot({ authenticated, initialMode }: { authenticated: boolean; initialMode: "worker" | "client" }) {
   const pathname = usePathname();
-  const [mode, setMode] = useState<"worker" | "client">("worker");
+  const [mode, setMode] = useState<"worker" | "client">(initialMode);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
@@ -76,12 +85,12 @@ export function Mascot() {
 
   useEffect(() => {
     setMounted(true);
-    setMode(document.cookie.includes("rp_role_mode=client") ? "client" : "worker");
+    setMode(document.cookie.includes("rp_role_mode=client") ? "client" : initialMode);
     setOpen(false);
-  }, [pathname]);
+  }, [initialMode, pathname]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !authenticated) return;
     const dismissed = readDismissed();
     const controller = new AbortController();
     fetch("/api/ridzi/context", { cache: "no-store", signal: controller.signal })
@@ -89,10 +98,11 @@ export function Mascot() {
       .then((data: { suggestions?: SmartAction[] }) => setSmartActions((data.suggestions || []).filter((item) => !dismissed.has(item.id))))
       .catch(() => setSmartActions([]));
     return () => controller.abort();
-  }, [open, pathname]);
+  }, [authenticated, open, pathname]);
 
   if (blocked) return null;
-  const actions = smartActions.length ? smartActions : actionsFor(pathname, mode);
+  const actions = smartActions.length ? smartActions : actionsFor(pathname, mode, authenticated);
+  const showPrompt = pathname === "/" || pathname === "/business" || pathname.startsWith("/safety") || pathname === "/about" || pathname.startsWith("/help") || pathname === "/campaigns/new";
   const sheet = open && mounted ? createPortal(
     <div className="ridzi-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
       <section ref={dialogRef} tabIndex={-1} className="ridzi-sheet" role="dialog" aria-modal="true" aria-label="Помощник Ридзи">
@@ -133,6 +143,11 @@ export function Mascot() {
     <>
       {sheet}
       <div className="mascot">
+        {showPrompt ? (
+          <button className={styles.prompt} type="button" onClick={() => setOpen(true)}>
+            Есть вопрос? <b>Ридзи объяснит</b>
+          </button>
+        ) : null}
         <button className="mascot-body" type="button" aria-label="Открыть помощника Ридзи" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
           <svg viewBox="0 0 72 72" width="58" height="58" aria-hidden="true">
             <rect x="13" y="15" width="46" height="43" rx="15" fill="#ef4444" />

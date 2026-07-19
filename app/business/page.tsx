@@ -33,7 +33,6 @@ export default async function BusinessPage() {
     <AppShell>
       <main className={styles.page}>
         <header className={styles.hero}>
-          <span className="eyebrow">Для бизнеса</span>
           <h1>Запустите клип-кампанию самостоятельно. Без менеджеров и звонков</h1>
           <p>Вставьте ссылку на исходник, задайте нужное число роликов, цель и ставку. Вы платите за проверенный результат или указанную минимальную гарантию, а неизрасходованный бюджет возвращается.</p>
           <div className={styles.cta}>

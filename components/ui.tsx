@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { clsx } from "clsx";
-import { BriefcaseBusiness, LogOut, Search, ShieldCheck, Zap } from "lucide-react";
+import { BriefcaseBusiness, LogOut, Menu, Search, ShieldCheck, Zap } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
@@ -68,6 +68,16 @@ export async function AppShell({
             </>
           ) : (
             <>
+              <details className="public-mobile-menu">
+                <summary aria-label="Открыть меню"><Menu size={19} /></summary>
+                <nav aria-label="Мобильная навигация">
+                  <Link href="/#how">Как работает ReelPay</Link>
+                  <Link href="/campaigns">Открытые заказы</Link>
+                  <Link href="/business">Запустить кампанию</Link>
+                  <Link href="/leaderboard">Доска лидеров</Link>
+                  <Link href="/safety/budget">Защита бюджета</Link>
+                </nav>
+              </details>
               <Link className="btn btn-small btn-ghost" href="/login">Войти</Link>
               <Link className="btn btn-small btn-primary" href="/register">Начать</Link>
             </>
@@ -80,7 +90,7 @@ export async function AppShell({
       </main>
       {user ? <Suspense fallback={null}><ReadStateTracker /></Suspense> : null}
       {user && !hideBottomNav ? <BottomNav mode={mode} unreadChats={unread.chatBadge} /> : null}
-      {user ? <Mascot /> : null}
+      {!immersive ? <Mascot authenticated={Boolean(user)} initialMode={mode} /> : null}
     </>
   );
 }

@@ -50,13 +50,12 @@ export function PilotLeadForm() {
   return (
     <section className={styles.section} id="pilot" aria-labelledby="pilot-title">
       <div className={styles.copy}>
-        <span><BadgeCheck size={16} /> Пилот ReelPay</span>
-        <h2 id="pilot-title">Запустим первые ролики вместе</h2>
-        <p>Подходит экспертам, подкастам, онлайн-школам и личным брендам с готовым длинным контентом.</p>
+        <h2 id="pilot-title">Запустите первую кампанию с нашей помощью</h2>
+        <p>Покажем, как превратить длинное видео в короткие ролики, и поможем настроить первый запуск.</p>
         <ul>
-          <li>Бюджет от 15 000 ₽, без подписки</li>
-          <li>Согласование черновика до публикации</li>
-          <li>Отчёт и возврат неиспользованного остатка</li>
+          <li>Без подписки</li>
+          <li>Черновик до публикации</li>
+          <li>Остаток вернётся на баланс</li>
         </ul>
       </div>
       <div className={styles.formColumn}>

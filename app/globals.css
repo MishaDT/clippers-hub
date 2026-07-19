@@ -3054,6 +3054,50 @@ a.social-btn:hover {
   .public-nav { display: none; }
 }
 
+.public-mobile-menu { display: none; }
+
+@media (max-width: 760px) {
+  .public-mobile-menu { position: relative; display: block; }
+  .public-mobile-menu summary {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    background: rgba(255,255,255,.045);
+    color: #eef1eb;
+    cursor: pointer;
+    list-style: none;
+  }
+  .public-mobile-menu summary::-webkit-details-marker { display: none; }
+  .public-mobile-menu nav {
+    position: fixed;
+    top: calc(62px + var(--safe-t));
+    right: 10px;
+    left: 10px;
+    display: grid;
+    gap: 4px;
+    padding: 9px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    background: rgba(13,15,13,.98);
+    box-shadow: 0 24px 70px rgba(0,0,0,.55);
+    backdrop-filter: blur(18px);
+  }
+  .public-mobile-menu nav a {
+    display: flex;
+    min-height: 45px;
+    align-items: center;
+    padding: 0 13px;
+    border-radius: 10px;
+    color: #d7ddd3;
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .public-mobile-menu nav a:first-child { background: rgba(201,243,29,.09); color: #e5ff8b; }
+}
+
 /* ============================================================
    PASS 28 — Clipper profile redesign (client-evaluation view)
    ============================================================ */
@@ -4169,7 +4213,21 @@ body{min-height:100dvh}.content:not(.content-immersive){min-height:calc(100dvh -
     padding-bottom: calc(116px + var(--safe-b));
   }
 
-  .mascot {
-    display: none!important;
+  .mascot { right: 10px; bottom: calc(88px + var(--safe-b)); }
+  body:not(:has(.bottom-nav)) .mascot { bottom: calc(16px + var(--safe-b)); }
+}
+
+/* Public footer: keep its own width and breathing room after long landing sections. */
+.content:not(.content-immersive) > .site-footer.site-footer {
+  width: min(1060px, calc(100% - 32px));
+  margin: 64px auto 28px;
+}
+
+@media (max-width: 760px) {
+  body:not(:has(.bottom-nav)) .content:not(.content-immersive) > .site-footer.site-footer {
+    display: grid !important;
+    width: calc(100% - 28px);
+    margin: 42px auto 16px;
+    padding: 18px 16px;
   }
 }

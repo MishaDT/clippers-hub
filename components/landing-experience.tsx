@@ -14,7 +14,7 @@ export function LandingExperience() {
     <div className={styles.page}>
       <LandingMotionHero audience={audience} onAudienceChange={setAudience} />
 
-      <div className={styles.roleContent} key={audience}>
+      <div className={styles.roleContent} id="how" key={audience}>
         {audience === "client" ? (
           <>
             <div className={styles.deferred}><LandingClientRoadmap /></div>

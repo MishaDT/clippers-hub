@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 import styles from "./landing-faq-chat.module.css";
 
 const clientFaq: { q: string; a: string; href?: string; hrefLabel?: string }[] = [
@@ -54,9 +54,9 @@ export function LandingFaqChat({ audience = "client" }: { audience?: "client" | 
       </div>
 
       <div className={styles.chat}>
-        {faq.map(({ q, a, href, hrefLabel }) => (
-          <details className={styles.item} key={q} open>
-            <summary className={styles.question}>{q}</summary>
+        {faq.map(({ q, a, href, hrefLabel }, index) => (
+          <details className={styles.item} key={q} open={index === 0}>
+            <summary className={styles.question}><span>{q}</span><ChevronDown size={17} /></summary>
             <div className={styles.answer}>
               <span className={styles.avatar}><Sparkles size={14} /></span>
               <div className={styles.bubble}>

@@ -18,6 +18,8 @@ const secondaryLinks = [
   ["/legal/cookies", "Cookie"]
 ] as const;
 
+const moreLinks = [...primaryLinks.slice(4), ...secondaryLinks] as const;
+
 export function SiteFooter() {
   return (
     <footer className={`${styles.footer} site-footer`}>
@@ -31,7 +33,7 @@ export function SiteFooter() {
         <details className={styles.more}>
           <summary>Ещё</summary>
           <div aria-label="Дополнительные ссылки">
-            {secondaryLinks.map(([href, label]) => <Link href={href} key={`more-${href}`}>{label}</Link>)}
+            {moreLinks.map(([href, label]) => <Link href={href} key={`more-${href}`}>{label}</Link>)}
           </div>
         </details>
       </nav>

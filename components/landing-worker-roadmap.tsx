@@ -83,6 +83,12 @@ const clientSteps = [
   },
 ] as const;
 
+const estimateScenarios = [
+  { label: "Тест", publications: 1, views: 5_000, cpm: 25 },
+  { label: "Стандарт", publications: 3, views: 10_000, cpm: 25 },
+  { label: "Охват", publications: 5, views: 25_000, cpm: 30 },
+] as const;
+
 function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
   const isClient = audience === "client";
   const steps = isClient ? clientSteps : workerSteps;
@@ -92,7 +98,11 @@ function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
   const [pageVisible, setPageVisible] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [runKey, setRunKey] = useState(0);
+  const [estimateIndex, setEstimateIndex] = useState(1);
   const running = inView && pageVisible && !reducedMotion;
+  const estimate = estimateScenarios[estimateIndex];
+  const targetViews = estimate.publications * estimate.views;
+  const reserve = Math.round((targetViews / 1000) * estimate.cpm);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -136,13 +146,24 @@ function LandingRoadmap({ audience }: { audience: "client" | "worker" }) {
 
         {isClient ? (
           <div className={styles.estimate} id="budget-calculator" aria-label="Пример расчёта кампании">
-            <header><span>Пример расчёта</span><small>по выбранным условиям</small></header>
-            <div>
-              <span><b>3</b><small>публикации</small></span>
-              <span><b>30 000</b><small>целевая выдача</small></span>
-              <span><b>до 750 ₽</b><small>максимальный резерв</small></span>
+            <header><span>Быстрый расчёт</span><small>выберите сценарий</small></header>
+            <div className={styles.presets} role="group" aria-label="Сценарий кампании">
+              {estimateScenarios.map((scenario, index) => (
+                <button type="button" data-active={index === estimateIndex} onClick={() => setEstimateIndex(index)} key={scenario.label}>
+                  {scenario.label}
+                </button>
+              ))}
             </div>
-            <p>Цель — 10 тыс. просмотров на публикацию при ставке 25 ₽ за 1000. Фактическое списание зависит от подтверждённого результата.</p>
+            <div className={styles.equation} aria-live="polite">
+              <span><b>{estimate.publications}</b><small>ролика</small></span>
+              <i>×</i>
+              <span><b>{estimate.views.toLocaleString("ru-RU")}</b><small>просмотров</small></span>
+              <i>×</i>
+              <span><b>{estimate.cpm} ₽</b><small>за 1000</small></span>
+              <i>=</i>
+              <strong><b>до {reserve.toLocaleString("ru-RU")} ₽</b><small>максимальный резерв</small></strong>
+            </div>
+            <p><BadgeCheck size={14} /> На старте резервируется максимум. Спишется только сумма за подтверждённые просмотры.</p>
           </div>
         ) : null}
 

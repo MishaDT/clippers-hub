@@ -12,9 +12,9 @@
 .copy > span { display: flex; align-items: center; gap: 7px; color: #c9f31d; font-size: 12px; font-weight: 850; text-transform: uppercase; }
 .copy h2 { margin: 0; font-size: clamp(30px, 4vw, 48px); line-height: 1; }
 .copy p { margin: 0; color: #a7afa7; line-height: 1.55; }
-.copy ul { display: grid; gap: 9px; margin: 6px 0 0; padding: 0; list-style: none; }
-.copy li { position: relative; padding-left: 18px; color: #e9eee8; }
-.copy li::before { position: absolute; left: 0; color: #c9f31d; content: "✓"; }
+.copy ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
+.copy li { position: relative; padding: 8px 11px 8px 29px; border-radius: 999px; background: rgba(255,255,255,.045); color: #e9eee8; font-size: 12px; }
+.copy li::before { position: absolute; left: 11px; color: #c9f31d; content: "✓"; }
 .formColumn { min-width: 0; padding-left: 30px; border-left: 1px solid rgba(255,255,255,.08); }
 .formToggle { display: none; }
 .formPanel { display: block; }

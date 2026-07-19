@@ -11,7 +11,6 @@ import {
   FileVideo2,
   MousePointer2,
   Scissors,
-  ShieldCheck,
   Sparkles
 } from "lucide-react";
 import styles from "./landing-motion-hero.module.css";
@@ -20,13 +19,12 @@ export type LandingAudience = "client" | "worker";
 
 const content = {
   client: {
-    eyebrow: "Для заказчиков",
     title: <>Запускайте короткие ролики. <span>Платите за результат.</span></>,
     text: "Добавьте исходное видео и условия. Клипперы выберут кампанию, подготовят публикации, а ReelPay проверит просмотры и вернёт остаток.",
     primary: "Запустить кампанию",
     primaryHref: "/register?intent=client&returnTo=%2Fcampaigns%2Fnew",
-    secondary: "Посмотреть пример расчёта",
-    secondaryHref: "#budget-calculator",
+    secondary: "Как проходит кампания",
+    secondaryHref: "#how",
     stages: ["Бриф", "Ролики", "Проверка"],
     scenes: [
       { label: "Кампания опубликована", value: "3 ролика", note: "Бюджет уже в резерве", action: "Посмотреть отклик", icon: BriefcaseBusiness },
@@ -35,13 +33,12 @@ const content = {
     ]
   },
   worker: {
-    eyebrow: "Для клипперов",
     title: <>Выбирайте заказы. <span>Зарабатывайте на роликах.</span></>,
     text: "Выберите заказ, сделайте ролик и получите оплату после проверки.",
     primary: "Смотреть заказы",
     primaryHref: "/campaigns",
-    secondary: "Создать профиль",
-    secondaryHref: "/register?intent=worker&returnTo=%2Fcampaigns",
+    secondary: "Как проходит заказ",
+    secondaryHref: "#how",
     stages: ["Заказ", "Публикация", "Выплата"],
     scenes: [
       { label: "Подходящий заказ", value: "до 450 ₽", note: "ТЗ и сумма видны до старта", action: "Взять заказ", icon: Sparkles },
@@ -94,7 +91,6 @@ export function LandingMotionHero({
             <Scissors size={16} /> Клипперам
           </button>
         </div>
-        <span className={styles.eyebrow}><ShieldCheck size={15} /> {active.eyebrow}</span>
         <h1 id="landing-title" key={`${audience}-title`}>{active.title}</h1>
         <p key={`${audience}-text`}>{active.text}</p>
         <div className={styles.actions}>
@@ -108,7 +104,6 @@ export function LandingMotionHero({
 
       <div className={styles.stage} aria-label={`Демонстрация пути: ${active.stages.join(", ")}`}>
         <i className={styles.glow} aria-hidden="true" />
-        <span className={styles.demoLabel} aria-hidden="true"><Sparkles size={13} /> Интерактивный пример</span>
         <div className={`${styles.floatCard} ${styles.floatOne}`} aria-hidden="true">Shorts <b>+12,4K</b></div>
         <div className={`${styles.floatCard} ${styles.floatTwo}`} aria-hidden="true">VK Клипы <b>готово</b></div>
         <div className={styles.product}>

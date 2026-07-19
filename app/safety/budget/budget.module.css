@@ -70,8 +70,11 @@
 }
 
 .rule h2 { margin: 0 0 14px; color: #f4f6f1; font-size: 25px; }
-.rule ol { display: grid; gap: 11px; margin: 0; padding-left: 21px; color: #afb4ab; line-height: 1.5; }
-.rule b { color: #f0f3ed; }
+.rule ol { display: grid; margin: 0; padding: 0; color: #afb4ab; line-height: 1.5; list-style: none; counter-reset: result-rule; }
+.rule li { position: relative; padding: 15px 0 15px 46px; border-bottom: 1px solid rgba(255, 255, 255, .07); counter-increment: result-rule; }
+.rule li:last-child { border-bottom: 0; }
+.rule li::before { position: absolute; top: 15px; left: 0; display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: rgba(201, 243, 29, .11); color: #c9f31d; font-size: 12px; font-weight: 900; content: counter(result-rule); }
+.rule b { display: block; margin-bottom: 3px; color: #f0f3ed; }
 
 .actions { display: flex; gap: 10px; margin-top: 18px; }
 
@@ -81,4 +84,7 @@
   .example { grid-template-columns: 1fr 1fr; }
   .example > div:first-child { grid-column: 1 / -1; }
   .actions { flex-direction: column; }
+  .rule { padding-inline: 18px; }
+  .rule h2 { font-size: 23px; line-height: 1.15; }
+  .rule li { padding: 16px 0 16px 42px; font-size: 14px; }
 }

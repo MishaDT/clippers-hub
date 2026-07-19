@@ -7,14 +7,13 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
-  CircleDollarSign,
   Hash,
   Link2,
   MonitorPlay,
   ShieldCheck,
   Sparkles,
-  Target,
   WalletCards
 } from "lucide-react";
 import { createCampaignAction } from "@/app/actions";
@@ -39,6 +38,81 @@ function SubmitButton() {
     <button className="order-submit" type="submit" disabled={pending}>
       {pending ? "Публикуем..." : "Опубликовать заказ"} <ArrowRight size={18} />
     </button>
+  );
+}
+
+function CampaignForecast({
+  payout,
+  guarantee,
+  viewThreshold,
+  cpm,
+  budget,
+  grossViews,
+  deadlineDays,
+  deliverableCount,
+  requiredBudget,
+  quality,
+  showSubmit = false
+}: {
+  payout: number;
+  guarantee: number;
+  viewThreshold: number;
+  cpm: number;
+  budget: number;
+  grossViews: number;
+  deadlineDays: number;
+  deliverableCount: number;
+  requiredBudget: number;
+  quality: string;
+  showSubmit?: boolean;
+}) {
+  const coverage = requiredBudget > 0 ? Math.min(100, Math.round((budget / requiredBudget) * 100)) : 100;
+  const enough = budget >= requiredBudget;
+
+  return (
+    <>
+      <header className="summary-head">
+        <span className="summary-kicker"><Sparkles size={14} /> Обновляется сразу</span>
+        <h2>{rub(payout)}</h2>
+        <p>максимум за один ролик при выполненной цели</p>
+      </header>
+
+      <div className="summary-equation" aria-label="Формула максимальной выплаты">
+        <span><b>{compactNumber(viewThreshold)}</b><small>просмотров</small></span>
+        <i>×</i>
+        <span><b>{rub(cpm * 100)}</b><small>за 1000</small></span>
+        <i>=</i>
+        <strong>{rub(payout)}</strong>
+      </div>
+
+      <div className="summary-guarantee">
+        <ShieldCheck size={17} />
+        <span><b>Гарантия {rub(guarantee)}</b><small>за проверенный ролик к дедлайну</small></span>
+      </div>
+
+      <div className="summary-strip">
+        <span><WalletCards size={16} /><b>{rub(budget * 100)}</b><small>общий бюджет</small></span>
+        <span><MonitorPlay size={16} /><b>{compactNumber(grossViews)}</b><small>потенциал</small></span>
+        <span><CalendarDays size={16} /><b>{deadlineDays} дн.</b><small>срок</small></span>
+      </div>
+
+      <div className="summary-capacity">
+        <div><b>{quality}</b><span>{enough ? `${deliverableCount} результата покрыты бюджетом` : `Для ${deliverableCount} результатов нужно ${requiredBudget.toLocaleString("ru-RU")} ₽`}</span></div>
+        <div className="summary-capacity-bar" aria-label={`Бюджет покрывает ${coverage}% плана`}><i style={{ width: `${coverage}%` }} /></div>
+      </div>
+
+      <details className="summary-details">
+        <summary>Что проверит ReelPay <ChevronDown size={16} /></summary>
+        <div>
+          <span><Check size={15} /> Ролик и право на публикацию</span>
+          <span><Check size={15} /> Просмотры и резкие аномалии</span>
+          <span><Check size={15} /> Условия выплаты</span>
+        </div>
+      </details>
+
+      {showSubmit ? <SubmitButton /> : null}
+      <small>После публикации заказ появится в витрине и станет доступен клипперам.</small>
+    </>
   );
 }
 
@@ -148,7 +222,7 @@ export function CampaignForm({
     const guarantee = Math.min(payout, Math.max(0, Math.round(minimumGuarantee * 100)));
     const grossViews = cpm > 0 ? Math.floor((budget / cpm) * 1000) : 0;
     const requiredBudget = Math.max(0, Math.round((payout * deliverableCount) / 100));
-    const quality = cpm >= 35 ? "Выше рынка" : cpm >= 15 ? "Рыночная ставка" : "Ниже рынка";
+    const quality = cpm >= 35 ? "Клипперам будет интересно" : cpm >= 15 ? "Сбалансированная ставка" : "Можно усилить ставку";
     return { payout, guarantee, grossViews, requiredBudget, quality };
   }, [budget, cpm, deliverableCount, minimumGuarantee, viewThreshold]);
 
@@ -180,7 +254,7 @@ export function CampaignForm({
             </button>
           ) : null}
         </div>
-        <div className={styles.wizard} aria-label="Шаги создания заказа">
+        <div className={styles.wizard} id="order-progress" aria-label="Шаги создания заказа">
           <div className={styles.wizardTop}>
             <b>Шаг {step} из 7</b>
             <span>{steps[step - 1]}</span>
@@ -502,6 +576,23 @@ export function CampaignForm({
             ? <button type="button" onClick={goNext}>Продолжить <ArrowRight size={17} /></button>
             : <span className={styles.ready}>Проверьте итог и опубликуйте заказ</span>}
         </div>
+        <details className="order-mobile-forecast">
+          <summary><span>Прогноз заказа</span><b>{rub(estimate.payout)} за ролик</b><ChevronDown size={17} /></summary>
+          <div className="order-mobile-forecast-body">
+            <CampaignForecast
+              payout={estimate.payout}
+              guarantee={estimate.guarantee}
+              viewThreshold={viewThreshold}
+              cpm={cpm}
+              budget={budget}
+              grossViews={estimate.grossViews}
+              deadlineDays={deadlineDays}
+              deliverableCount={deliverableCount}
+              requiredBudget={estimate.requiredBudget}
+              quality={estimate.quality}
+            />
+          </div>
+        </details>
       </div>
 
       <div className="order-mobile-submit" hidden={step !== 7}>
@@ -511,34 +602,19 @@ export function CampaignForm({
 
       <aside className="order-summary">
         <div className="summary-card">
-          <span className="summary-kicker">Прогноз заказа</span>
-          <h2>{rub(estimate.payout)}</h2>
-          <p>максимальная стоимость одной успешной публикации; общий резерв кампании — {rub(budget * 100)}</p>
-          <p><b>Гарантия: {rub(estimate.guarantee)}</b> за проверенный ролик к дедлайну</p>
-
-          <div className="summary-metrics">
-            <span><Target size={17} /><b>{compactNumber(viewThreshold)}</b><em>цель</em></span>
-            <span><WalletCards size={17} /><b>{rub(budget * 100)}</b><em>бюджет</em></span>
-            <span><MonitorPlay size={17} /><b>{compactNumber(estimate.grossViews)}</b><em>потенциал</em></span>
-            <span><CalendarDays size={17} /><b>{deadlineDays} дн.</b><em>срок</em></span>
-          </div>
-
-          <div className="summary-quality">
-            <CircleDollarSign size={18} />
-            <div>
-              <b>{estimate.quality}</b>
-              <span>{budget >= estimate.requiredBudget ? `Бюджета хватает на ${deliverableCount} результатов.` : `Для ${deliverableCount} результатов нужно от ${estimate.requiredBudget.toLocaleString("ru-RU")} ₽.`}</span>
-            </div>
-          </div>
-
-          <div className="summary-checklist">
-            <span><Check size={15} /> Деньги резервируются</span>
-            <span><Check size={15} /> Гарантия платится только за проверенный ролик</span>
-            <span><Check size={15} /> Просмотры проверяются</span>
-          </div>
-
-          {step === 7 ? <SubmitButton /> : null}
-          <small>После публикации заказ появится в витрине и будет доступен клипперам.</small>
+          <CampaignForecast
+            payout={estimate.payout}
+            guarantee={estimate.guarantee}
+            viewThreshold={viewThreshold}
+            cpm={cpm}
+            budget={budget}
+            grossViews={estimate.grossViews}
+            deadlineDays={deadlineDays}
+            deliverableCount={deliverableCount}
+            requiredBudget={estimate.requiredBudget}
+            quality={estimate.quality}
+            showSubmit={step === 7}
+          />
         </div>
       </aside>
 

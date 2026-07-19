@@ -8,7 +8,7 @@
 .page > *,
 .roleContent > * { min-width: 0; }
 
-.roleContent { display: grid; gap: clamp(22px, 3vw, 34px); animation: contentIn .32s ease both; }
+.roleContent { display: grid; gap: clamp(22px, 3vw, 34px); scroll-margin-top: 82px; animation: contentIn .32s ease both; }
 .deferred { min-width: 0; content-visibility: auto; contain-intrinsic-size: auto 620px; }
 
 @keyframes contentIn {

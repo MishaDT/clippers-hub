@@ -248,7 +248,6 @@ export default async function LeaderboardPage({
           <div className="leaderboard-main">
             <header className="leaderboard-header">
               <div>
-                <span className="eyebrow"><Trophy size={15} /> Рейтинг</span>
                 <h1>Доска лидеров</h1>
                 <p>Топ клипперов за {period === "week" ? "неделю" : "всё время"}</p>
               </div>
@@ -404,9 +403,9 @@ export default async function LeaderboardPage({
             {!currentUser ? (
               <section className="rail-panel">
                 <div className="rail-cta">
-                  <b>Хочешь в рейтинг?</b>
-                  <p>Войди, бери заказы и набирай просмотры — попадёшь в лиги и на доску лидеров.</p>
-                  <Link className="btn btn-primary" href="/login">Войти</Link>
+                  <b>Поднимайся в топ</b>
+                  <p>Бери заказы, собирай просмотры и открывай новые лиги — лучшие клипперы получают больше внимания заказчиков.</p>
+                  <Link className="btn btn-primary" href="/login">Начать путь</Link>
                 </div>
               </section>
             ) : null}
