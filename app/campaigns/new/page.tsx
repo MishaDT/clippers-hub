@@ -40,6 +40,12 @@ export default async function NewCampaignPage({
             <span>Минимальный резерв для этих условий: {rub(Number(params.need || 0))}. Увеличьте бюджет или уменьшите количество публикаций.</span>
           </Card>
         ) : null}
+        {params.error === "advertiser" ? (
+          <Card className="upload-status warn">
+            <strong>Заполните данные рекламодателя</strong>
+            <span>Для рекламной кампании нужны наименование и ИНН из 10 или 12 цифр. Для собственного контента снимите отметку «Это рекламная кампания».</span>
+          </Card>
+        ) : null}
         <CampaignForm preferInitial={Boolean(repeated || params.deliverableCount || params.viewThreshold || params.budget || params.cpm || params.minimumGuarantee || params.deadlineDays)} initial={{
           title: repeated ? `${repeated.title} — повтор` : undefined,
           description: repeated?.description,

@@ -53,6 +53,7 @@ export default async function UploadPage({
     const rules = parseRules(submission.campaign.rulesJson);
     return {
       id: submission.id,
+      campaignId: submission.campaign.id,
       title: submission.campaign.title,
       trackingCode: submission.trackingCode,
       payout: rub(expectedPayout(submission.campaign.viewThreshold, submission.campaign.cpmRateCents, user.rank)),
@@ -73,7 +74,11 @@ export default async function UploadPage({
       maxRevisionRounds: submission.campaign.maxRevisionRounds,
       reviewMode: submission.campaign.reviewMode,
       draftReviewNote: submission.draftReviewNote,
-      draftUrl: submission.draftUrl
+      draftUrl: submission.draftUrl,
+      publicationReady: !submission.campaign.isAdvertising || Boolean(submission.campaign.erid),
+      adMarking: submission.campaign.isAdvertising && submission.campaign.erid
+        ? `Реклама.${submission.campaign.advertiserName ? ` ${submission.campaign.advertiserName}.` : ""} erid: ${submission.campaign.erid}`
+        : null
     };
   });
 
@@ -111,6 +116,13 @@ export default async function UploadPage({
           <Card className="upload-status warn">
             <strong>Нужна ручная проверка</strong>
             <span>Ссылка выглядит рискованно: возможен дубль, неверная платформа или подозрительная активность. Мы сохранили работу, но выплату проверит администратор.</span>
+          </Card>
+        ) : null}
+
+        {params.error === "erid_pending" ? (
+          <Card className="upload-status warn">
+            <strong>Публикация пока закрыта</strong>
+            <span>Заказ уже закреплён за вами. Подготовьте ролик или отправьте черновик, а ссылку на публикацию добавьте после получения ERID.</span>
           </Card>
         ) : null}
 

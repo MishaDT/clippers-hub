@@ -139,7 +139,7 @@ export function CampaignForm({
   const [bans, setBans] = useState(initial?.bans || "NSFW, политика, оскорбления, чужие логотипы крупным планом");
   const [platforms, setPlatforms] = useState<string[]>(initial?.platforms?.filter((platform) => platform !== "INSTAGRAM").length ? initial.platforms.filter((platform) => platform !== "INSTAGRAM") : ["TIKTOK", "YOUTUBE", "VK"]);
   const [watermarkBonus, setWatermarkBonus] = useState(initial?.watermarkBonus ?? true);
-  const [isAdvertising, setIsAdvertising] = useState(true);
+  const [isAdvertising, setIsAdvertising] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [step, setStep] = useState(1);
 
@@ -548,12 +548,12 @@ export function CampaignForm({
             <div className="order-grid-2" data-wizard-field="7" hidden={step !== 7}>
               <label className="order-field">
                 <span>ИНН рекламодателя</span>
-                <input name="advertiserInn" inputMode="numeric" maxLength={12} placeholder="10 или 12 цифр" />
+                <input name="advertiserInn" inputMode="numeric" maxLength={12} placeholder="10 или 12 цифр" required={isAdvertising} />
                 <small>Понадобится для регистрации креатива в ОРД и получения erid.</small>
               </label>
               <label className="order-field">
                 <span>Наименование рекламодателя</span>
-                <input name="advertiserName" maxLength={120} placeholder="ООО «Пример» или ИП Иванов" />
+                <input name="advertiserName" maxLength={120} placeholder="ООО «Пример» или ИП Иванов" required={isAdvertising} />
               </label>
             </div>
           ) : null}

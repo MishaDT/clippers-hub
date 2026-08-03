@@ -13,6 +13,7 @@ import { MetaProductsNotice } from "@/components/meta-products-notice";
 
 type Order = {
   id: string;
+  campaignId: string;
   title: string;
   trackingCode: string;
   payout: string;
@@ -32,6 +33,8 @@ type Order = {
   reviewMode: "FAST" | "STANDARD" | "STRICT";
   draftReviewNote: string | null;
   draftUrl: string | null;
+  publicationReady: boolean;
+  adMarking: string | null;
 };
 
 const labels: Record<string, string> = {
@@ -71,7 +74,8 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
     : matchingSocialAccounts.some((account) => account.id === socialAccountId)
       ? socialAccountId
       : matchingSocialAccounts[0]?.id || "";
-  const canPublish = (!selected?.draftRequired || selected.draftStatus === "APPROVED")
+  const canPublish = Boolean(selected?.publicationReady)
+    && (!selected?.draftRequired || selected.draftStatus === "APPROVED")
     && (!selected?.strictVerification || selected.visualProofConfirmed);
   const canSubmitDraft = Boolean(
     selected?.draftRequired
@@ -79,7 +83,7 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
     && /^https:\/\//i.test(draftUrl)
   );
   const description = selected
-    ? [selected.trackingCode, selected.requiredTags.join(" ")].filter(Boolean).join("\n\n")
+    ? [selected.adMarking, selected.trackingCode, selected.requiredTags.join(" ")].filter(Boolean).join("\n\n")
     : "";
 
   useEffect(() => {
@@ -266,12 +270,19 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
             <div className="up-desc">
               <div className="up-desc-head">
                 <span><ShieldCheck size={14} /> Описание для публикации</span>
-                <button type="button" className={`up-copy${copied ? " is-copied" : ""}`} onClick={copyDescription}>
+                <button type="button" className={`up-copy${copied ? " is-copied" : ""}`} onClick={copyDescription} disabled={!selected.publicationReady}>
                   {copied ? <><Check size={15} /> Скопировано</> : <><Copy size={15} /> Копировать</>}
                 </button>
               </div>
               <pre className="up-desc-pre">{description}</pre>
             </div>
+            {!selected.publicationReady ? (
+              <div className={styles.connectionSummary} data-connected="false">
+                <ShieldCheck size={17} />
+                <span>Заказ закреплён за вами, но ERID ещё готовится. Делать и согласовывать ролик можно; публиковать пока нельзя.</span>
+                <a href={`/campaigns/${selected.campaignId}`}>Статус заказа</a>
+              </div>
+            ) : null}
             <div className="up-materials">
               <div className="up-material">
                 <div className="up-material-ico"><Image src="/watermark/reelpay-watermark.svg" alt="" width={56} height={56} /></div>
@@ -301,7 +312,7 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
               <input name="postUrl" type="url" inputMode="url" autoComplete="off" placeholder="https://youtube.com/shorts/..." value={postUrl} onChange={(event) => setPostUrl(event.target.value)} required disabled={!canPublish} />
               {platform ? <CheckCircle2 size={18} color="#22c55e" /> : null}
             </div>
-            <small className="up-hint">{!canPublish ? selected.strictVerification && !selected.visualProofConfirmed ? "Ссылка станет доступна после проверки индивидуального QR на черновике." : "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram* и VK"}</small>
+            <small className="up-hint">{!selected.publicationReady ? "Ссылка станет доступна после получения ERID." : !canPublish ? selected.strictVerification && !selected.visualProofConfirmed ? "Ссылка станет доступна после проверки индивидуального QR на черновике." : "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram* и VK"}</small>
             {platform === "INSTAGRAM" ? <MetaProductsNotice compact /> : null}
             {platform && matchingSocialAccounts.length ? (
               <div className={styles.accountConnect} data-connected="true">

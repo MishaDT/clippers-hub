@@ -318,6 +318,9 @@ export async function createCampaignAction(formData: FormData) {
   const adCampaign = formData.get("isAdvertising") === "on";
   const advertiserInn = String(formData.get("advertiserInn") || "").replace(/\D/g, "").slice(0, 12) || null;
   const advertiserName = String(formData.get("advertiserName") || "").trim().slice(0, 120) || null;
+  if (adCampaign && (!advertiserName || !advertiserInn || ![10, 12].includes(advertiserInn.length))) {
+    redirect("/campaigns/new?error=advertiser");
+  }
   // Seed campaigns "Организовано ReelPay" can only be flagged by staff.
   const platformOrganized = formData.get("platformOrganized") === "on" && canAccessAdmin(user);
 
@@ -615,16 +618,13 @@ export async function joinCampaignAction(formData: FormData) {
   const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
 
   // Access guards: a clipper may only take a live, public, in-budget campaign that isn't
-  // their own. Without these, anyone who knew an ID could join a draft / paused / finished /
-  // private / expired campaign, or a BOTH/ADMIN account could take its own order and pay
-  // itself out of its own escrow.
+  // their own. An advertising campaign may be accepted while its ERID is being prepared:
+  // the publication boundary below is where we enforce that the marking is present.
   if (campaign.ownerId === user.id) redirect("/campaigns?error=own_campaign");
   if (campaign.status !== "ACTIVE" && campaign.status !== "LOW_BUDGET") redirect("/campaigns?error=closed");
   if (campaign.visibility === "PRIVATE_INVITE") redirect("/campaigns?error=private");
   if (campaign.deadline.getTime() <= Date.now()) redirect("/campaigns?error=expired");
   if (campaign.remainingBudgetCents <= 0) redirect("/campaigns?error=no_budget");
-  if (campaign.isAdvertising && !campaign.erid) redirect(`/campaigns/${campaignId}?error=erid_pending`);
-
   const existing = await prisma.submission.findFirst({ where: { campaignId, workerId: user.id } });
   if (existing) redirect("/upload");
 
@@ -1446,6 +1446,11 @@ export async function submitClipAction(formData: FormData) {
       select: { id: true }
     }) : Promise.resolve(null)
   ]);
+  // The worker can reserve a slot and prepare a draft before registration finishes, but a
+  // public advertising post must never be accepted without its final ERID marking.
+  if (submission.campaign.isAdvertising && !submission.campaign.erid) {
+    redirect("/upload?error=erid_pending");
+  }
   if (socialAccountIdInput && !selectedSocialAccount) redirect("/upload?error=social_account");
   if (
     submission.campaign.draftRequired

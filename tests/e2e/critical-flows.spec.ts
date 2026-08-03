@@ -10,7 +10,7 @@ async function cleanupTestData() {
   await prisma.user.updateMany({ where: { email: "nikita@clippers.local" }, data: { role: "CLIENT" } });
 }
 
-async function createWorkerCampaign() {
+async function createWorkerCampaign(options: { isAdvertising?: boolean; erid?: string | null } = {}) {
   const owner = await prisma.user.findUniqueOrThrow({ where: { email: "nikita@clippers.local" } });
   const suffix = `${Date.now()}${Math.floor(Math.random() * 10_000)}`;
   return prisma.campaign.create({
@@ -30,7 +30,8 @@ async function createWorkerCampaign() {
       trackingPrefix: `e2e_${suffix}`,
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000),
       niche: "Education",
-      isAdvertising: false,
+      isAdvertising: options.isAdvertising ?? false,
+      erid: options.erid ?? null,
       isDemo: false,
       draftRequired: false
     }
@@ -163,6 +164,22 @@ test.describe("worker flow", () => {
     await page.getByRole("button", { name: /Отправить/i }).click();
     await expect(page.locator("body")).toContainText("Выложить работу");
     await expectNoHorizontalScroll(page);
+  });
+
+  test("clipper can reserve an advertising order while ERID is pending", async ({ page }) => {
+    const campaign = await createWorkerCampaign({ isAdvertising: true, erid: null });
+    await login(page, "anya@clippers.local");
+    await page.goto(`/campaigns/${campaign.id}`);
+
+    const joinButton = page.getByRole("button", { name: /^Взять заказ$/i });
+    await expect(joinButton).toBeEnabled();
+    await joinButton.click();
+    await page.getByRole("button", { name: /Подтвердить и взять заказ/i }).click();
+
+    await expect(page).toHaveURL(/\/upload$/);
+    await expect(page.getByText(/ERID ещё готовится/i)).toBeVisible();
+    await expect(page.locator('input[name="postUrl"]')).toBeDisabled();
+    await expect.poll(async () => prisma.submission.count({ where: { campaignId: campaign.id } })).toBe(1);
   });
 
   test("open dispute blocks the payout until an admin decision", async ({ page, isMobile }) => {

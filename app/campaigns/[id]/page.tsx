@@ -349,7 +349,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
     ? campaign.minimumGuaranteeCents
     : minimumGuaranteedPayout(campaign.minimumGuaranteeCents, currentUser?.rank || "BRONZE");
   const slotsLeft = Math.max(0, campaign.maxPaidResults - campaign._count.submissions);
-  const complianceReady = !campaign.isAdvertising || Boolean(campaign.erid);
+  const publicationReady = !campaign.isAdvertising || Boolean(campaign.erid);
   const campaignDiagnostics = isOwner
     ? diagnoseCampaign({
         id: campaign.id,
@@ -516,8 +516,8 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                     : linkDone
                       ? "Данные маркировки не указаны в карточке кампании."
                       : mode === "client"
-                        ? "Маркировка не заполнена. До публикации добавьте erid."
-                        : "Рекламная кампания ожидает erid. Взять заказ и публиковать ролик до маркировки нельзя."}
+                        ? "ERID ещё готовится. Клипперы могут взять заказ и подготовить ролик, но публикация откроется только после маркировки."
+                        : "ERID ещё готовится. Заказ можно взять и подготовить, а опубликовать ролик — после получения маркировки."}
                 </p>
               ) : null}
             </div>
@@ -573,6 +573,16 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                       </>
                     )
                   : <span className="od-apply-muted">Кампания другого заказчика</span>
+              ) : isOwner ? (
+                <>
+                  <p className="safe-note"><ShieldCheck size={16} /> Это ваш заказ. В целях безопасности заказчик не может сам стать его исполнителем — откройте его с другого аккаунта.</p>
+                  <Link className="btn od-apply-btn" href="/campaigns">Вернуться к заказам</Link>
+                </>
+              ) : !currentUser.emailVerifiedAt ? (
+                <>
+                  <p className="safe-note"><ShieldCheck size={16} /> Сначала подтвердите почту — после этого заказ можно будет взять.</p>
+                  <Link className="btn btn-primary od-apply-btn" href={`/verify-email?returnTo=${encodeURIComponent(`/campaigns/${campaign.id}`)}`}>Подтвердить почту</Link>
+                </>
               ) : submission && workerAction ? (
                 <Link className="btn btn-primary od-apply-btn" href={workerAction.href}>{workerAction.label}</Link>
               ) : (
@@ -581,11 +591,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                   payout={rub(expected)}
                   guarantee={campaign.minimumGuaranteeCents > 0 ? rub(minimumExpected) : null}
                   deadline={`${daysLeft} дн.`}
-                  disabled={!complianceReady || slotsLeft <= 0 || campaign.remainingBudgetCents < gross}
+                  disabled={slotsLeft <= 0 || campaign.remainingBudgetCents < gross}
                 />
               )}
 
-              {!complianceReady && mode !== "client" ? <p className="safe-note"><ShieldCheck size={16} /> Заказ откроется после регистрации рекламы и получения erid.</p> : null}
+              {!publicationReady && mode !== "client" ? <p className="safe-note"><ShieldCheck size={16} /> Можно взять заказ сейчас. Публикация станет доступна после получения ERID.</p> : null}
 
               <ul className="od-apply-notes">
                 <li><ShieldCheck size={14} /> {
