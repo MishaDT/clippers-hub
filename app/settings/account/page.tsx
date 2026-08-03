@@ -161,12 +161,12 @@ export default async function AccountSettingsPage({
           </p>
         </Card>
 
-        <Card className={styles.card}>
+        <Card className={styles.card} id="social-accounts">
           <div className={styles.cardTitle}>
             <Video size={20} />
             <div>
-              <h2>Площадки для проверки роликов</h2>
-              <p>Подключение нужно только для подтверждения ваших публикаций и их статистики.</p>
+              <h2>Площадки для публикаций</h2>
+              <p>Подключите аккаунт один раз — при сдаче ролика ReelPay выберет его автоматически и проверит владение без обязательного кода.</p>
             </div>
           </div>
           <div className={styles.providers}>
@@ -185,7 +185,7 @@ export default async function AccountSettingsPage({
                           ? "Можно подключить безопасно"
                           : platform === "INSTAGRAM"
                             ? "Будет доступно после проверки приложения Meta*"
-                            : platform === "VK" ? "Пока доступна проверка ключом" : "Нужны ключи приложения"}
+                            : platform === "VK" ? "Проверяем ссылку и публикацию вручную" : "Автоподключение готовится; ссылка уже принимается"}
                     </span>
                     {accountsForPlatform.map((account) => (
                       <div key={account.id} className={styles.connectedAccount}>
@@ -202,7 +202,7 @@ export default async function AccountSettingsPage({
                       <Link2 size={15} /> {accountsForPlatform.length ? "Добавить ещё" : "Подключить"}
                     </Link>
                   ) : (
-                    <span className={styles.unavailable}>Через ключ</span>
+                    <span className={styles.unavailable}>По ссылке</span>
                   )}
                 </div>
               );
@@ -210,7 +210,7 @@ export default async function AccountSettingsPage({
           </div>
           <MetaProductsNotice compact />
           <p className={styles.note}>
-            Токены хранятся на сервере в зашифрованном виде. ReelPay не получает пароль и не публикует ролики от вашего имени.
+            YouTube и TikTok после подключения проверяются автоматически. VK и Instagram пока проходят проверку по ссылке модератором. ReelPay не получает пароль и ничего не публикует от вашего имени.
           </p>
         </Card>
 

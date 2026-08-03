@@ -54,7 +54,7 @@ function inspectUrl(value: string) {
 export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabled: boolean }) {
   const [selectedId, setSelectedId] = useState(orders[0]?.id || "");
   const [postUrl, setPostUrl] = useState("");
-  const [socialAccountId, setSocialAccountId] = useState("");
+  const [socialAccountId, setSocialAccountId] = useState("__auto__");
   const [draftUrl, setDraftUrl] = useState(orders[0]?.draftUrl || "");
   const [workerNote, setWorkerNote] = useState("");
   const [open, setOpen] = useState(false);
@@ -65,6 +65,12 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
   const selectRef = useRef<HTMLDivElement>(null);
   const selected = orders.find((order) => order.id === selectedId) || orders[0];
   const platform = inspectUrl(postUrl);
+  const matchingSocialAccounts = selected?.socialAccounts.filter((account) => account.platform === platform) || [];
+  const effectiveSocialAccountId = socialAccountId === ""
+    ? ""
+    : matchingSocialAccounts.some((account) => account.id === socialAccountId)
+      ? socialAccountId
+      : matchingSocialAccounts[0]?.id || "";
   const canPublish = (!selected?.draftRequired || selected.draftStatus === "APPROVED")
     && (!selected?.strictVerification || selected.visualProofConfirmed);
   const canSubmitDraft = Boolean(
@@ -93,7 +99,7 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
     setWorkerNote("");
     setUploadError("");
     setPostUrl("");
-    setSocialAccountId("");
+    setSocialAccountId("__auto__");
     setOpen(false);
   };
 
@@ -283,6 +289,13 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
 
           <section className="up-step">
             <div className="up-step-head"><span className="up-step-no">3</span><h2>Вставьте ссылку на ролик</h2></div>
+            <div className={styles.connectionSummary} data-connected={selected.socialAccounts.length > 0}>
+              {selected.socialAccounts.length ? <CheckCircle2 size={17} /> : <Link2 size={17} />}
+              <span>{selected.socialAccounts.length
+                ? `Подключено: ${selected.socialAccounts.map((account) => `${labels[account.platform] || account.platform} @${account.handle.replace(/^@/, "")}`).join(" · ")}`
+                : "Соцсети пока не подключены — автоматическая проверка будет недоступна."}</span>
+              <a href="/settings/account#social-accounts">{selected.socialAccounts.length ? "Управлять" : "Подключить"}</a>
+            </div>
             <div className={`up-url${platform ? " ok" : ""}`}>
               <Link2 size={18} />
               <input name="postUrl" type="url" inputMode="url" autoComplete="off" placeholder="https://youtube.com/shorts/..." value={postUrl} onChange={(event) => setPostUrl(event.target.value)} required disabled={!canPublish} />
@@ -290,16 +303,27 @@ export function UploadForm({ orders, blobEnabled }: { orders: Order[]; blobEnabl
             </div>
             <small className="up-hint">{!canPublish ? selected.strictVerification && !selected.visualProofConfirmed ? "Ссылка станет доступна после проверки индивидуального QR на черновике." : "Ссылка станет доступна после принятия черновика." : platform ? `Площадка: ${labels[platform]}` : "Разрешены HTTPS-ссылки TikTok, YouTube, Instagram* и VK"}</small>
             {platform === "INSTAGRAM" ? <MetaProductsNotice compact /> : null}
-            {platform && selected.socialAccounts.some((account) => account.platform === platform) ? (
+            {platform && matchingSocialAccounts.length ? (
+              <div className={styles.accountConnect} data-connected="true">
+              <CheckCircle2 size={19} />
               <label className="field">
-                Аккаунт для автоматической проверки
-                <select name="socialAccountId" value={socialAccountId} onChange={(event) => setSocialAccountId(event.target.value)}>
-                  <option value="">Проверить по ключу в описании</option>
-                  {selected.socialAccounts.filter((account) => account.platform === platform).map((account) => (
+                Проверить через подключённый аккаунт
+                <select name="socialAccountId" value={effectiveSocialAccountId} onChange={(event) => setSocialAccountId(event.target.value)}>
+                  {matchingSocialAccounts.map((account) => (
                     <option key={account.id} value={account.id}>@{account.handle}</option>
                   ))}
+                  <option value="">Без привязки — по коду в описании</option>
                 </select>
               </label>
+              <small>Аккаунт выбран автоматически. Код в описании можно оставить как дополнительное подтверждение.</small>
+              </div>
+            ) : platform ? (
+              <div className={styles.accountConnect}>
+                <Link2 size={19} />
+                <div><b>Аккаунт {labels[platform]} не подключён</b><span>Можно сдать по коду в описании или один раз подключить площадку для автоматической проверки.</span></div>
+                <a className="btn btn-small" href="/settings/account#social-accounts">Подключить площадку</a>
+                <input type="hidden" name="socialAccountId" value="" />
+              </div>
             ) : <input type="hidden" name="socialAccountId" value="" />}
           </section>
 

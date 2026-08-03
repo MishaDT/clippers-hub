@@ -129,3 +129,9 @@
   color: #fca5a5;
   font-size: 12px;
 }
+
+.accountConnect{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin-top:12px;padding:13px 0;border-top:1px solid rgba(255,255,255,.09)}
+.accountConnect>svg{color:#baff00}.accountConnect>div{display:grid;gap:3px}.accountConnect span,.accountConnect>small{color:#8d9489;font-size:12px;line-height:1.4}.accountConnect>small{grid-column:2/-1}.accountConnect label{margin:0}.accountConnect select{min-height:44px}
+@media(max-width:640px){.accountConnect{grid-template-columns:auto minmax(0,1fr);align-items:start}.accountConnect>a,.accountConnect>small{grid-column:2}.accountConnect>a{justify-self:start;margin-top:4px}}
+.connectionSummary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;margin-bottom:12px;color:#8d9489;font-size:12px}.connectionSummary[data-connected="true"]>svg{color:#baff00}.connectionSummary a{color:#c9f31d;font-weight:800}.connectionSummary span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:640px){.connectionSummary{align-items:start}.connectionSummary span{white-space:normal;line-height:1.4}}

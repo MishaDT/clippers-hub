@@ -31,7 +31,7 @@ export default async function RegisterPage({
 
         <span className="eyebrow">Новый аккаунт</span>
         <h1>Начать в ReelPay</h1>
-        <p className="muted">Создайте аккаунт и сразу откройте нужный раздел. Роль клиппера или заказчика можно поменять позже в профиле.</p>
+        <p className="muted">Зарегистрируйтесь по email — после создания аккаунта мы отправим письмо с безопасной ссылкой подтверждения. Роль можно поменять позже.</p>
 
         {errorText ? (
           <div className="auth-error" role="alert">
@@ -52,7 +52,7 @@ export default async function RegisterPage({
           <label className="field">Имя<input name="name" placeholder="Как тебя зовут" autoComplete="name" required /></label>
           <label className="field">Email<input name="email" type="email" placeholder="you@example.com" autoComplete="email" required /></label>
           <label className="field">Пароль<input name="password" type="password" placeholder="Лучше длинная фраза" minLength={8} maxLength={72} autoComplete="new-password" required /></label>
-          <button className="btn btn-primary" type="submit"><UserPlus size={18} /> Создать аккаунт</button>
+          <button className="btn btn-primary" type="submit"><UserPlus size={18} /> Создать и подтвердить email</button>
         </form>
 
         <SocialAuth mode="register" intent={intent} returnTo={returnTo} referralCode={refCode} />

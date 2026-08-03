@@ -87,7 +87,7 @@ async function loadActiveOrder() {
 export const revalidate = 30;
 
 const getCampaigns = unstable_cache(
-  async () =>
+  async (includeDemo: boolean) =>
     prisma.campaign.findMany({
       select: {
         id: true,
@@ -112,12 +112,13 @@ const getCampaigns = unstable_cache(
       },
       where: {
         status: { in: ["ACTIVE", "LOW_BUDGET"] },
-        visibility: { in: ["PUBLIC", "FEATURED"] }
+        visibility: { in: ["PUBLIC", "FEATURED"] },
+        ...(includeDemo ? {} : { isDemo: false })
       },
       orderBy: { createdAt: "desc" },
       take: 80
     }),
-  ["campaigns-marketplace-v7"],
+  ["campaigns-marketplace-v8-real-only"],
   { revalidate: 30, tags: ["campaigns"] }
 );
 
@@ -259,8 +260,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const initialPage = Math.max(1, Number(params.page || 1));
   const pageSize = 12;
 
-  const [baseCampaigns, active, completedExperience] = await Promise.all([
-    getCampaigns(),
+  const [baseCampaigns, active, completedExperience, connectedSocialCount] = await Promise.all([
+    getCampaigns(Boolean(user?.isDemo)),
     loadActiveOrder(),
     user ? prisma.submission.findMany({
       where: {
@@ -272,7 +273,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         campaign: { select: { niche: true } }
       },
       take: 50
-    }) : Promise.resolve([])
+    }) : Promise.resolve([]),
+    user ? prisma.socialAccount.count({ where: { userId: user.id, connectionStatus: "CONNECTED", credential: { isNot: null } } }) : Promise.resolve(0)
   ]);
   const matchProfile = {
     specialties: user ? parseJson<string[]>(user.specialtiesJson, []) : [],
@@ -414,6 +416,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         {user && completedExperience.length === 0 ? (
           <FirstSteps
             profileDone={Boolean(user.bio) || parseJson<string[]>(user.specialtiesJson, []).length > 0}
+            socialConnected={connectedSocialCount > 0}
             orderTaken={Boolean(active)}
           />
         ) : null}

@@ -3,13 +3,19 @@ import { Check, ChevronRight } from "lucide-react";
 
 // New-clipper onboarding checklist. Shown until the first verified result: small user
 // investment (profile) + a clear next action beat generic dashboards for early retention.
-export function FirstSteps({ profileDone, orderTaken }: { profileDone: boolean; orderTaken: boolean }) {
+export function FirstSteps({ profileDone, socialConnected, orderTaken }: { profileDone: boolean; socialConnected: boolean; orderTaken: boolean }) {
   const steps = [
     {
       done: profileDone,
       title: "Заполни профиль",
       hint: "Тематики и пара слов о себе — заказы начнут подбираться под тебя",
       href: "/settings/profile"
+    },
+    {
+      done: socialConnected,
+      title: "Подключи площадку",
+      hint: "YouTube или TikTok — тогда публикация и просмотры проверятся автоматически",
+      href: "/settings/account#social-accounts"
     },
     {
       done: orderTaken,
@@ -29,8 +35,8 @@ export function FirstSteps({ profileDone, orderTaken }: { profileDone: boolean; 
   return (
     <aside className="fs-card" aria-label="Первые шаги">
       <div className="fs-head">
-        <b>Первые шаги · {doneCount} из 3</b>
-        <span className="fs-bar" aria-hidden="true"><i style={{ width: `${Math.max(8, (doneCount / 3) * 100)}%` }} /></span>
+        <b>Первые шаги · {doneCount} из {steps.length}</b>
+        <span className="fs-bar" aria-hidden="true"><i style={{ width: `${Math.max(8, (doneCount / steps.length) * 100)}%` }} /></span>
       </div>
       <ol className="fs-steps">
         {steps.map((step) => (

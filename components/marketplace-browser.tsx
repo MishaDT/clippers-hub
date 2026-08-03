@@ -202,9 +202,9 @@ export function MarketplaceBrowser({
       ) : (
         <div className="mk-empty">
           <CheckCircle2 size={28} />
-          <b>Подходящих заказов нет</b>
-          <p>Попробуй убрать фильтр или написать запрос проще.</p>
-          <Link className="btn btn-primary" href="/campaigns">Сбросить фильтры</Link>
+          <b>{searchParams.size ? "Подходящих заказов нет" : "Новые заказы готовятся"}</b>
+          <p>{searchParams.size ? "Убери фильтр или напиши запрос проще." : "Здесь показываются только реальные кампании с подтверждённым бюджетом — без выдуманных заказчиков и просмотров."}</p>
+          {searchParams.size ? <Link className="btn btn-primary" href="/campaigns">Сбросить фильтры</Link> : null}
         </div>
       )}
 

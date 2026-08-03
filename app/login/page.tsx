@@ -28,9 +28,9 @@ export default async function LoginPage({
           <span className="brand-word">Reel<span>Pay</span></span>
         </Link>
 
-        <span className="eyebrow">Вход</span>
+        <span className="eyebrow">Вход по email</span>
         <h1>Вернуться к заказам</h1>
-        <p className="muted">Войдите по email или через соцсеть. Мы не храним пароли от Google, VK или Yandex.</p>
+        <p className="muted">Основной способ — email и пароль. Ниже можно выбрать Яндекс, VK ID или Google, если они подключены.</p>
 
         {errorText ? (
           <div className="auth-error" role="alert">
