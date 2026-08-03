@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Flame, Play } from "lucide-react";
+import { Flame } from "lucide-react";
 import { compactNumber, expectedPayout, minimumGuaranteedPayout, rub } from "@/lib/money";
 type RoleMode = "worker" | "client";
 
@@ -21,7 +21,6 @@ type FeedCampaign = {
   submissions: number;
   views: number;
   cover: string;
-  video: string;
 };
 
 const tabs = ["Для тебя", "Тренды"] as const;
@@ -29,8 +28,6 @@ type Tab = (typeof tabs)[number];
 
 export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mode: RoleMode }) {
   const [activeTab, setActiveTab] = useState<Tab>("Для тебя");
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const videoRefs = useRef(new Map<string, HTMLVideoElement>());
   const feedRef = useRef<HTMLDivElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -45,28 +42,7 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
     if (next !== activeTab) setActiveTab(next);
   }
 
-  // Light feed: nothing autoplays. Posters (local images) show instantly; the heavy
-  // video is fetched only when the user taps a reel (preload="none").
-  function playOnly(id: string) {
-    videoRefs.current.forEach((video, key) => {
-      if (key === id) void video.play().catch(() => undefined);
-      else video.pause();
-    });
-    setPlayingId(id);
-  }
-
-  function toggle(id: string) {
-    const video = videoRefs.current.get(id);
-    if (!video) return;
-    if (video.paused) playOnly(id);
-    else {
-      video.pause();
-      setPlayingId(null);
-    }
-  }
-
   useEffect(() => {
-    setPlayingId(null);
     feedRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
 
@@ -106,36 +82,25 @@ export function FeedClient({ campaigns, mode }: { campaigns: FeedCampaign[]; mod
       </div>
 
       <div className="reel-feed" ref={feedRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {!visible.length ? (
+          <div className="empty-box"><h2>Открытых заказов пока нет</h2><p>Новые реальные кампании появятся здесь после публикации заказчиком.</p></div>
+        ) : null}
         {visible.map((campaign) => {
           const expected = expectedPayout(campaign.viewThreshold, campaign.cpmRateCents);
           const guarantee = minimumGuaranteedPayout(campaign.minimumGuaranteeCents);
           const days = Math.max(1, Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / 86400000));
-          const isPlaying = playingId === campaign.id;
           return (
             <article className="reel" key={campaign.id}>
-              <video
+              <Image
                 className="reel-video"
-                ref={(el) => {
-                  if (el) videoRefs.current.set(campaign.id, el);
-                  else videoRefs.current.delete(campaign.id);
-                }}
-                src={campaign.video}
-                poster={campaign.cover}
-                muted
-                loop
-                playsInline
-                preload="none"
-                onClick={() => toggle(campaign.id)}
+                src={campaign.cover}
+                alt=""
+                fill
+                sizes="(max-width: 760px) 100vw, 720px"
               />
               <div className="reel-shade" />
 
-              <span className="reel-demo-badge">Демо-ролик · пример подачи</span>
-
-              {!isPlaying ? (
-                <button className="reel-play" type="button" aria-label="Смотреть ролик" onClick={() => playOnly(campaign.id)}>
-                  <Play size={26} fill="#fff" />
-                </button>
-              ) : null}
+              <span className="reel-demo-badge">Открытый заказ</span>
 
               <div className="reel-info">
                 <div className="reel-creator-row">

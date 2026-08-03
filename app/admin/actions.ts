@@ -199,6 +199,17 @@ export async function adminUpdateTransactionAction(formData: FormData) {
     externalReference: status === "COMPLETED" ? externalReference : undefined,
     hasReceipt: Boolean(receiptUrl)
   });
+  await notify({
+    userId: tx.userId,
+    groupKey: notificationGroup("withdrawal-status", transactionId),
+    title: status === "COMPLETED" ? "Выплата отправлена" : "Заявка на выплату возвращена",
+    body: status === "COMPLETED"
+      ? "Банковский перевод выполнен. Подтверждение сохранено в истории операции."
+      : "Выплата не выполнена, списанная сумма возвращена на баланс.",
+    priority: status === "COMPLETED" ? "NORMAL" : "HIGH",
+    kind: "SYSTEM",
+    href: "/wallet"
+  });
   revalidatePath("/admin/finance");
   revalidatePath("/admin/referrals");
   revalidatePath("/referrals");

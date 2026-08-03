@@ -12,7 +12,7 @@ async function login(page: Page, email: string) {
 test("authorized interface stays inside the selected role", async ({ page, context, isMobile }) => {
   const navSelector = isMobile ? ".bottom-nav" : ".top-nav";
   await login(page, "anya@clippers.local");
-  await expect(page.getByRole("heading", { name: /Найди заказ/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Заказы для вас|Найди заказ/i })).toBeVisible();
   await expect(page.locator(`${navSelector} a[href="/campaigns/new"]`)).toHaveCount(0);
   await expect(page.locator(`${navSelector} a[href="/upload"]`)).toBeVisible();
 

@@ -77,13 +77,13 @@ export default async function RegisterPage({
         <div className="auth-showcase">
           <div className="motion-card card-a">
             <span><Sparkles size={18} /></span>
-            <strong>24/7</strong>
-            <small>новые заказы</small>
+            <strong>Один вход</strong>
+            <small>email и безопасный пароль</small>
           </div>
           <div className="motion-card card-b">
             <span><UserPlus size={18} /></span>
-            <strong>1 аккаунт</strong>
-            <small>для обеих ролей</small>
+            <strong>Две роли</strong>
+            <small>переключаются в профиле</small>
           </div>
           <div className="auth-phone">
             <div className="auth-video-strip"><i /><i /><i /></div>

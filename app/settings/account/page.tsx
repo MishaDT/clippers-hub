@@ -65,7 +65,11 @@ export default async function AccountSettingsPage({
         {params.avatar === "updated" ? <p className={styles.success}>Логотип профиля обновлён.</p> : null}
         {params.avatar === "removed" ? <p className={styles.success}>Логотип удалён. Используются инициалы.</p> : null}
         {params.avatar === "invalid" ? <p className={styles.error}>Файл не прошёл проверку. Выберите обычный JPG, PNG или WebP до 2 МБ.</p> : null}
-        {params.social === "connected" ? <p className={styles.success}>TikTok подключён. ReelPay сможет проверять ваши ролики и просмотры.</p> : null}
+        {params.social === "connected" ? (
+          <p className={styles.success}>
+            {String(params.platform || "Соцсеть").toUpperCase()} подключена. При сдаче подходящего ролика ReelPay выберет аккаунт автоматически.
+          </p>
+        ) : null}
         {params.social === "disconnected" ? <p className={styles.success}>Соцсеть отключена, сохранённые токены удалены.</p> : null}
         {params.social && !["connected", "disconnected"].includes(String(params.social)) ? (
           <p className={styles.error}>Подключение не завершено. Проверьте доступ приложения и попробуйте ещё раз.</p>
@@ -185,7 +189,7 @@ export default async function AccountSettingsPage({
                           ? "Можно подключить безопасно"
                           : platform === "INSTAGRAM"
                             ? "Будет доступно после проверки приложения Meta*"
-                            : platform === "VK" ? "Проверяем ссылку и публикацию вручную" : "Автоподключение готовится; ссылка уже принимается"}
+                            : platform === "VK" ? "Проверяем ссылку и публикацию вручную" : "Для автопроверки администратор должен подключить OAuth; сдача по ссылке доступна"}
                     </span>
                     {accountsForPlatform.map((account) => (
                       <div key={account.id} className={styles.connectedAccount}>

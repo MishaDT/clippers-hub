@@ -90,6 +90,15 @@ export default async function AdminSettingsPage() {
               <StatusRow label="ADMIN_EMAILS" ok={envOk("ADMIN_EMAILS")} detail="Email владельцев админки" />
               <StatusRow label="ANALYTICS_SALT" ok={envOk("ANALYTICS_SALT")} detail="Хеширование IP/User-Agent" />
               <StatusRow label="Email-подтверждение" ok={emailDeliveryReady()} detail="RESEND_API_KEY и EMAIL_FROM для одноразовых ссылок" />
+              <StatusRow label="CRON_SECRET" ok={envOk("CRON_SECRET")} detail="Защищает синхронизацию просмотров, очистку и еженедельный отчёт." />
+              <StatusRow label="Общий rate limit" ok={envOk("UPSTASH_REDIS_REST_URL") && envOk("UPSTASH_REDIS_REST_TOKEN")} detail="Upstash Redis защищает вход и формы на всех serverless-инстансах." />
+              <StatusRow label="Загрузка черновиков" ok={envOk("BLOB_READ_WRITE_TOKEN")} detail="Vercel Blob; без него остаётся безопасная сдача по HTTPS-ссылке." />
+              <StatusRow label="Поддержка" ok={envOk("SUPPORT_EMAIL")} detail="Email, с которого ответы в обращениях помечаются как поддержка." />
+              <StatusRow
+                label="Реквизиты оператора"
+                ok={envOk("LEGAL_OPERATOR_NAME") && envOk("LEGAL_OPERATOR_ID") && envOk("LEGAL_OPERATOR_ADDRESS")}
+                detail="Название, ИНН/ОГРН и адрес для юридических документов."
+              />
             </div>
           </Card>
         </div>

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://clippers-hub-mdt.netlify.app");
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://clippers-hub.vercel.app");
 
 const abs = (path: string) => new URL(path, siteUrl).toString();
 

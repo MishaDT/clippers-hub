@@ -29,6 +29,14 @@ async function run() {
       ]
     }
   });
+  const expiredPasswordResetTokens = await prisma.passwordResetToken.deleteMany({
+    where: {
+      OR: [
+        { expiresAt: { lt: new Date() } },
+        { usedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+      ]
+    }
+  });
   // Batch-delete with a hard cap on iterations so one run can't exceed maxDuration.
   for (let i = 0; i < 20; i += 1) {
     const batch = await prisma.analyticsEvent.findMany({
@@ -82,6 +90,7 @@ async function run() {
     deleted,
     expiredSessions: expiredSessions.count,
     expiredEmailTokens: expiredEmailTokens.count,
+    expiredPasswordResetTokens: expiredPasswordResetTokens.count,
     reminders,
     retentionDays,
     cutoff: cutoff.toISOString()

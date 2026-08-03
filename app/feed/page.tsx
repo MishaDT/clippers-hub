@@ -12,20 +12,15 @@ const images = [
   "/assets/hero-studio.webp",
   "/assets/creator-nika.webp"
 ];
-const videos = [
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4"
-];
-
 // Cache the heavy campaign query for 30s so the feed renders instantly (no DB wait).
 const getFeedCampaigns = unstable_cache(
   async () => {
     const campaigns = await prisma.campaign.findMany({
+      where: {
+        isDemo: false,
+        visibility: { in: ["PUBLIC", "FEATURED"] },
+        status: { in: ["ACTIVE", "LOW_BUDGET"] }
+      },
       include: { owner: true, submissions: true },
       orderBy: [{ visibility: "asc" }, { createdAt: "desc" }],
       take: 12
@@ -43,11 +38,10 @@ const getFeedCampaigns = unstable_cache(
       ownerAvatar: campaign.owner.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(campaign.owner.handle)}`,
       submissions: campaign.submissions.length,
       views: campaign.submissions.reduce((sum, item) => sum + item.currentViews, 0),
-      cover: images[index % images.length],
-      video: videos[index % videos.length]
+      cover: images[index % images.length]
     }));
   },
-  ["feed-campaigns-v3"],
+  ["feed-campaigns-real-v1"],
   { revalidate: 30, tags: ["campaigns"] }
 );
 

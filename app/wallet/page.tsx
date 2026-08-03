@@ -100,6 +100,12 @@ export default async function WalletPage({
             <span>Без подтверждённых реквизитов заявка на выплату не создаётся.</span>
           </Card>
         ) : null}
+        {params.withdrawal === "requested" ? (
+          <Card className="upload-status ok">
+            <strong>Заявка на выплату создана</strong>
+            <span>Сумма зарезервирована. Статус появится в истории, а после банковского перевода придёт уведомление с подтверждением.</span>
+          </Card>
+        ) : null}
         <div className="wallet-hero">
           <div className="wallet-title-block">
             <span className="eyebrow"><WalletCards size={15} /> Финансы ReelPay</span>
@@ -154,7 +160,7 @@ export default async function WalletPage({
                 <>
                   <div className="safe-note">
                     <ShieldCheck size={18} />
-                    <span>Оплата картой скоро включится. Уже сейчас можно пополнить по счёту — обычно зачисляем в течение рабочего дня.</span>
+                    <span>Онлайн-оплата сейчас не подключена. Пополнить баланс можно по счёту — обычно зачисляем в течение рабочего дня.</span>
                   </div>
                   <Link className="btn btn-primary" href="/support?new=1">Запросить счёт на пополнение</Link>
                   <p className="wallet-invoice-hint">Для юрлиц и ИП: напишите сумму, ИНН и название компании — пришлём счёт и закрывающие документы.</p>
@@ -175,7 +181,7 @@ export default async function WalletPage({
                   <Link className="btn btn-primary" href="/settings/account#payout-details">Заполнить реквизиты</Link>
                 </div>
               )}
-              <p className="safe-note"><ShieldCheck size={18} /> Комиссия: 50 ₽ + 1%. Заявка проходит проверку перед выплатой.</p>
+              <p className="safe-note"><ShieldCheck size={18} /> Комиссия: 50 ₽ + 1%. Выплата обрабатывается вручную, каждая операция подтверждается номером перевода и чеком.</p>
             </Card>
           )}
         </section> : null}

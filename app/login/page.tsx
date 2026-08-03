@@ -9,9 +9,9 @@ import { redirect } from "next/navigation";
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string | string[]; intent?: string; returnTo?: string }>;
+  searchParams: Promise<{ error?: string | string[]; intent?: string; returnTo?: string; reset?: string }>;
 }) {
-  const { error, intent, returnTo } = await searchParams;
+  const { error, intent, returnTo, reset } = await searchParams;
   const currentUser = await getCurrentUser();
   if (currentUser) {
     const parsedIntent = parseAuthIntent(intent);
@@ -38,11 +38,16 @@ export default async function LoginPage({
           </div>
         ) : null}
 
+        {reset === "ok" ? (
+          <div className="auth-ref" role="status"><ShieldCheck size={16} /> Пароль изменён. Войдите с новым паролем.</div>
+        ) : null}
+
         <form className="form" action="/api/auth/login" method="post">
           <input type="hidden" name="intent" value={intent || ""} />
           <input type="hidden" name="returnTo" value={returnTo || ""} />
           <label className="field">Email<input name="email" type="email" autoComplete="email" required /></label>
           <label className="field">Пароль<input name="password" type="password" autoComplete="current-password" required /></label>
+          <p className="small"><Link href="/forgot-password">Забыли пароль?</Link></p>
           <button className="btn btn-primary" type="submit">Войти <ArrowRight size={18} /></button>
         </form>
 
@@ -67,19 +72,19 @@ export default async function LoginPage({
         <div className="auth-showcase">
           <div className="motion-card card-a">
             <span><Play size={18} fill="currentColor" /></span>
-            <strong>12 840</strong>
-            <small>просмотров проверяются</small>
+            <strong>Проверка</strong>
+            <small>просмотры через API площадок</small>
           </div>
           <div className="motion-card card-b">
             <span><Sparkles size={18} /></span>
-            <strong>+8 700 ₽</strong>
-            <small>ожидает выплаты</small>
+            <strong>Выплата</strong>
+            <small>после проверки результата</small>
           </div>
           <div className="auth-phone">
             <div className="auth-video-strip"><i /><i /><i /></div>
             <div className="auth-task">
-              <b>Нарезка стрима</b>
-              <span>цель 10K · дедлайн 3 дня</span>
+              <b>Работа по заказу</b>
+              <span>текущий статус всегда рядом</span>
             </div>
           </div>
         </div>

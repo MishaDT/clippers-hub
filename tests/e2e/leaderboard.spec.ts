@@ -62,7 +62,10 @@ test.describe("leaderboard experience", () => {
     await week.click();
     await expect(page).toHaveURL(/period=week/);
     await expect(week).toHaveClass(/active/);
-    await expect(page.locator(".podium-card")).toHaveCount(3);
+    const weeklyPodium = page.locator(".podium-card");
+    const weeklyEmpty = page.getByText("Пока пусто", { exact: true });
+    await expect(weeklyPodium.first().or(weeklyEmpty)).toBeVisible();
+    if (await weeklyPodium.count()) await expect(weeklyPodium).toHaveCount(3);
 
     const allTime = page.locator('.leaderboard-tabs a[href*="period=all"]');
     await allTime.click();

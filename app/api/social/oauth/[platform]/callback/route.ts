@@ -132,7 +132,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
       path: "/settings/account",
       provider: platformValue.toLowerCase()
     });
-    return NextResponse.redirect(new URL("/settings/account?social=connected", base), 303);
+    return NextResponse.redirect(new URL(`/settings/account?social=connected&platform=${platformValue.toLowerCase()}`, base), 303);
   } catch {
     return fail("failed", currentUser.id);
   }

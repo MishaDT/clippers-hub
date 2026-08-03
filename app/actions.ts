@@ -1733,6 +1733,7 @@ export async function withdrawAction(formData: FormData) {
   if (!debited) redirect("/wallet?error=balance");
   revalidatePath("/wallet");
   revalidatePath("/profile");
+  redirect("/wallet?withdrawal=requested");
 }
 
 export async function syncViewsAction() {

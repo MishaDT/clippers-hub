@@ -10,7 +10,7 @@ function tokenHash(token: string) {
 }
 
 function publicBaseUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL || process.env.OAUTH_REDIRECT_BASE || "https://clippers-hub.vercel.app").replace(/\/$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.OAUTH_REDIRECT_BASE || "https://clippers-hub.vercel.app").replace(/\/$/, "");
 }
 
 export function emailDeliveryReady() {
