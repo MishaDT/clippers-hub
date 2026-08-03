@@ -514,6 +514,50 @@ export async function disableCampaignTrackingLinkAction(formData: FormData) {
   redirect(`${returnTo}?tracking=disabled`);
 }
 
+// Business outcomes can come from a CRM, promo codes or a store dashboard, so the
+// campaign owner records the confirmed totals manually. Views and clicks remain
+// system-owned and cannot be edited through this action.
+export async function updateCampaignOutcomeAction(formData: FormData) {
+  const user = await requireUser();
+  const campaignId = String(formData.get("campaignId") || "");
+  const returnTo = safeReturnTo(String(formData.get("returnTo") || ""), `/campaigns/${campaignId}`);
+  if (!(await rateLimit(`campaign-outcome:${user.id}`, 30, 60 * 60 * 1000))) {
+    redirect(`${returnTo}?outcome=limit#campaign-performance`);
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { ownerId: true, metricsJson: true }
+  });
+  if (!campaign || (campaign.ownerId !== user.id && !canAccessAdmin(user))) redirect(returnTo);
+
+  const current = safeJson<Record<string, unknown>>(campaign.metricsJson, {});
+  const leads = boundedInteger(formData.get("leads"), { min: 0, max: 1_000_000_000, fallback: 0 });
+  const sales = boundedInteger(formData.get("sales"), { min: 0, max: 1_000_000_000, fallback: 0 });
+  const revenueCents = parseRubToCents(formData.get("revenue"));
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: {
+      metricsJson: stringify({
+        ...current,
+        leads,
+        sales,
+        revenueCents,
+        outcomeUpdatedAt: new Date().toISOString()
+      })
+    }
+  });
+  await trackEvent({
+    userId: user.id,
+    type: "CAMPAIGN_OUTCOME_UPDATED",
+    path: `/campaigns/${campaignId}`,
+    metadata: { campaignId, leads, sales, revenueCents }
+  });
+  revalidatePath(returnTo);
+  redirect(`${returnTo}?outcome=saved#campaign-performance`);
+}
+
 export async function closeCampaignAction(formData: FormData) {
   const user = await requireUser();
   const campaignId = String(formData.get("campaignId") || "");

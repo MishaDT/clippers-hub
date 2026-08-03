@@ -7,12 +7,13 @@ import { LandingClientRoadmap, LandingWorkerRoadmap } from "@/components/landing
 import { PilotLeadForm } from "@/components/pilot-lead-form";
 import styles from "./landing-experience.module.css";
 
-export function LandingExperience() {
+export function LandingExperience({ proof }: { proof?: React.ReactNode }) {
   const [audience, setAudience] = useState<LandingAudience>("client");
 
   return (
     <div className={styles.page}>
       <LandingMotionHero audience={audience} onAudienceChange={setAudience} />
+      {proof}
 
       <div className={styles.roleContent} id="how" key={audience}>
         {audience === "client" ? (

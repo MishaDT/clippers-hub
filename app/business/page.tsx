@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Check, Clock3, FileText, ShieldCheck, Wallet, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, Clock3, FileText, Percent, ShieldCheck, Wallet, X } from "lucide-react";
 import { AppShell } from "@/components/ui";
 import { LandingCalculator } from "@/components/landing-calculator";
 import styles from "./business.module.css";
@@ -8,8 +8,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { setRoleModeAction } from "@/app/actions";
 
 export const metadata: Metadata = {
-  title: "Клип-маркетинг для бизнеса — ReelPay",
-  description: "Запустите клип-кампанию самостоятельно без менеджеров и звонков. Бюджет в эскроу, оплата за проверенный результат, остаток возвращается."
+  title: "Клип-маркетинг с оплатой за результат — ReelPay",
+  description: "Запустите кампанию без отдельной комиссии заказчика и искусственного минимального бюджета. Просмотры, переходы, лиды, продажи и ROAS — в одном отчёте."
 };
 
 const guarantees = [
@@ -57,6 +57,21 @@ export default async function BusinessPage() {
               <p>{text}</p>
             </article>
           ))}
+        </section>
+
+        <section className={styles.economics} aria-labelledby="economics-title">
+          <div className={styles.economicsCopy}>
+            <span><Percent size={15} /> Экономика без мелкого шрифта</span>
+            <h2 id="economics-title">Бюджет идёт в результат, а не в плату за вход</h2>
+            <p>В ReelPay нет отдельной платформенной комиссии при создании кампании и фиксированного минимального бюджета сервиса. Минимум определяется только выбранной целью и выплатой за результат.</p>
+            <Link href="/business/results">Как считаем эффективность <ArrowRight size={16} /></Link>
+          </div>
+          <div className={styles.economicsGrid}>
+            <article><b>0%</b><span>отдельная комиссия заказчика при создании кампании</span></article>
+            <article><b>Без порога</b><span>искусственного минимального бюджета платформы</span></article>
+            <article><b>1 отчёт</b><span>просмотры, переходы, лиды, продажи и ROAS</span></article>
+            <article><b>100%</b><span>свободного остатка возвращается на баланс</span></article>
+          </div>
         </section>
 
         <section className={styles.compare} aria-labelledby="compare-title">

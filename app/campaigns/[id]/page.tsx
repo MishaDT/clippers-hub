@@ -9,8 +9,9 @@ import { WorkspaceJourney } from "@/components/workspace-journey";
 import { TakeOrderButton } from "@/components/take-order-button";
 import { SubmissionDispute } from "@/components/submission-dispute";
 import { ClipReport } from "@/components/clip-report";
+import { CampaignPerformance } from "@/components/campaign-performance";
 import { PlatformIcon } from "@/components/marketplace-browser";
-import { closeCampaignAction, createCampaignTrackingLinkAction, createClipShareAction, disableCampaignTrackingLinkAction, rateCompletedSubmissionAction, revokeClipShareAction, reviewDraftAction } from "@/app/actions";
+import { closeCampaignAction, createClipShareAction, rateCompletedSubmissionAction, revokeClipShareAction, reviewDraftAction } from "@/app/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/admin";
 import { buildSafePreview } from "@/lib/chat-safety";
@@ -89,7 +90,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function CampaignPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string; rating?: string; dispute?: string; shared?: string; published?: string }> }) {
+export default async function CampaignPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string; rating?: string; dispute?: string; shared?: string; published?: string; outcome?: string; tracking?: string }> }) {
   const { id } = await params;
   const query = await searchParams;
   const returnTo = safeReturnTo(query.returnTo, "/campaigns");
@@ -107,6 +108,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       allowedPlatformsJson: true,
       rulesJson: true,
       briefJson: true,
+      metricsJson: true,
       cpmRateCents: true,
       viewThreshold: true,
       minimumGuaranteeCents: true,
@@ -369,6 +371,13 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         }))
       })
     : [];
+  const outcome = parseJson<{ leads?: number; sales?: number; revenueCents?: number }>(campaign.metricsJson, {});
+  const performanceViews = reports.reduce((sum, report) => sum + Math.max(0, report.currentViews), 0);
+  const performanceClicks = campaign.trackingLinks.reduce((sum, link) => sum + link._count.clicks, 0);
+  const performanceSpentCents = Math.max(
+    0,
+    campaign.totalBudgetCents - campaign.remainingBudgetCents - campaign.reservedBudgetCents
+  );
   const daysLeft = Math.max(1, Math.ceil((campaign.deadline.getTime() - Date.now()) / 86400000));
   const safeSource = buildSafePreview(campaign.sourceUrl);
   const briefRows = [
@@ -653,6 +662,27 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         </div>
 
         {isOwner ? (
+          <CampaignPerformance
+            campaignId={campaign.id}
+            returnTo={`/campaigns/${campaign.id}`}
+            views={performanceViews}
+            clicks={performanceClicks}
+            spentCents={performanceSpentCents}
+            leads={Math.max(0, outcome.leads || 0)}
+            sales={Math.max(0, outcome.sales || 0)}
+            revenueCents={Math.max(0, outcome.revenueCents || 0)}
+            outcomeSaved={query.outcome === "saved"}
+            trackingLinks={campaign.trackingLinks.map((link) => ({
+              id: link.id,
+              code: link.code,
+              targetUrl: link.targetUrl,
+              active: link.active,
+              clicks: link._count.clicks
+            }))}
+          />
+        ) : null}
+
+        {isOwner ? (
           <details className={styles.secondaryTools}>
             <summary>Дополнительные инструменты кампании</summary>
             <p className={styles.secondaryHint}>Диагностика, короткие ссылки и подбор исполнителей.</p>
@@ -672,37 +702,6 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                   {item.href && item.action ? <Link href={item.href}>{item.action} <ArrowUpRight size={14} /></Link> : null}
                 </article>
               ))}
-            </div>
-          </section>
-
-          <section className={styles.tracking} aria-labelledby="campaign-tracking-title">
-            <div>
-              <span className="eyebrow">Переходы без слежки</span>
-              <h2 id="campaign-tracking-title">Короткая ссылка кампании</h2>
-              <p>ReelPay считает переходы, но не хранит сырой IP. Укажите страницу, куда должен попасть зритель.</p>
-            </div>
-            <form action={createCampaignTrackingLinkAction}>
-              <input type="hidden" name="campaignId" value={campaign.id} />
-              <input type="hidden" name="returnTo" value={`/campaigns/${campaign.id}`} />
-              <input name="targetUrl" type="url" placeholder="https://ваш-сайт.ru/предложение" required />
-              <button type="submit">Создать ссылку</button>
-            </form>
-            <div className={styles.trackingLinks}>
-              {campaign.trackingLinks.map((link) => (
-                <article key={link.id} data-active={link.active}>
-                  <div><b>/track/{link.code}</b><small>{link.targetUrl}</small></div>
-                  <span>{link._count.clicks} переходов</span>
-                  {link.active ? <a href={`/track/${link.code}`} target="_blank" rel="noreferrer">Проверить <ArrowUpRight size={13} /></a> : <em>Отключена</em>}
-                  {link.active ? (
-                    <form action={disableCampaignTrackingLinkAction}>
-                      <input type="hidden" name="linkId" value={link.id} />
-                      <input type="hidden" name="returnTo" value={`/campaigns/${campaign.id}`} />
-                      <button type="submit">Отключить</button>
-                    </form>
-                  ) : null}
-                </article>
-              ))}
-              {!campaign.trackingLinks.length ? <p className="muted">Ссылок пока нет.</p> : null}
             </div>
           </section>
 

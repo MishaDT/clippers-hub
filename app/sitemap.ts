@@ -10,6 +10,8 @@ const abs = (path: string) => new URL(path, siteUrl).toString();
 const staticEntries: MetadataRoute.Sitemap = [
   { url: abs("/"), changeFrequency: "daily", priority: 1 },
   { url: abs("/business"), changeFrequency: "weekly", priority: 0.9 },
+  { url: abs("/business/results"), changeFrequency: "monthly", priority: 0.8 },
+  { url: abs("/academy"), changeFrequency: "monthly", priority: 0.7 },
   { url: abs("/campaigns"), changeFrequency: "hourly", priority: 0.9 },
   { url: abs("/leaderboard"), changeFrequency: "daily", priority: 0.6 },
   { url: abs("/about"), changeFrequency: "monthly", priority: 0.5 },

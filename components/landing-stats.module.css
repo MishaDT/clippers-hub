@@ -1,0 +1,20 @@
+.section {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.note {
+  display: block;
+  color: #8b8f82;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .note {
+    padding-inline: 18px;
+    line-height: 1.45;
+  }
+}

@@ -3,6 +3,8 @@ import styles from "./site-footer.module.css";
 
 const primaryLinks = [
   ["/business", "Для бизнеса"],
+  ["/business/results", "Аналитика"],
+  ["/academy", "Академия"],
   ["/about", "О сервисе"],
   ["/about#how-it-works", "Как работает"],
   ["/help", "Помощь"],
